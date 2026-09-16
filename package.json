@@ -1,0 +1,31 @@
+{
+  "name": "aide",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail --names server,client --prefix-colors blue,green \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client && npm run build -w server",
+    "start": "node server/dist/app.cjs",
+    "typecheck": "concurrently --group --names root,shared,server,client \"tsc -p tsconfig.json --noEmit\" \"tsc -p shared/tsconfig.json --noEmit\" \"tsc -p server/tsconfig.json --noEmit\" \"tsc -p client/tsconfig.json --noEmit && tsc -p client/tsconfig.node.json --noEmit\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "db:migrate": "npm run migrate -w server",
+    "create-parent": "npm run create-parent -w server --"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.3",
+    "concurrently": "^10.0.5",
+    "fake-indexeddb": "^6.2.5",
+    "happy-dom": "^20.14.5",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.1"
+  }
+}

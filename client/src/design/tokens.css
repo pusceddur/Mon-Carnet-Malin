@@ -1,0 +1,33 @@
+/* STUB: client-shell — design tokens (contract §12) */
+:root {
+  color-scheme: light;
+  --paper: #FBF6EC;
+  --paper-clair: #FFFFFF;
+  --ink: #2B2A28;
+  --ink-soft: #5B5750;
+  --accent: #2F6FDB;
+  --accent-warm: #E8963A;
+  --ok: #2E7D4F;
+  --warn: #B8640A;
+  --danger: #B83A2E;
+  --speaking: #FFF0B3;
+  --focus: #1D4ED8;
+  --radius: 16px;
+  --tap: 56px;
+  --tap-parent: 44px;
+  --font-ui: 'Lexend', system-ui, -apple-system, sans-serif;
+}
+
+[data-theme="sombre"] {
+  color-scheme: dark;
+  --paper: #1F2023;
+  --ink: #ECE6DA;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --paper: #1F2023;
+    --ink: #ECE6DA;
+  }
+}

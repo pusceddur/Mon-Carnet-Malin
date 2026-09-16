@@ -1,0 +1,48 @@
+# Dependencies and builds
+node_modules/
+dist/
+build/
+coverage/
+.vite/
+*.tsbuildinfo
+
+# Local data and databases
+data/
+uploads/
+*.sqlite
+*.sqlite3
+*.db
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+.npmrc
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Private documents and modules (never published)
+docs/
+private/
+FirstPrompt.txt
+*.local.*
+
+# Generated assets
+client/public/ocr/
+client/public/data/
+client/public/pdfjs/
+
+# Test reports
+test-results/
+playwright-report/
+blob-report/
+
+# Editors and OS
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db
