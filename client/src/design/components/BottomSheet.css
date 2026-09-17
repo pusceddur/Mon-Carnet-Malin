@@ -1,0 +1,106 @@
+.ui-sheet {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 760px;
+  max-height: calc(100vh - var(--safe-top) - var(--space-6));
+  max-height: calc(100dvh - var(--safe-top) - var(--space-6));
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--surface);
+  box-shadow: var(--shadow-sheet);
+  animation: ui-sheet-in var(--dur-slow) var(--ease-out);
+  transition: transform var(--dur) var(--ease-out);
+}
+
+.ui-sheet--tall {
+  height: calc(100vh - var(--safe-top) - var(--space-6));
+  height: calc(100dvh - var(--safe-top) - var(--space-6));
+}
+
+.ui-sheet[data-dragging] {
+  transition: none;
+}
+
+.ui-layer[data-state='closing'] .ui-sheet {
+  animation: ui-sheet-out var(--dur) var(--ease-in) forwards;
+}
+
+.ui-sheet__grab {
+  flex: none;
+  padding-top: var(--space-2);
+}
+
+.ui-sheet__grab--active {
+  touch-action: none;
+  cursor: grab;
+}
+
+.ui-sheet__handle {
+  width: 48px;
+  height: 5px;
+  margin: 0 auto var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--line-strong);
+  opacity: 0.55;
+}
+
+.ui-sheet__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--tap);
+  padding: 0 var(--space-3) var(--space-2) var(--space-5);
+}
+
+.ui-sheet__title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-lg);
+}
+
+.ui-sheet__close {
+  margin-left: auto;
+}
+
+.ui-sheet__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 var(--space-5) var(--space-5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ui-sheet__body:last-child {
+  padding-bottom: calc(var(--space-5) + var(--safe-bottom));
+}
+
+.ui-sheet__footer {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5) calc(var(--space-3) + var(--safe-bottom));
+  border-top: 1px solid var(--line);
+}
+
+.ui-sheet--parent .ui-sheet__header {
+  min-height: var(--tap-parent);
+}
+
+.ui-sheet--parent .ui-sheet__title {
+  font-size: var(--text-md);
+}
+
+@keyframes ui-sheet-in {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+}
+
+@keyframes ui-sheet-out {
+  to {
+    transform: translate3d(0, 100%, 0);
+  }
+}

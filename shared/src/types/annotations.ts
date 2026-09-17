@@ -5,8 +5,10 @@ export type EraserMode = 'stroke' | 'partial' | 'page';          // erase stroke
 export type Thickness = 'fin' | 'moyen' | 'epais';
 export interface InkPoint { x: number; y: number; p: number /*pressure 0..1*/ }
 export type InkSpace =
-  | { kind: 'text'; pageIndex: number; blockIndex: number; charOffset: number; blockTextHash: string; contextText: string }
-      // points in em, origin = top-left corner of the box of the word starting at charOffset
+  | { kind: 'text'; pageIndex: number; blockIndex: number; charOffset: number; blockTextHash: string; contextText: string;
+      endAnchor: { blockIndex: number; charOffset: number } | null }
+      // points in em, origin = top-left corner of the box of the word starting at charOffset;
+      // endAnchor (§15.7): word where a multi-line stroke ends (positions interpolated between both anchors), null otherwise
   | { kind: 'original'; pageIndex: number }
       // x = fraction of page width, y = fraction of page height (0..1)
   | { kind: 'answer'; exerciseId: Id; questionId: string };

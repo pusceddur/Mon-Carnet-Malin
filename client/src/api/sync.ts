@@ -1,4 +1,4 @@
-// STUB: client-shell — thin wrapper over §7 /api/sync
+// Thin wrapper over §15.2 /api/sync.
 import type { SyncRequest, SyncResponse } from '@aide/shared';
 import { api } from './http';
 

@@ -1,4 +1,4 @@
-// STUB: server-platform (functional)
+// Applies pending database migrations (static migration source, works in the bundled migrate.cjs).
 import { loadConfig, loadEnvFileIfPresent } from '../src/config';
 import { createDb, runMigrations } from '../src/db/knex';
 import { createLogger } from '../src/logger';

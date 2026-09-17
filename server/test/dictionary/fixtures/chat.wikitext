@@ -1,0 +1,46 @@
+{{voir|Chat|chât}}
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: {{siècle|lang=fr|XII}} Du {{étyl|la|fr|mot=cattus|sens=chat}}.
+: {{date|lang=fr|1990}} {{composant|lang=fr|sens=discussion}} De l’{{étyl|en|fr|mot=chat}}.
+
+=== {{S|nom|fr|num=1}} ===
+{{fr-rég|ʃa}}
+[[Fichier:Cat03.jpg|vignette|Un '''chat''' ([[felis catus|''Felis catus'']]) qui regarde l’objectif.]]
+'''chat''' {{pron|ʃa|fr}} {{m}} {{équiv-pour|lang=fr|une femelle|chatte}}
+# {{info lex|zoologie}} [[mammifère|Mammifère]] [[carnivore]] [[félin]] de taille moyenne, au [[museau]] court et arrondi, [[domestiquer|domestiqué]] ou [[sauvage]].
+#* {{exemple|lang=fr|Le '''chat''' dormait en boule près du poêle.}}
+#* {{exemple|lang=fr|Il n’y avait pas un '''chat''' dans la rue ce matin-là.}}
+#: {{note}} On dit d’un chat qu’il [[miauler|miaule]] ou qu’il [[ronronner|ronronne]].
+# {{par extension}} [[félidé|Félidé]].
+# {{familier|fr}} Terme d’affection.
+#* {{exemple|lang=fr|Viens ici, mon '''chat'''.}}
+
+==== {{S|synonymes}} ====
+* [[matou]]
+* [[minet]]
+
+==== {{S|dérivés}} ====
+{{(}}
+* [[chaton]]
+* [[chat-huant]]
+{{)}}
+
+=== {{S|nom|fr|num=2}} ===
+{{fr-rég|tʃat}}
+'''chat''' {{pron|tʃat|fr}} {{m}}
+# {{info lex|internet}} [[discussion|Discussion]] en [[temps réel]] sur un réseau informatique.
+#* {{exemple|lang=fr|On s’est retrouvés sur le '''chat''' après les cours.}}
+
+=== {{S|prononciation}} ===
+* {{pron|ʃa|fr}}
+* {{écouter|lang=fr|France (Paris)|ʃa|audio=Fr-chat.ogg}}
+
+=== {{S|références}} ===
+* {{Import:DAF8}}
+<references />
+
+== {{langue|en}} ==
+=== {{S|verbe|en}} ===
+'''chat''' {{pron|tʃæt|en}}
+# [[bavarder|Bavarder]].

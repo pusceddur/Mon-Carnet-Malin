@@ -1,0 +1,26 @@
+{{voir|Rose|rosé}}
+== {{langue|de}} ==
+=== {{S|nom|de}} ===
+'''Rose''' {{f}}
+# [[rose#fr|Rose]] (fleur).
+
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: Du {{étyl|la|fr|mot=rosa}}.
+
+=== {{S|nom|fr|num=1}} ===
+{{fr-rég|ʁoz}}
+[[Fichier:Rosa rubiginosa 1.jpg|vignette|Une '''rose''' sauvage. (1)]]
+'''rose''' {{pron|ʁoz|fr}} {{f}}
+# {{lexique|botanique|fr}} [[fleur|Fleur]] du [[rosier]], souvent très [[parfumé]]e.
+#* {{exemple|lang=fr|Il lui a offert un bouquet de '''roses''' rouges.}}
+
+=== {{S|adjectif|fr}} ===
+{{fr-rég|ʁoz}}
+'''rose''' {{pron|ʁoz|fr}} {{mf}}
+# D’une [[couleur]] [[rouge]] très [[pâle]].
+
+== {{langue|en}} ==
+=== {{S|verbe|en|flexion}} ===
+'''rose'''
+# ''Prétérit de'' [[rise]].

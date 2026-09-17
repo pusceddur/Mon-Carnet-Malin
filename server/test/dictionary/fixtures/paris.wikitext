@@ -1,0 +1,9 @@
+{{voir|paris|parís}}
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: Du nom du peuple gaulois des {{w|Parisii}}.
+
+=== {{S|nom propre|fr}} ===
+'''Paris''' {{pron|pa.ʁi|fr}} {{m}} ou {{f}}
+# {{w|Ville}} et [[capitale]] de la [[France]], située sur la [[Seine]].
+#* {{exemple|lang=fr|Nous avons visité '''Paris''' pendant les vacances.}}

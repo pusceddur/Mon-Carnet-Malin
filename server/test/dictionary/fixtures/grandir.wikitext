@@ -1,0 +1,5 @@
+== {{langue|fr}} ==
+=== {{S|verbe|fr}} ===
+'''grandir''' {{pron|ɡʁɑ̃.diʁ|fr}} {{i|fr}} {{conjugaison|fr|groupe=2}}
+# Devenir plus [[grand]].
+#* {{exemple|lang=fr|Les enfants '''grandissent''' vite.}}

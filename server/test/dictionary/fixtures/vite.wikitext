@@ -1,0 +1,10 @@
+== {{langue|fr}} ==
+=== {{S|adverbe|fr}} ===
+'''vite''' {{pron|vit|fr}}
+# Avec [[rapidité]] ; en peu de [[temps]].
+#* {{exemple|lang=fr|Cours '''vite''', le bus arrive !}}
+
+=== {{S|adjectif|fr}} ===
+{{fr-rég|vit}}
+'''vite''' {{pron|vit|fr}} {{mf}}
+# {{vieilli|fr}} Qui va vite ; [[rapide]].

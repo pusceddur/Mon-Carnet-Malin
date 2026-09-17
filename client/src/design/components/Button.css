@@ -1,0 +1,150 @@
+.ui-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--tap);
+  margin: 0;
+  padding: var(--space-2) var(--space-5);
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.ui-btn--parent {
+  min-height: var(--tap-parent);
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+
+.ui-btn--block {
+  display: flex;
+  width: 100%;
+}
+
+.ui-btn:active:not(:disabled):not([aria-disabled='true']) {
+  transform: scale(0.97);
+}
+
+.ui-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.ui-btn[aria-busy='true'] {
+  cursor: progress;
+}
+
+.ui-btn__icon,
+.ui-btn__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.ui-btn__icon {
+  font-size: 1.25em;
+}
+
+.ui-btn .ui-spinner {
+  color: currentColor;
+}
+
+/* primary */
+.ui-btn--primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: var(--shadow-1);
+}
+
+.ui-btn--primary:active:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+/* secondary */
+.ui-btn--secondary {
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.ui-btn--secondary:active:not(:disabled) {
+  background: var(--surface-press);
+}
+
+/* ghost */
+.ui-btn--ghost {
+  background: transparent;
+  color: var(--ink);
+}
+
+.ui-btn--ghost:active:not(:disabled) {
+  background: var(--surface-press);
+}
+
+/* danger */
+.ui-btn--danger {
+  background: var(--danger);
+  color: var(--on-danger);
+  box-shadow: var(--shadow-1);
+}
+
+.ui-btn--danger:active:not(:disabled) {
+  background: var(--danger-strong);
+}
+
+/* Hover only where a real pointer exists: no sticky hover after a tap on iPad. */
+@media (hover: hover) and (pointer: fine) {
+  .ui-btn--primary:hover:not(:disabled) {
+    background: var(--accent-strong);
+  }
+
+  .ui-btn--secondary:hover:not(:disabled),
+  .ui-btn--ghost:hover:not(:disabled) {
+    background: var(--surface-press);
+  }
+
+  .ui-btn--danger:hover:not(:disabled) {
+    background: var(--danger-strong);
+  }
+}
+
+/* icon-only */
+.ui-btn--icon {
+  flex: none;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  font-size: 26px;
+}
+
+.ui-btn--icon.ui-btn--ghost,
+.ui-btn--icon.ui-btn--secondary {
+  box-shadow: none;
+}
+
+.ui-btn--icon.ui-btn--parent {
+  width: var(--tap-parent);
+  height: var(--tap-parent);
+  font-size: 21px;
+}
+
+.ui-btn--icon[aria-pressed='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}

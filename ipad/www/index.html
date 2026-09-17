@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Carnet Malin</title>
+    <style>
+      :root { color-scheme: light; }
+      body {
+        margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; box-sizing: border-box;
+        background: #fffdf7; color: #2b2a33; font: 20px/1.6 -apple-system, system-ui, sans-serif; text-align: center;
+      }
+      main { max-width: 520px; }
+      .emoji { font-size: 64px; }
+      h1 { font-size: 28px; margin: 12px 0; }
+      button {
+        margin-top: 24px; min-height: 56px; padding: 0 32px; border: 0; border-radius: 999px;
+        background: #3d5afe; color: #fff; font: inherit; font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="emoji" aria-hidden="true">📶</div>
+      <h1>Pas de connexion pour le moment</h1>
+      <p>Carnet Malin a besoin d’Internet pour s’ouvrir la première fois. Ensuite, les livres restent lisibles sans connexion.</p>
+      <button type="button" id="retry">Réessayer</button>
+    </main>
+    <script>
+      // The address is written by scripts/configure-ios.mjs when the app is built.
+      var server = '__CARNET_SERVER_URL__';
+      document.getElementById('retry').addEventListener('click', function () {
+        if (server.indexOf('https://') === 0) window.location.replace(server);
+        else window.location.reload();
+      });
+    </script>
+  </body>
+</html>

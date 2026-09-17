@@ -4,14 +4,17 @@ import { z } from 'zod';
 import type { LogLevel } from './logger';
 
 export type NodeEnv = 'development' | 'production' | 'test';
-/** 'plugin' = external provider module loaded at runtime from AI_PLUGIN_PATH (kept outside the repository). */
-export type AIProviderName = 'plugin' | 'local' | 'mock';
+/**
+ * 'plugin' = external provider module loaded at runtime from AI_PLUGIN_PATH (kept outside the repository).
+ * 'worker' = jobs queued in the database and executed by the external worker (§17).
+ */
+export type AIProviderName = 'plugin' | 'local' | 'mock' | 'worker';
 
 export interface AppConfig {
   nodeEnv: NodeEnv;
   isProduction: boolean;
   isTest: boolean;
-  /** Number, or a socket/pipe name when provided by Passenger. */
+  /** Number, or a socket/pipe name when the host provides one. */
   port: number | string;
   logLevel: LogLevel;
   databaseUrl: string;
@@ -23,14 +26,30 @@ export interface AppConfig {
     /** Absolute or cwd-relative path of the external provider module, or null. */
     pluginPath: string | null;
   };
+  /** External worker (§17). */
+  worker: {
+    /** Lowercase hex sha256 of the worker bearer token (WORKER_TOKEN_SHA256); null = the worker routes answer 404. */
+    tokenSha256: string | null;
+    /** Names the worker's model could use to talk about itself (WORKER_SELF_REFERENCE_TERMS, comma separated). */
+    selfReferenceTerms: readonly string[];
+    /** End-to-end deadlines of AI requests served by the worker (regeneration included). */
+    deadlines: { light: number; complex: number };
+  };
   /** Raw values from env (resolve with paths.ts). */
   clientDistDir: string | null;
   dataDir: string | null;
   tessdataBestDir: string | null;
   wiktionaryEnabled: boolean;
+  /** Express `trust proxy` hop count (TRUST_PROXY); false = disabled (default). */
+  trustProxy: number | false;
+  /** Per-parent storage quota for uploaded originals and page images (UPLOAD_QUOTA_MB, default 2000). */
+  uploadQuotaBytes: number;
+  /** bcrypt cost factor (fast in tests). */
+  passwordHashRounds: number;
 }
 
-const ProviderSchema = z.enum(['plugin', 'local', 'mock']);
+const ProviderSchema = z.enum(['plugin', 'local', 'mock', 'worker']);
+const DurationMsSchema = z.string().regex(/^\d{4,7}$/).transform(Number).pipe(z.number().int().min(5_000).max(3_600_000));
 const BoolSchema = z
   .enum(['true', 'false', '1', '0', 'yes', 'no'])
   .transform((v) => v === 'true' || v === '1' || v === 'yes');
@@ -53,6 +72,12 @@ const EnvSchema = z.object({
   DATA_DIR: z.string().min(1).optional(),
   TESSDATA_BEST_DIR: z.string().min(1).optional(),
   WIKTIONARY_ENABLED: BoolSchema.default(true),
+  TRUST_PROXY: z.union([z.enum(['false', 'off']), z.string().regex(/^\d{1,2}$/)]).optional(),
+  UPLOAD_QUOTA_MB: z.string().regex(/^\d{1,7}$/).optional(),
+  WORKER_TOKEN_SHA256: z.string().regex(/^[0-9a-fA-F]{64}$/).optional(),
+  WORKER_SELF_REFERENCE_TERMS: z.string().max(2000).optional(),
+  WORKER_DEADLINE_LIGHT_MS: DurationMsSchema.optional(),
+  WORKER_DEADLINE_COMPLEX_MS: DurationMsSchema.optional(),
 });
 
 /** Loads `.env` from the working directory if present (does not override existing variables). */
@@ -64,6 +89,21 @@ export function loadEnvFileIfPresent(path: string = resolve(process.cwd(), '.env
   } catch {
     return false;
   }
+}
+
+const DEFAULT_UPLOAD_QUOTA_MB = 2000;
+/** §17.4 default deadlines of AI requests served by the external worker. */
+export const WORKER_DEFAULT_DEADLINES = { light: 90_000, complex: 240_000 } as const;
+
+function parseTerms(raw: string | undefined): string[] {
+  if (raw === undefined) return [];
+  return [...new Set(raw.split(',').map((t) => t.trim()).filter((t) => t.length > 0 && t.length <= 100))];
+}
+
+function parseTrustProxy(raw: string | undefined): number | false {
+  if (raw === undefined || !/^\d+$/.test(raw)) return false;
+  const hops = Number(raw);
+  return hops > 0 ? hops : false;
 }
 
 function parsePort(raw: string | undefined): number | string {
@@ -96,7 +136,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
 
   const pluginPath = e.AI_PLUGIN_PATH ?? null;
-  const defaultProvider: AIProviderName = e.AI_PROVIDER ?? (pluginPath ? 'plugin' : 'local');
+  const workerTokenSha256 = e.WORKER_TOKEN_SHA256?.toLowerCase() ?? null;
+  // §17.4: without AI_PROVIDER, a plugin wins, then a configured worker, then the local provider.
+  const defaultProvider: AIProviderName = e.AI_PROVIDER ?? (pluginPath ? 'plugin' : workerTokenSha256 ? 'worker' : 'local');
 
   return {
     nodeEnv: e.NODE_ENV,
@@ -112,9 +154,20 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       providerComplex: e.AI_PROVIDER_COMPLEX ?? defaultProvider,
       pluginPath,
     },
+    worker: {
+      tokenSha256: workerTokenSha256,
+      selfReferenceTerms: parseTerms(e.WORKER_SELF_REFERENCE_TERMS),
+      deadlines: {
+        light: e.WORKER_DEADLINE_LIGHT_MS ?? WORKER_DEFAULT_DEADLINES.light,
+        complex: e.WORKER_DEADLINE_COMPLEX_MS ?? WORKER_DEFAULT_DEADLINES.complex,
+      },
+    },
     clientDistDir: e.CLIENT_DIST_DIR ?? null,
     dataDir: e.DATA_DIR ?? null,
     tessdataBestDir: e.TESSDATA_BEST_DIR ?? null,
     wiktionaryEnabled: e.WIKTIONARY_ENABLED,
+    trustProxy: parseTrustProxy(e.TRUST_PROXY),
+    uploadQuotaBytes: Number(e.UPLOAD_QUOTA_MB ?? DEFAULT_UPLOAD_QUOTA_MB) * 1024 * 1024,
+    passwordHashRounds: isTest ? 4 : 12,
   };
 }

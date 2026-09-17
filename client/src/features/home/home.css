@@ -1,0 +1,81 @@
+/* Child home: large tiles, one screen, no scrolling on iPad. */
+
+.child-home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 980px;
+  min-height: 100vh;
+  min-height: calc(100dvh - var(--safe-top) - var(--safe-bottom));
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) var(--space-5);
+}
+
+.child-home__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.child-home__greeting {
+  font-size: var(--text-2xl);
+  overflow-wrap: anywhere;
+}
+
+.child-home__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.child-home__avatar {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.child-home__tiles {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(200px, 320px);
+  align-content: center;
+  gap: var(--space-5);
+}
+
+.child-home__tiles .ui-tile {
+  min-height: 200px;
+  height: 100%;
+}
+
+.child-home__footer {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-4);
+}
+
+.child-home__parent {
+  color: var(--ink-soft);
+}
+
+@media (max-width: 560px) {
+  .child-home__tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .child-home__tiles {
+    grid-auto-rows: minmax(120px, auto);
+  }
+
+  .child-home__tiles .ui-tile {
+    min-height: 120px;
+  }
+}
+
+.child-home__tiles .ui-tile__desc {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}

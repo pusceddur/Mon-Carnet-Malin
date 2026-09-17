@@ -59,13 +59,13 @@ describe('client foundations', () => {
     const { routes } = await import('../src/routes');
     const paths = routes.map((r) => r.path);
     expect(paths).toEqual(expect.arrayContaining([
-      '/', '/installation', '/connexion', '/enfant', '/accueil', '/livres', '/lire/:documentId', '/exercices',
+      '/', '/installation', '/connexion', '/inscription', '/enfant', '/accueil', '/livres', '/lire/:documentId', '/exercices',
       '/exercices/:documentId/resume', '/exercices/:documentId/questions', '/exercices/quiz/:exerciseId', '/notes', '/parent',
     ]));
     const parentChildren = routes.find((r) => r.path === '/parent')?.children?.map((c) => c.path).filter(Boolean);
     expect(parentChildren).toEqual([
       'documents', 'importer', 'documents/:documentId', 'documents/:documentId/pages/:pageIndex', 'enfants', 'enfants/:childId',
-      'ia', 'activite', 'glossaire', 'synchronisation', 'compte',
+      'ia', 'activite', 'glossaire', 'synchronisation', 'compte', 'diagnostic',
     ]);
   });
 

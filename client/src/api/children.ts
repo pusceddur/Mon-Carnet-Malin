@@ -1,4 +1,4 @@
-// STUB: client-shell — thin wrappers over §7 /api/children
+// Thin wrappers over §7 /api/children.
 import type { ChildProfile, CreateChildRequest, Id, OkResponse, UpdatePreferencesRequest } from '@aide/shared';
 import { api } from './http';
 

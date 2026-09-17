@@ -1,0 +1,21 @@
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: Du {{étyl|la|fr|mot=pitinnus}}, mot d’origine incertaine.
+
+=== {{S|adjectif|fr}} ===
+{{fr-accord-rég|pə.ti|ms=petit}}
+'''petit''' {{pron|pə.ti|fr}}
+# Dont la [[taille]], la [[grandeur]] ou l’[[étendue]] est [[inférieur]]e à la [[moyenne]].
+#* {{exemple|lang=fr|Un '''petit''' jardin derrière la maison.}}
+# Qui est [[jeune]].
+#* {{exemple|lang=fr|Quand j’étais '''petit''', j’avais peur du noir.}}
+
+=== {{S|nom|fr}} ===
+{{fr-accord-rég|pə.ti}}
+'''petit''' {{pron|pə.ti|fr}} {{m}}
+# [[enfant|Enfant]] ; jeune [[garçon]].
+# [[jeune|Jeune]] d’un [[animal]].
+
+=== {{S|adverbe|fr}} ===
+'''petit''' {{pron|pə.ti|fr}}
+# En petite [[quantité]].

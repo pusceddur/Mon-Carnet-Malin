@@ -1,0 +1,19 @@
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: Du {{étyl|la|fr|manducare|sens=mâcher}}.
+
+=== {{S|verbe|fr}} ===
+'''manger''' {{pron|mɑ̃.ʒe|fr}} {{t|fr}} ou {{i|fr}} {{conjugaison|fr|groupe=1}}
+# {{transitif|fr}} [[mâcher|Mâcher]] et [[avaler]] un [[aliment]] pour se [[nourrir]].
+#* {{exemple|lang=fr|Les enfants '''mangent''' leur goûter dans le jardin.}}
+# {{intransitif|fr}} Prendre un [[repas]].
+#* {{exemple|lang=fr|Nous '''mangeons''' à midi.}}
+# {{figuré|fr}} [[dépenser|Dépenser]], [[gaspiller]].
+
+=== {{S|nom|fr}} ===
+{{fr-rég|mɑ̃.ʒe}}
+'''manger''' {{pron|mɑ̃.ʒe|fr}} {{m}}
+# {{vieilli|fr}} Ce que l’on [[mange]].
+
+=== {{S|prononciation}} ===
+* {{pron|mɑ̃.ʒe|fr}}

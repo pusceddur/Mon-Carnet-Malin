@@ -3,7 +3,8 @@ import type { QuestionType } from './exercises';
 export type Id = string;
 export type Millis = number;
 
-export interface ParentUser { id: Id; email: string; displayName: string; createdAt: Millis }
+/** `isOwner`: the account that manages invitations (first account of the server). */
+export interface ParentUser { id: Id; email: string; displayName: string; createdAt: Millis; isOwner: boolean }
 
 export type ReadingLevel = 'debutant' | 'intermediaire' | 'avance';
 export type ExplanationDifficulty = 'tres_simple' | 'simple' | 'normal';
@@ -23,7 +24,15 @@ export interface ReadingPreferences {
   sentenceHighlight: boolean;   // default true
   readingGuide: boolean;        // reading ruler, default false
 }
-export interface TTSPreferences { rate: number /*0.5..1.5, default 0.85*/; pitch: number /*0.8..1.2, default 1*/; voiceURI: string | null }
+// §15.7: the voice is chosen per device (Dexie kv key `ttsVoiceURI`), not per profile.
+export interface TTSPreferences {
+  rate: number /*0.5..1.5, default 0.85*/;
+  pitch: number /*0.8..1.2, default 1*/;
+  /** Silence after each sentence (ms, 0..1500, default 250). */
+  sentencePauseMs: number;
+  /** Silence when the next sentence starts a new paragraph (ms, 0..3000, default 700). */
+  paragraphPauseMs: number;
+}
 export interface ExercisePreferences { defaultQuestionCount: 3 | 5 | 10; enabledTypes: QuestionType[] /*default: all*/ }
 
 export interface ChildProfile {
@@ -37,11 +46,13 @@ export interface ChildProfile {
   createdAt: Millis; updatedAt: Millis; deletedAt: Millis | null;
 }
 
-export type DocumentKind = 'pdf' | 'images';
+export type DocumentKind = 'pdf' | 'images' | 'epub';
 export type DocumentStatus = 'processing' | 'ready' | 'partial';   // partial = some pages failed/doubtful
 export type PageStatus = 'pending' | 'processing' | 'ready' | 'low_confidence' | 'failed';
-export type PageTextSource = 'pdf-text' | 'ocr-local' | 'ocr-server' | 'manual';
-export type PageWarning = 'low_confidence' | 'server_fallback_used' | 'manually_corrected' | 'suspicious_instructions' | 'no_text_found';
+// 'ocr-ai': page transcribed from its image by the external worker (§17).
+export type PageTextSource = 'pdf-text' | 'ocr-local' | 'ocr-server' | 'manual' | 'epub-text' | 'ocr-ai';
+// 'awaiting_ai': no on-device / server reading, the page image waits for the worker transcription (§17).
+export type PageWarning = 'low_confidence' | 'server_fallback_used' | 'manually_corrected' | 'suspicious_instructions' | 'no_text_found' | 'awaiting_ai';
 
 export interface DocumentMeta {
   id: Id; ownerParentId: Id; childIds: Id[];

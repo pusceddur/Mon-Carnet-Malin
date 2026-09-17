@@ -1,0 +1,59 @@
+/* Child-facing processing components (reader). */
+
+.docs-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+.docs-banner__text {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-md);
+}
+
+.docs-banner__dot {
+  color: var(--ink-soft);
+}
+
+.page-status-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: var(--tap);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-size: var(--text-md);
+  line-height: var(--leading);
+}
+
+.page-status-notice__emoji {
+  flex: none;
+  font-size: 1.4em;
+  line-height: 1.1;
+}
+
+.page-status-notice--low_confidence {
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+}
+
+.page-status-notice--failed {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+
+.page-status-notice--preparing,
+.page-status-notice--awaiting_ai {
+  background: var(--accent-soft);
+}

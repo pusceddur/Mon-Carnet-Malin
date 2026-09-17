@@ -1,0 +1,50 @@
+.ui-layer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-layer);
+  display: flex;
+  justify-content: center;
+}
+
+.ui-layer--bottom {
+  align-items: flex-end;
+}
+
+.ui-layer--center {
+  align-items: center;
+  padding: calc(var(--safe-top) + var(--space-4)) calc(var(--safe-right) + var(--space-4))
+    calc(var(--safe-bottom) + var(--space-4)) calc(var(--safe-left) + var(--space-4));
+}
+
+.ui-layer__overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--overlay);
+  animation: ui-layer-fade-in var(--dur) var(--ease-out);
+}
+
+.ui-layer[data-state='closing'] .ui-layer__overlay {
+  animation: ui-layer-fade-out var(--dur) var(--ease-in) forwards;
+}
+
+.ui-layer__panel {
+  position: relative;
+  color: var(--ink);
+}
+
+.ui-layer__panel:focus,
+.ui-layer__panel:focus-visible {
+  outline: none;
+}
+
+@keyframes ui-layer-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ui-layer-fade-out {
+  to {
+    opacity: 0;
+  }
+}

@@ -20,6 +20,14 @@ export const AuthStatusSchema = z.object({
   parent: ParentUserSchema.nullable(),
   parentUnlockedUntil: MillisSchema.nullable(),
   pinSet: z.boolean(),
+  pinLockedUntil: MillisSchema.nullable(),
+  registrationOpen: z.boolean(),
+});
+
+export const InvitationConfigSchema = z.object({
+  enabled: z.boolean(),
+  code: z.string().max(LIMITS.inviteCodeMaxChars),
+  updatedAt: MillisSchema.nullable(),
 });
 
 export const SyncChangesSchema = z.object({
@@ -33,15 +41,27 @@ export const SyncChangesSchema = z.object({
   children: z.array(ChildProfileSchema),
 });
 
+export const SyncTableSchema = z.enum(['documents', 'pages', 'annotations', 'progress', 'sessions', 'exercises', 'answers', 'children']);
+
+export const SyncRejectionSchema = z.object({
+  table: SyncTableSchema,
+  entityKey: z.string().min(1).max(100),
+  reason: z.enum(['parent_locked', 'forbidden', 'invalid', 'stale']),
+});
+
+/** `cursor`: opaque server position (null = first sync). */
 export const SyncRequestSchema = z.object({
-  since: MillisSchema,
+  cursor: z.string().min(1).max(64).nullable(),
   deviceId: z.string().min(1).max(100),
   changes: SyncChangesSchema,
 });
 
 export const SyncResponseSchema = z.object({
+  cursor: z.string().min(1).max(64),
+  hasMore: z.boolean(),
   serverTime: MillisSchema,
   changes: SyncChangesSchema,
+  rejected: z.array(SyncRejectionSchema),
 });
 
 export const OcrServerResultSchema = z.object({
@@ -49,6 +69,8 @@ export const OcrServerResultSchema = z.object({
   confidence: z.number(),
   engine: z.literal('tesseract-best'),
 });
+
+export const ActivityAlertKindSchema = z.enum(['adult_redirect', 'safety_input', 'safety_output', 'injection_detected', 'budget_warning']);
 
 export const ActivitySummarySchema = z.object({
   sessions: z.array(ReadingSessionSchema),
@@ -69,8 +91,9 @@ export const ActivitySummarySchema = z.object({
     id: IdSchema,
     createdAt: MillisSchema,
     childId: IdSchema.nullable(),
-    kind: z.enum(['adult_redirect', 'safety_input', 'safety_output', 'injection_detected']),
+    kind: ActivityAlertKindSchema,
     detail: z.string(),
+    seenAt: MillisSchema.nullable(),
   })),
   ocrIssues: z.array(z.object({
     documentId: IdSchema,
@@ -78,6 +101,10 @@ export const ActivitySummarySchema = z.object({
     confidence: z.number().nullable(),
     warnings: z.array(PageWarningSchema),
   })),
+  budget: z.object({
+    monthToDateEur: z.number().nonnegative(),
+    monthlyBudgetEur: z.number().nonnegative(),
+  }),
 });
 
 // ---------- request bodies of §7 (additions: foundations) ----------
@@ -93,6 +120,35 @@ export const SetupRequestSchema = z.object({
   pin: PinSchema,
 });
 export type SetupRequest = z.infer<typeof SetupRequestSchema>;
+
+/** Invitation code chosen by the owner: stored upper-case, compared case-insensitively. */
+export const InviteCodeSchema = z
+  .string()
+  .trim()
+  .min(LIMITS.inviteCodeMinChars)
+  .max(LIMITS.inviteCodeMaxChars)
+  .regex(/^[A-Za-z0-9-]+$/)
+  .transform((code) => code.toUpperCase());
+
+/** POST /api/auth/register: any non-empty code is checked by the server (a wrong one counts as a failed attempt). */
+export const RegisterRequestSchema = z.object({
+  inviteCode: z.string().trim().min(1).max(LIMITS.inviteCodeMaxChars),
+  email: EmailSchema,
+  password: PasswordSchema,
+  displayName: SetupRequestSchema.shape.displayName,
+  pin: PinSchema,
+});
+export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;
+
+/** PUT /api/admin/invitation: `regenerate` and `code` are mutually exclusive. */
+export const UpdateInvitationRequestSchema = z
+  .object({
+    enabled: z.boolean(),
+    code: InviteCodeSchema.optional(),
+    regenerate: z.boolean().optional(),
+  })
+  .refine((body) => !(body.regenerate === true && body.code !== undefined));
+export type UpdateInvitationRequest = z.input<typeof UpdateInvitationRequestSchema>;
 
 export const LoginRequestSchema = z.object({
   email: z.string().trim().toLowerCase().min(1).max(254),
@@ -147,22 +203,38 @@ export const DictionaryQuerySchema = z.object({
 });
 export type DictionaryQuery = z.infer<typeof DictionaryQuerySchema>;
 
-/** POST /api/ai/handwriting (base64 of <= 2 MB PNG) */
-export const HandwritingRequestSchema = z.object({
-  childId: IdSchema,
-  imagePngBase64: z.string().min(1).max(Math.ceil((LIMITS.handwritingImageMaxBytes * 4) / 3) + 4),
-});
-export type HandwritingRequest = z.infer<typeof HandwritingRequestSchema>;
+export const DIAGNOSTIC_LIMITS = { reportsMax: 20, messageMax: 500, stageMax: 40, contextKeysMax: 30, contextKeyMax: 40, contextValueMax: 200, userAgentMax: 400 } as const;
 
-export const HandwritingResultSchema = z.discriminatedUnion('status', [
-  z.object({ status: z.literal('ok'), text: z.string() }),
-  z.object({ status: z.enum(['unavailable', 'blocked']), message: z.string() }),
-]);
+export const ClientDiagnosticKindSchema = z.enum(['ocr_engine', 'processing_failed', 'preprocess', 'pdf', 'self_test', 'other']);
+export const DiagnosticValueSchema = z.union([z.string().max(DIAGNOSTIC_LIMITS.contextValueMax), z.number(), z.boolean(), z.null()]);
+export const ClientDiagnosticReportSchema = z.object({
+  kind: ClientDiagnosticKindSchema,
+  message: z.string().max(DIAGNOSTIC_LIMITS.messageMax),
+  stage: z.string().max(DIAGNOSTIC_LIMITS.stageMax).nullable(),
+  context: z
+    .record(z.string().max(DIAGNOSTIC_LIMITS.contextKeyMax), DiagnosticValueSchema)
+    .refine((c) => Object.keys(c).length <= DIAGNOSTIC_LIMITS.contextKeysMax, 'too_many_keys'),
+  userAgent: z.string().max(DIAGNOSTIC_LIMITS.userAgentMax),
+  occurredAt: z.number().int().nonnegative(),
+});
+export const ClientDiagnosticsRequestSchema = z.object({
+  reports: z.array(ClientDiagnosticReportSchema).min(1).max(DIAGNOSTIC_LIMITS.reportsMax),
+});
 
 export const OkResponseSchema = z.object({ ok: z.literal(true) });
+
+export const WorkerStatusSchema = z.object({
+  configured: z.boolean(),
+  connected: z.boolean(),
+  lastSeenAt: MillisSchema.nullable(),
+  limited: z.boolean(),
+  limitResetsAt: MillisSchema.nullable(),
+  queued: z.object({ ai: z.number().int().nonnegative(), pageText: z.number().int().nonnegative() }),
+});
 
 export const HealthStatusSchema = z.object({
   ok: z.literal(true),
   db: z.boolean(),
   ai: z.object({ light: z.boolean(), complex: z.boolean() }),
+  ocr: z.object({ available: z.boolean(), busy: z.boolean() }),
 });

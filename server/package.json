@@ -9,6 +9,7 @@
     "start": "node dist/app.cjs",
     "migrate": "tsx scripts/migrate.ts",
     "create-parent": "tsx scripts/create-parent.ts",
+    "fetch-tessdata-best": "node scripts/fetch-tessdata-best.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

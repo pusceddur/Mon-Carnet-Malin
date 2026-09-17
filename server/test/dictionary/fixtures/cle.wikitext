@@ -1,0 +1,7 @@
+== {{langue|fr}} ==
+=== {{S|nom|fr}} ===
+{{fr-rég|kle}}
+'''clé''' {{pron|kle|fr}} {{f}}
+# Petit [[objet]] en [[métal]] qui sert à [[ouvrir]] et à [[fermer]] une [[serrure]].
+#* {{exemple|lang=fr|Où as-tu rangé la '''clé''' ?}}
+# {{figuré|fr}} Ce qui permet de [[comprendre]] quelque chose.

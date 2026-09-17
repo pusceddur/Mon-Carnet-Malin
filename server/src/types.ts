@@ -9,4 +9,9 @@ export interface AppDeps {
   logger: Logger;
   /** Epoch ms; injectable for tests. */
   now(): number;
+  /**
+   * Tests only: disables the in-memory rate limiters (they use the real clock, not `now`).
+   * The progressive lockouts stored in the database stay active.
+   */
+  disableRateLimits?: boolean;
 }

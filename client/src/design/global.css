@@ -1,4 +1,4 @@
-/* STUB: client-shell — minimal global styles (contract §12) */
+/* Global styles: iPad-first reset, typography rules for dyslexic readers (contract §12), reading utilities. */
 @import './tokens.css';
 
 *,
@@ -7,24 +7,129 @@
   box-sizing: border-box;
 }
 
-html,
-body {
-  margin: 0;
-  min-height: 100%;
+html {
+  height: 100%;
+  background: var(--paper);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
 }
 
 body {
+  margin: 0;
+  min-height: 100%;
+  min-height: 100dvh;
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-ui);
-  font-size: 18px;
-  line-height: 1.5;
+  font-size: var(--text-md);
+  line-height: var(--leading);
+  letter-spacing: var(--tracking-ui);
   text-align: left;
+  -webkit-hyphens: manual;
   hyphens: manual;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-text-size-adjust: 100%;
+  overflow-wrap: break-word;
   overflow-x: hidden;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Keeps content from showing through the status bar when the PWA runs with viewport-fit=cover. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: var(--safe-top);
+  background: var(--paper);
+  z-index: var(--z-scrim);
+  pointer-events: none;
+}
+
+[data-theme]:not(html) {
+  background-color: var(--paper);
+  color: var(--ink);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+  text-wrap: balance;
+}
+
+/* No italics for body text: emphasis is carried by weight. */
+em,
+i,
+cite,
+dfn,
+address,
+var {
+  font-style: normal;
+}
+
+em,
+strong,
+b {
+  font-weight: var(--weight-bold);
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+:where(button, a, input, select, textarea, label, summary, [role='button'], [role='switch'], [role='radio'], [role='tab']) {
+  touch-action: manipulation;
+}
+
+:where(button, [role='button'], [role='switch'], [role='radio'], [role='tab']) {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+textarea {
+  caret-color: var(--accent);
+}
+
+a {
+  color: var(--accent-ink);
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 0.08em;
+}
+
+::selection {
+  background: var(--selection);
+  color: var(--ink);
+}
+
+::placeholder {
+  color: var(--ink-placeholder);
+  opacity: 1;
 }
 
 :focus-visible {
@@ -32,17 +137,69 @@ body {
   outline-offset: 2px;
 }
 
-button {
-  font: inherit;
-  min-height: var(--tap);
-  border-radius: var(--radius);
+:focus:not(:focus-visible) {
+  outline: none;
 }
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* ---------- Reading ---------- */
+
+.read-font-lexend {
+  --read-font: var(--font-lexend);
+}
+
+.read-font-andika {
+  --read-font: var(--font-andika);
+}
+
+.read-font-atkinson {
+  --read-font: var(--font-atkinson);
+}
+
+.read-font-opendyslexic {
+  --read-font: var(--font-opendyslexic);
+}
+
+.read-font-systeme {
+  --read-font: var(--font-systeme);
+}
+
+/* Applies the reading preferences (set through readingStyleVars / .read-font-* classes). */
+.reading {
+  max-width: var(--read-column);
+  font-family: var(--read-font);
+  font-size: var(--read-size);
+  font-style: normal;
+  line-height: var(--read-line-height);
+  letter-spacing: var(--read-letter-spacing);
+  word-spacing: var(--read-word-spacing);
+  text-align: left;
+  text-transform: none;
+  -webkit-hyphens: manual;
+  hyphens: manual;
+}
+
+/* ---------- Motion ---------- */
 
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

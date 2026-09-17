@@ -1,0 +1,16 @@
+{{voir|Soleil}}
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: Du {{étyl|la|fr|mot=soliculus}}.<!-- à compléter -->
+
+=== {{S|nom|fr}} ===
+{{fr-rég|sɔ.lɛj}}
+'''soleil''' {{pron|sɔ.lɛj|fr}} {{m}}
+# {{lexique|astronomie|fr}} [[étoile|Étoile]] autour de laquelle [[tourner|tourne]] la [[Terre]]&#160;; elle nous [[donner|donne]] la [[lumière]] et la [[chaleur]].<ref name="dico" /> <!-- sens principal -->
+#* {{exemple|lang=fr|Le '''soleil''' se couche derrière la colline.}}
+# [[lumière|Lumière]] du soleil.
+
+=== {{S|références}} ===
+<references>
+<ref name="dico">Dictionnaire de référence.</ref>
+</references>

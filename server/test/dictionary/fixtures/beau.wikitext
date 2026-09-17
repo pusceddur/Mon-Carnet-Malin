@@ -1,0 +1,14 @@
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: Du {{étyl|la|fr|mot=bellus}}.
+
+=== {{S|nom|fr}} ===
+'''beau''' {{pron|bo|fr}} {{m}}
+# Ce qui est beau, ce qui plaît aux yeux.
+
+=== {{S|adjectif|fr}} ===
+{{fr-accord-eau|b|b|mas=bel}}
+'''beau''' {{pron|bo|fr}}
+# Qui fait [[naître]] un sentiment d’[[admiration]] par sa [[forme]], ses [[couleur]]s ou sa [[grâce]].
+#* {{exemple|lang=fr|Quel '''beau''' paysage !}}
+# {{météorologie|fr}} Se dit du [[temps]] quand il fait [[soleil]].

@@ -1,10 +1,14 @@
 import { lazy, Suspense, type ComponentType, type JSX, type LazyExoticComponent } from 'react';
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
+import { Spinner } from './design/components';
+import RouteErrorPage from './features/system/RouteErrorPage';
+import { resolveGuard, type GuardNeed } from './state/guards';
+import { useSelectedChild, useSessionStore } from './state/session';
 
 // Every page is lazy-loaded (default export of the module listed in contract §11.1).
-const RootRedirect = lazy(() => import('./features/auth/RootRedirect'));
 const SetupPage = lazy(() => import('./features/auth/SetupPage'));
 const LoginPage = lazy(() => import('./features/auth/LoginPage'));
+const RegisterPage = lazy(() => import('./features/auth/RegisterPage'));
 const ChildSelectPage = lazy(() => import('./features/auth/ChildSelectPage'));
 const ChildHome = lazy(() => import('./features/home/ChildHome'));
 const MyBooksPage = lazy(() => import('./features/library/MyBooksPage'));
@@ -26,36 +30,55 @@ const ActivityPage = lazy(() => import('./features/parent/ActivityPage'));
 const GlossaryPage = lazy(() => import('./features/parent/GlossaryPage'));
 const SyncPage = lazy(() => import('./features/parent/SyncPage'));
 const AccountPage = lazy(() => import('./features/parent/AccountPage'));
+const DiagnosticPage = lazy(() => import('./features/parent/DiagnosticPage'));
 
-/** Text-free placeholder while a page chunk loads (no hardcoded UI strings here). */
-function RouteFallback(): JSX.Element {
-  return <div className="route-loading" role="status" aria-busy="true" />;
+/** Centered spinner while a page chunk or the cached session loads. */
+export function RouteFallback(): JSX.Element {
+  return (
+    <div className="route-loading">
+      <Spinner size="lg" />
+    </div>
+  );
 }
 
-function page(Component: LazyExoticComponent<ComponentType>): JSX.Element {
-  return (
+/** Session guard: waits for the cached session, then allows the route or redirects (§11.1). */
+export function Guard({ need, children }: { need: GuardNeed; children?: JSX.Element }): JSX.Element {
+  const ready = useSessionStore((s) => s.ready);
+  const authStatus = useSessionStore((s) => s.authStatus);
+  const hasSelectedChild = useSelectedChild() !== null;
+  const decision = resolveGuard(need, { ready, authStatus, hasSelectedChild });
+  if (decision.kind === 'wait') return <RouteFallback />;
+  if (decision.kind === 'redirect') return <Navigate to={decision.to} replace />;
+  return children ?? <RouteFallback />;
+}
+
+function page(Component: LazyExoticComponent<ComponentType>, need?: GuardNeed): JSX.Element {
+  const element = (
     <Suspense fallback={<RouteFallback />}>
       <Component />
     </Suspense>
   );
+  return need ? <Guard need={need}>{element}</Guard> : element;
 }
 
 export const routes: RouteObject[] = [
-  { path: '/', element: page(RootRedirect) },
-  { path: '/installation', element: page(SetupPage) },
-  { path: '/connexion', element: page(LoginPage) },
-  { path: '/enfant', element: page(ChildSelectPage) },
-  { path: '/accueil', element: page(ChildHome) },
-  { path: '/livres', element: page(MyBooksPage) },
-  { path: '/lire/:documentId', element: page(ReaderPage) },
-  { path: '/exercices', element: page(ExercisesHome) },
-  { path: '/exercices/:documentId/resume', element: page(SummaryPage) },
-  { path: '/exercices/:documentId/questions', element: page(QuizSetupPage) },
-  { path: '/exercices/quiz/:exerciseId', element: page(QuizPlayerPage) },
-  { path: '/notes', element: page(MyNotesPage) },
+  { path: '/', element: <Guard need="root" /> },
+  { path: '/installation', element: page(SetupPage, 'setup') },
+  { path: '/connexion', element: page(LoginPage, 'guest') },
+  { path: '/inscription', element: page(RegisterPage, 'guest') },
+  { path: '/enfant', element: page(ChildSelectPage, 'auth') },
+  { path: '/accueil', element: page(ChildHome, 'child') },
+  { path: '/livres', element: page(MyBooksPage, 'child') },
+  { path: '/lire/:documentId', element: page(ReaderPage, 'child') },
+  { path: '/exercices', element: page(ExercisesHome, 'child') },
+  { path: '/exercices/:documentId/resume', element: page(SummaryPage, 'child') },
+  { path: '/exercices/:documentId/questions', element: page(QuizSetupPage, 'child') },
+  { path: '/exercices/quiz/:exerciseId', element: page(QuizPlayerPage, 'child') },
+  { path: '/notes', element: page(MyNotesPage, 'child') },
   {
     path: '/parent',
-    element: page(ParentLayout),
+    // The PIN gate itself lives in ParentLayout (server-side unlock, C8).
+    element: page(ParentLayout, 'auth'),
     children: [
       { index: true, element: <Navigate to="documents" replace /> },
       { path: 'documents', element: page(DocumentsAdminPage) },
@@ -69,9 +92,15 @@ export const routes: RouteObject[] = [
       { path: 'glossaire', element: page(GlossaryPage) },
       { path: 'synchronisation', element: page(SyncPage) },
       { path: 'compte', element: page(AccountPage) },
+      { path: 'diagnostic', element: page(DiagnosticPage) },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
 ];
 
-export const router = createBrowserRouter(routes);
+/** Every route shares the French error screen (failed chunk load, render error). */
+function withErrorElement(list: RouteObject[]): RouteObject[] {
+  return list.map((route) => ({ ...route, errorElement: <RouteErrorPage /> }) as RouteObject);
+}
+
+export const router = createBrowserRouter(withErrorElement(routes));

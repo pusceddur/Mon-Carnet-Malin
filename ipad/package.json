@@ -1,0 +1,19 @@
+{
+  "name": "carnet-malin-ipad",
+  "version": "0.1.0",
+  "private": true,
+  "description": "iPad app shell: opens the web app from the server and reads aloud with the iPad system voices.",
+  "scripts": {
+    "setup": "cap add ios && node scripts/configure-ios.mjs",
+    "sync": "cap sync ios && node scripts/configure-ios.mjs",
+    "open": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.2",
+    "@capacitor/ios": "8.5.2",
+    "carnet-native-speech": "file:./native-speech"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2"
+  }
+}

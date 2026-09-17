@@ -1,0 +1,5 @@
+== {{langue|fr}} ==
+=== {{S|verbe|fr|flexion}} ===
+{{fr-verbe-flexion|grandir|ind.i.3s=oui}}
+'''grandissait''' {{pron|ɡʁɑ̃.di.sɛ|fr}}
+# Forme conjuguée de [[grandir]].

@@ -1,4 +1,4 @@
-// STUB: client-shell — thin wrappers over §7 /api/glossary
+// Thin wrappers over §7 /api/glossary.
 import type { GlossaryEntry, OkResponse } from '@aide/shared';
 import { api } from './http';
 

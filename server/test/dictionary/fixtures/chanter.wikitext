@@ -1,0 +1,9 @@
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: Du {{étyl|la|fr|mot=cantare}}.
+
+=== {{S|verbe|fr}} ===
+'''chanter''' {{pron|ʃɑ̃.te|fr}} {{i|fr}} ou {{t|fr}} {{conjugaison|fr|groupe=1}}
+# Produire avec la [[voix]] des [[son]]s [[musical|musicaux]].
+#* {{exemple|lang=fr|Les oiseaux '''chantent''' au lever du jour.}}
+# {{transitif|fr}} Interpréter une [[chanson]].

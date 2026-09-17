@@ -6,6 +6,7 @@ import { loadConfig } from '../../src/config';
 import { createDb, runMigrations } from '../../src/db/knex';
 import { INITIAL_TABLES } from '../../src/db/migrations/001_initial';
 import { silentLogger } from '../../src/logger';
+import { utf8RoundTrip } from '../../src/routes/health';
 
 describe('foundations: app + sqlite migrations', () => {
   let db: Knex;
@@ -29,10 +30,17 @@ describe('foundations: app + sqlite migrations', () => {
     expect(await runMigrations(db)).toEqual([]);
   });
 
-  it('GET /api/health answers ok with db ping', async () => {
+  it('GET /api/health answers ok with db ping and an emoji round-trip', async () => {
+    expect(await utf8RoundTrip(db)).toBe(true);
     const res = await request(app).get('/api/health');
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ ok: true, db: true, ai: { light: false, complex: false } });
+    expect(res.body.ok).toBe(true);
+    expect(res.body.db).toBe(true);
+    expect(typeof res.body.ai.light).toBe('boolean');
+    expect(typeof res.body.ai.complex).toBe('boolean');
+    expect(typeof res.body.ocr.available).toBe('boolean');
+    expect(typeof res.body.ocr.busy).toBe('boolean');
+    expect(res.headers['cache-control']).toBe('no-store');
     expect(res.headers['content-security-policy']).toContain("'wasm-unsafe-eval'");
   });
 
@@ -42,11 +50,11 @@ describe('foundations: app + sqlite migrations', () => {
     expect(res.body.error.code).toBe('not_found');
   });
 
-  it('mutations without X-Requested-With are rejected', async () => {
+  it('mutations without X-Requested-With are rejected before validation', async () => {
     const res = await request(app).post('/api/auth/login').send({ email: 'a@b.fr', password: 'x' });
     expect(res.status).toBe(403);
-    const ok = await request(app).post('/api/auth/login').set('X-Requested-With', 'aide').send({});
-    expect(ok.status).toBe(501);
-    expect(ok.body.error.code).toBe('not_implemented');
+    const invalid = await request(app).post('/api/auth/login').set('X-Requested-With', 'aide').send({});
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.error.code).toBe('invalid_request');
   });
 });

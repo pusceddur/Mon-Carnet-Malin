@@ -1,0 +1,9 @@
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: {{ébauche-étym|fr}}
+
+=== {{S|verbe|fr}} ===
+'''gribouiller''' {{pron|ɡʁi.bu.je|fr}} {{i|fr}} {{conjugaison|fr|groupe=1}}
+# {{ébauche-déf|fr}}
+# Faire des [[gribouillis]], [[écrire]] ou [[dessiner]] de façon [[désordonné]]e.
+#* {{exemple|lang=fr|Le petit frère '''gribouille''' sur son cahier.}}

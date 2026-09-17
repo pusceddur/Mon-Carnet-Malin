@@ -1,0 +1,30 @@
+.ui-offline {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ui-offline--offline {
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+}
+
+.ui-offline--online {
+  background: var(--ok-soft);
+  color: var(--ok-ink);
+}
+
+.ui-offline__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+}

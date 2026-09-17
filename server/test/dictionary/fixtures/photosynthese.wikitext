@@ -1,0 +1,15 @@
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: {{date|lang=fr|1893}} Composé de ''[[photo-]]'' et de ''[[synthèse]]''.
+
+=== {{S|nom|fr}} ===
+{{fr-rég|fɔ.tɔ.sɛ̃.tɛz}}
+'''photosynthèse''' {{pron|fɔ.tɔ.sɛ̃.tɛz|fr}} {{f}}
+# {{lexique|biologie|botanique|fr}} [[processus|Processus]] par lequel les [[plante]]s [[vert]]es [[fabriquer|fabriquent]] leur [[matière]] [[organique]] grâce à la [[lumière]], à l’[[eau]] et au [[dioxyde de carbone]], en utilisant la {{w|chlorophylle}}.<ref>{{Lien web|titre=Photosynthèse|site=exemple.org}}</ref>
+#* {{exemple|lang=fr|Sans lumière, la '''photosynthèse''' s’arrête.}}
+
+==== {{S|apparentés}} ====
+* [[photosynthétique]]
+
+=== {{S|références}} ===
+<references />

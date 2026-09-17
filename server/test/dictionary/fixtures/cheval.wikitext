@@ -1,0 +1,27 @@
+{{voir|Cheval}}
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: {{siècle|lang=fr|Début du XII}} Du {{étyl|fro|fr|cheval}}, du {{étyl|la|fr|caballus}}.
+
+=== {{S|nom|fr}} ===
+{{fr-accord-mf|s=cheval|p=chevaux|ps=ʃə.val|pp=ʃə.vo}}
+[[Fichier:Horse in the field.jpg|vignette|Un '''cheval''' dans un pré. (1)]]
+'''cheval''' {{pron|ʃə.val|fr}} <small>ou</small> {{pron|ʃval|fr}}{{R|TLFi}} {{m}} {{équiv-pour|lang=fr|la femelle|jument}}
+# {{info lex|zoologie}} Grand [[mammifère]] [[herbivore]] de la famille des [[équidé]]s, [[domestiqué]] et employé comme [[monture]] ou comme bête de [[trait]].
+#* {{exemple | lang=fr
+ | Les '''chevaux''' attendaient, attachés devant l’auberge.
+}}
+#* {{exemple|lang=fr}}
+# {{par métonymie|fr}} {{lexique|cuisine|fr}} [[viande|Viande]] de cet animal.
+# {{courant|fr}} Appellation courante du ''[[cheval-vapeur]]'', unité de [[puissance]] valant environ 736&nbsp;[[watt]]s.
+
+==== {{S|synonymes}} ====
+* [[canasson]] {{familier|nocat=1}}
+* [[dada]] {{enfantin|nocat=1}}
+
+=== {{S|prononciation}} ===
+* {{pron|ʃə.val|fr}}
+
+== {{langue|fro}} ==
+=== {{S|nom|fro}} ===
+# [[cheval#fr|Cheval]].

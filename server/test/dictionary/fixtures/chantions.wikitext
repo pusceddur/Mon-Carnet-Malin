@@ -1,0 +1,6 @@
+== {{langue|fr}} ==
+=== {{S|verbe|fr|flexion}} ===
+{{fr-verbe-flexion|chanter|ind.i.1p=oui|sub.p.1p=oui}}
+'''chantions''' {{pron|ʃɑ̃.tjɔ̃|fr}}
+# ''Première personne du pluriel de l’imparfait de l’indicatif de'' [[chanter#fr|chanter]].
+# ''Première personne du pluriel du présent du subjonctif de'' [[chanter]].

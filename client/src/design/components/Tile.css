@@ -1,0 +1,109 @@
+.ui-tile {
+  --tile-tint: var(--accent-soft);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  width: 100%;
+  min-height: 176px;
+  margin: 0;
+  padding: var(--space-5);
+  border: 2px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+
+.ui-tile--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 96px;
+  padding: var(--space-4) var(--space-5);
+}
+
+.ui-tile__emoji {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 22px;
+  background: var(--tile-tint);
+  font-size: 42px;
+  line-height: 1;
+}
+
+.ui-tile--row .ui-tile__emoji {
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  font-size: 32px;
+}
+
+.ui-tile__text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.ui-tile__label {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.ui-tile__desc {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  line-height: var(--leading);
+}
+
+.ui-tile:active:not(:disabled) {
+  transform: scale(0.98);
+  background: var(--surface-press);
+  box-shadow: none;
+}
+
+.ui-tile:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ui-tile:hover:not(:disabled) {
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-2);
+  }
+}
+
+.ui-tile--blue {
+  --tile-tint: var(--accent-soft);
+}
+
+.ui-tile--warm {
+  --tile-tint: var(--accent-warm-soft);
+}
+
+.ui-tile--green {
+  --tile-tint: var(--ok-soft);
+}
+
+.ui-tile--violet {
+  --tile-tint: var(--violet-soft);
+}
+
+.ui-tile--neutral {
+  --tile-tint: var(--surface-sunken);
+}

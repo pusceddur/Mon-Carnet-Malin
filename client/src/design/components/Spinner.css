@@ -1,0 +1,63 @@
+.ui-spinner {
+  display: inline-flex;
+  flex: none;
+  color: var(--accent);
+  vertical-align: middle;
+}
+
+.ui-spinner--sm {
+  width: 20px;
+  height: 20px;
+}
+
+.ui-spinner--md {
+  width: 32px;
+  height: 32px;
+}
+
+.ui-spinner--lg {
+  width: 48px;
+  height: 48px;
+}
+
+.ui-spinner__svg {
+  width: 100%;
+  height: 100%;
+  animation: ui-spinner-rotate 0.9s linear infinite;
+}
+
+.ui-spinner__track {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  opacity: 0.2;
+}
+
+.ui-spinner__arc {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+@keyframes ui-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ui-spinner-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Reduced motion: a slow pulse instead of a rotation (deliberately overrides the global reduced-motion reset). */
+@media (prefers-reduced-motion: reduce) {
+  .ui-spinner .ui-spinner__svg {
+    animation-name: ui-spinner-pulse !important;
+    animation-duration: 1.6s !important;
+    animation-timing-function: ease-in-out !important;
+    animation-iteration-count: infinite !important;
+  }
+}

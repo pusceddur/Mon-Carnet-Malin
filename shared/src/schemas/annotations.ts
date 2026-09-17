@@ -19,6 +19,12 @@ export const InkSpaceSchema = z.discriminatedUnion('kind', [
     charOffset: z.number().int().nonnegative(),
     blockTextHash: Sha256HexSchema,
     contextText: z.string().max(500),
+    endAnchor: z
+      .object({
+        blockIndex: z.number().int().nonnegative(),
+        charOffset: z.number().int().nonnegative(),
+      })
+      .nullable(),
   }),
   z.object({
     kind: z.literal('original'),

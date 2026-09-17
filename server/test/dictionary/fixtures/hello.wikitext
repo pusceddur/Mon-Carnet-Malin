@@ -1,0 +1,14 @@
+{{voir|Hello}}
+== {{langue|en}} ==
+=== {{S|étymologie}} ===
+: Variante de ''{{lien|hallo|en}}''.
+
+=== {{S|interjection|en}} ===
+'''hello''' {{pron|hɛˈləʊ|en}}
+# [[bonjour|Bonjour]], [[salut]].
+#* ''Hello, how are you?''
+#*: Bonjour, comment vas-tu ?
+
+=== {{S|nom|en}} ===
+'''hello'''
+# [[salutation|Salutation]].

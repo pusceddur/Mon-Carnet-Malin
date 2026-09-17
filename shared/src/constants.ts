@@ -27,7 +27,8 @@ export const DEFAULT_READING_PREFERENCES: ReadingPreferences = {
 export const DEFAULT_TTS_PREFERENCES: TTSPreferences = {
   rate: 0.85,
   pitch: 1,
-  voiceURI: null,
+  sentencePauseMs: 250,
+  paragraphPauseMs: 700,
 };
 
 export const DEFAULT_EXERCISE_PREFERENCES: ExercisePreferences = {
@@ -48,11 +49,15 @@ export const DEFAULT_PARENT_SETTINGS: ParentSettings = {
       questionOnText: true,
     },
     dailyRequestLimitPerChild: 60,
+    monthlyBudgetEur: 10,
     allowComplexModel: true,
+    deepQuestions: false,
     handwritingRecognition: false,
   },
-  ocr: { autoServerFallback: true, lowConfidenceThreshold: 70 },
-  privacy: { syncAnnotations: true, syncDocumentText: true, uploadOriginals: false },
+  ocr: { autoServerFallback: true, lowConfidenceThreshold: 70, aiTranscription: true },
+  privacy: { syncAnnotations: true, syncDocumentText: true, uploadPageImages: true, uploadOriginals: false },
+  safety: { level: 'standard' },
+  reader: { freeSelection: false },
   updatedAt: 0,
 };
 
@@ -65,21 +70,31 @@ export const PREFERENCE_RANGES = {
   columnWidthEm: { min: 18, max: 48 },
   ttsRate: { min: 0.5, max: 1.5 },
   ttsPitch: { min: 0.8, max: 1.2 },
+  ttsSentencePauseMs: { min: 0, max: 1500 },
+  ttsParagraphPauseMs: { min: 0, max: 3000 },
   childAge: { min: 5, max: 15 },
   firstNameLength: { min: 1, max: 40 },
 } as const;
 
-/** §8.6 limits + §8.4 length limits (words) + request/transport limits. */
+/** §8.6 limits + §8.4/§15.5 length limits (words) + request/transport limits (§15.2, §15.6, §15.8). */
 export const LIMITS = {
   // §8.6 characters
   chunkMaxChars: 6000,
+  chunkTextMaxChars: 12000,             // hard cap of one TextChunk.text (an oversize paragraph must be split)
   explainTextMaxChars: 1200,
   selectionMaxChars: 4000,
   questionOnTextMaxChars: 200,
   answerMaxChars: 1000,
   pagesMaxTotalChars: 200000,
-  // tier selection (§8.2 step 5)
+  // tier selection (§8.2 step 5, §15.4)
   questionOnTextLightMaxChars: 6000,
+  retrieveMaxChars: 12000,              // retrieveRelevantParagraphs default budget (§15.4)
+  // progressive summary (§15.4)
+  summarizeChunkParallelism: 2,         // client: at most 2 chunk requests in flight
+  summarizeMaxChunks: 1000,
+  chunkKeyQuotesMin: 1,
+  chunkKeyQuotesMax: 3,
+  summaryMaxExcludedChunkRatio: 0.3,    // more excluded (blocked) chunks -> blocked/validation
   // request fields
   wordMaxChars: 100,
   paragraphMaxChars: 8000,
@@ -89,8 +104,10 @@ export const LIMITS = {
   explainWordTresSimpleMaxWords: 45,
   explainTextMaxWords: 90,
   exampleMaxWords: 25,
+  // §15.5 simplify: words in [0.3 x source, max(1.5 x source, source + 12)]
   simplifyMinRatio: 0.3,
-  simplifyMaxRatio: 1.3,
+  simplifyMaxRatio: 1.5,
+  simplifyMaxExtraWords: 12,
   summaryMaxWords: { bref: 80, normal: 160, detaille: 300 } satisfies Record<SummaryLevel, number>,
   keyPointsMax: 7,
   keyPointMaxWords: 20,
@@ -104,15 +121,28 @@ export const LIMITS = {
   sourceQuoteJaccardMin: 0.85,
   // LocalProvider extractive summary sentence counts (§8.3)
   localSummarySentences: { bref: 3, normal: 6, detaille: 10 } satisfies Record<SummaryLevel, number>,
-  // transport
-  syncBodyMaxBytes: 20 * 1024 * 1024,
+  // transport (§15.2, §15.6)
+  syncBodyMaxBytes: 25 * 1024 * 1024,   // /api/sync
+  jsonBodyMaxBytes: 2 * 1024 * 1024,    // /api/ai/* and every other JSON route
+  syncPullMaxRows: 500,
   ocrImageMaxBytes: 15 * 1024 * 1024,
-  handwritingImageMaxBytes: 2 * 1024 * 1024,
+  // PNG sent as base64 inside a JSON body limited to jsonBodyMaxBytes
+  handwritingImageMaxBytes: 1024 * 1024,
+  documentFileMaxBytes: 30 * 1024 * 1024,
+  pageImageMaxBytes: 5 * 1024 * 1024,
+  documentFileIndexMax: 999,
   ocrImageMaxSidePx: 2480,
-  pinMinDigits: 4,
+  // auth (§15.8)
+  pinMinDigits: 4,                      // allowed with a UI warning
+  pinDefaultDigits: 6,
   pinMaxDigits: 8,
   passwordMinChars: 10,
+  inviteCodeMinChars: 8,
+  inviteCodeMaxChars: 64,
 } as const;
+
+/** §15.8 default PIN length suggested by the UI. */
+export const PIN_DEFAULT_DIGITS = LIMITS.pinDefaultDigits;
 
 /** §8.4 AgeGuard thresholds per explanation difficulty. */
 export const AGE_THRESHOLDS: Readonly<Record<ExplanationDifficulty, { avgWordsPerSentence: number; maxWordsPerSentence: number; longWordRatio: number }>> = {
@@ -121,20 +151,22 @@ export const AGE_THRESHOLDS: Readonly<Record<ExplanationDifficulty, { avgWordsPe
   normal: { avgWordsPerSentence: 20, maxWordsPerSentence: 32, longWordRatio: 0.25 },
 };
 
-/** Timeouts and durations (ms). */
+/** Timeouts and durations (ms). AI deadlines live in AI_DEADLINES (ai/routing.ts). */
 export const TIMINGS = {
-  aiLightTimeoutMs: 30_000,              // server -> provider (§8.2 step 7)
-  aiComplexTimeoutMs: 150_000,
-  clientAiLightTimeoutMs: 45_000,        // client -> server (§11.6)
-  clientAiLongTimeoutMs: 180_000,
-  heartbeatIntervalMs: 10_000,           // §7
+  aiClientTimeoutMarginMs: 15_000,       // client timeout = AI_DEADLINES[route] + margin (§15.4)
+  aiJobPollMs: 3_000,                    // default pollAfterMs of async AI jobs
+  aiJobStaleMarginMs: 30_000,            // pending job older than deadline + margin -> unavailable/timeout
+  aiJobTtlMs: 60 * 60_000,               // ai_jobs retention (§15.3)
   parentUnlockMs: 15 * 60_000,           // C8
   sessionTtlMs: 180 * 24 * 60 * 60_000,  // §7
   syncIntervalMs: 60_000,                // §10
   syncDebounceMs: 5_000,
+  syncMaxClockSkewMs: 5 * 60_000,        // updatedAt beyond serverTime + skew is clamped to serverTime (§15.2)
+  penActiveGraceMs: 500,                 // §15.7 pencil input policy
+  ttsWatchdogMs: 3_000,                  // §15.7 onstart watchdog
 } as const;
 
-/** §8.5 messages shown to the child (French). */
+/** §8.5 + §15.4/§15.5 messages shown to the child (French). */
 export const KID_MESSAGES = {
   notInText: 'Je ne trouve pas cette information dans le texte.',
   blocked: "Je ne peux pas t'aider pour ce passage. Tu peux demander à un adulte.",
@@ -142,6 +174,8 @@ export const KID_MESSAGES = {
   offline: 'Pas de connexion pour le moment. Tu peux continuer à lire et à écouter.',
   unavailable: "L'aide n'est pas disponible pour le moment. Tu peux continuer à lire.",
   quota: "Tu as beaucoup travaillé aujourd'hui ! L'aide revient demain.",
+  budget: "Tu as beaucoup travaillé ce mois-ci ! L'aide revient bientôt.",
+  strict: "Demande à un adulte de t'aider pour ce passage.",
   sourceWarning: '⚠️ Une partie du texte a peut-être été mal lue.',
 } as const;
 

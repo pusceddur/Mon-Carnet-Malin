@@ -1,0 +1,21 @@
+{{voir|Est|EST|ést}}
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: ''(Nom)'' De l’{{étyl|ang|fr|mot=east}}.
+: ''(Verbe)'' Du {{étyl|la|fr|mot=est}}.
+
+=== {{S|verbe|fr|flexion}} ===
+{{fr-verbe-flexion|être|ind.p.3s=oui|grp=3}}
+'''est''' {{pron|ɛ|fr}}
+# ''Troisième personne du singulier du présent de l’indicatif de'' [[être]].
+
+=== {{S|nom|fr}} ===
+{{fr-inv|ɛst}}
+'''est''' {{pron|ɛst|fr}} {{m}} {{invar}}
+# Un des quatre [[point cardinal|points cardinaux]], direction où le [[soleil]] se [[lever|lève]].
+#* {{exemple|lang=fr|Le vent souffle de l’'''est'''.}}
+
+=== {{S|adjectif|fr}} ===
+{{fr-inv|ɛst}}
+'''est''' {{pron|ɛst|fr}} {{invar}}
+# Qui est situé à l’est.

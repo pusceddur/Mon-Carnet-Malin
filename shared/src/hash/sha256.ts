@@ -1,5 +1,4 @@
-// STUB: shared-core
-// Functional baseline implementation (crypto.subtle + pure JS fallback, C10); shared-core owns and may refine it.
+// SHA-256 with crypto.subtle when available and a pure JS fallback (insecure contexts, C10).
 
 const K = new Uint32Array([
   0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,

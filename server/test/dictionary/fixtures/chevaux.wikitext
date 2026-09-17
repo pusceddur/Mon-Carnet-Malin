@@ -1,0 +1,14 @@
+== {{langue|fr}} ==
+=== {{S|nom|fr|flexion}} ===
+{{fr-accord-mf-al|chev|ʃə.v|pron2=ʃv}}
+'''chevaux''' {{pron|ʃə.vo|ʃvo|fr}} {{m}}
+# ''Pluriel de'' [[cheval]].
+#* {{exemple | lang=fr
+ | Les cavaliers sellèrent leurs '''chevaux''' et partirent au galop.
+}}
+
+==== {{S|vocabulaire}} ====
+* [[monter sur ses grands chevaux]]
+
+=== {{S|prononciation}} ===
+* {{pron|ʃə.vo|fr}}

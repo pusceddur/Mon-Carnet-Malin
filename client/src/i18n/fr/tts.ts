@@ -1,3 +1,59 @@
-// STUB: client-reader
-// French UI strings for the "tts" area. Nested plain objects of strings; placeholders use {name}.
-export const tts = {} as const;
+// French UI strings for the "tts" area (read aloud). Placeholders use {name}.
+export const tts = {
+  barLabel: 'Lecture à voix haute',
+  play: 'Lire à voix haute',
+  resume: 'Reprendre la lecture',
+  pause: 'Mettre en pause',
+  stop: 'Arrêter la lecture',
+  previous: 'Phrase précédente',
+  next: 'Phrase suivante',
+  close: 'Fermer la lecture à voix haute',
+  rate: 'Vitesse',
+  rateValue: '{value}×',
+  slower: 'Lire plus lentement',
+  faster: 'Lire plus vite',
+  unsupported: 'La lecture à voix haute n’est pas disponible sur cet appareil.',
+  startFailed: 'La voix ne démarre pas. Réessaie dans un instant.',
+  nothingToRead: 'Il n’y a encore rien à lire ici.',
+
+  voices: {
+    automatic: 'Voix automatique',
+    none: 'Aucune voix française sur cet appareil.',
+    label: '{name} · {region}',
+    regions: {
+      'fr-FR': 'France',
+      'fr-CA': 'Canada',
+      'fr-BE': 'Belgique',
+      'fr-CH': 'Suisse',
+      'fr-LU': 'Luxembourg',
+      other: 'français',
+    },
+    sample: 'Bonjour ! Je vais lire avec toi. On lit une phrase, puis on fait une petite pause… Tu es prêt ? On continue !',
+    automaticBest: 'Automatique (la meilleure voix : {name})',
+    quality: {
+      premium: 'Premium, très naturelle',
+      enhanced: 'Améliorée, naturelle',
+      natural: 'Naturelle (Internet)',
+      standard: 'Standard',
+      robotic: 'Robotique',
+    },
+    optionLabel: '{name} · {region} · {quality}',
+    betterVoiceTitle: 'Une voix plus naturelle',
+    betterVoiceIntro: 'Les voix « Premium » ou « Améliorées » de l’iPad lisent avec une vraie intonation. Elles sont gratuites :',
+    // Safari never gives the downloaded voices to a web page: saying « téléchargez-les » here would be wrong.
+    betterVoiceSafari: 'Sur iPad, Safari ne propose aux sites web que les voix de base. Les voix « Premium » et « Améliorées » téléchargées dans les Réglages de l’iPad n’apparaissent pas dans cette liste : c’est une limite de Safari, pas un réglage à changer.',
+    betterVoiceSafariApp: 'L’app Carnet Malin installée sur l’iPad, elle, peut lire avec ces voix.',
+    betterVoiceSteps: [
+      'Ouvrez les Réglages de l’iPad.',
+      'Accessibilité → Contenu énoncé → Voix → Français.',
+      'Choisissez une voix marquée « Premium » ou « Améliorée » (par exemple Audrey ou Thomas) et touchez le bouton de téléchargement.',
+      'Quand le téléchargement est terminé, fermez l’app et rouvrez-la.',
+    ],
+    betterVoiceDesktop: 'Sur ordinateur, les navigateurs Microsoft Edge et Google Chrome proposent aussi des voix naturelles.',
+  },
+  pauses: {
+    sentence: 'Pause entre les phrases',
+    paragraph: 'Pause entre les paragraphes',
+    value: '{value} s',
+  },
+} as const;

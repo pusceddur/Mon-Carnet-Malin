@@ -1,0 +1,11 @@
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: Du {{étyl|la|fr|mot=flos}}.
+
+=== {{S|nom|fr}} ===
+{{fr-rég|flœʁ}}
+[[File:Leucanthemum vulgare 1.jpg|thumb|Une '''fleur''' de [[marguerite]] [[blanc|blanche]].]]
+'''fleur''' {{pron|flœʁ|fr}} {{f}}
+# {{botanique|fr}} ''Partie'' souvent [[coloré]]e de la [[plante]], qui porte les organes de la '''[[reproduction]]''' et donne ensuite le [[fruit]].
+#* {{exemple|lang=fr|Les abeilles butinent les '''fleurs''' du jardin.}}
+# {{figuré|fr}} Ce qu’il y a de [[meilleur]].

@@ -1,3 +1,40 @@
-// STUB: client-shell
-// French UI strings for the "errors" area. Nested plain objects of strings; placeholders use {name}.
-export const errors = {} as const;
+// French error messages. Keys of `codes` are ApiError codes (client-side or server ApiErrorBody codes).
+export const errors = {
+  generic: 'Une erreur est survenue. Réessayez dans un instant.',
+  codes: {
+    // client-side (api/http.ts)
+    offline: 'Pas de connexion Internet pour le moment.',
+    timeout: 'Le serveur met trop de temps à répondre. Réessayez.',
+    aborted: 'La demande a été annulée.',
+    http_error: 'Le serveur a rencontré un problème. Réessayez plus tard.',
+    invalid_response: 'Réponse inattendue du serveur. Réessayez plus tard.',
+    // server
+    invalid_request: 'Certaines informations ne sont pas valides.',
+    not_authenticated: 'La session a expiré. Reconnectez-vous.',
+    parent_locked: 'Les réglages se sont verrouillés. Saisissez à nouveau le code des réglages.',
+    forbidden: 'Cette action n’est pas autorisée.',
+    not_found: 'Élément introuvable.',
+    invalid_credentials: 'E-mail ou mot de passe incorrect.',
+    login_locked: 'Trop d’essais de connexion. Réessayez dans quelques minutes.',
+    invalid_pin: 'Code des réglages incorrect.',
+    pin_locked: 'Trop d’essais : le code des réglages est bloqué pour le moment.',
+    invalid_password: 'Mot de passe incorrect.',
+    invalid_setup_token: 'Code d’installation incorrect.',
+    setup_not_allowed: 'L’installation est déjà faite ou n’est pas activée sur le serveur. Connectez-vous.',
+    pin_not_set: 'Aucun code des réglages n’est défini pour ce compte.',
+    email_taken: 'Cette adresse e-mail est déjà utilisée.',
+    invalid_invitation: 'Code d’invitation incorrect, ou inscriptions fermées.',
+    too_many_attempts: 'Trop d’essais avec un code d’invitation. Réessayez plus tard.',
+    server_starting: 'Le serveur démarre. Réessayez dans un instant.',
+    document_not_synced: 'Le document n’est pas encore synchronisé. Nouvel essai après la synchronisation.',
+    uploads_disabled: 'L’envoi de fichiers est désactivé dans les réglages de confidentialité.',
+    unsupported_file: 'Ce type de fichier n’est pas accepté.',
+    rate_limited: 'Trop de demandes. Patientez un peu avant de réessayer.',
+    payload_too_large: 'Les données envoyées sont trop volumineuses.',
+    quota_exceeded: 'L’espace de stockage du serveur est plein.',
+    internal_error: 'Le serveur a rencontré un problème. Réessayez plus tard.',
+  },
+  sync: {
+    unknown: 'La synchronisation a échoué. Nouvel essai automatique bientôt.',
+  },
+} as const;

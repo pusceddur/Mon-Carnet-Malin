@@ -1,6 +1,3 @@
-// STUB: shared-core
-// Functional baseline implementation; shared-core owns and may refine it.
-
 function bytesToUuidV4(bytes: Uint8Array): string {
   bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40;
   bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80;

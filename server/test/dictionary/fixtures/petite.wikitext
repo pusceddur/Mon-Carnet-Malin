@@ -1,0 +1,11 @@
+== {{langue|fr}} ==
+=== {{S|adjectif|fr|flexion}} ===
+{{fr-accord-rég|pə.ti|ms=petit}}
+'''petite''' {{pron|pə.tit|fr}}
+# ''Féminin singulier de'' [[petit]].
+#* {{exemple|lang=fr|Une '''petite''' maison au bord de l’eau.}}
+
+=== {{S|nom|fr|flexion}} ===
+{{fr-accord-rég|pə.ti|ms=petit}}
+'''petite''' {{pron|pə.tit|fr}} {{f}}
+# ''Féminin singulier de'' [[petit]].

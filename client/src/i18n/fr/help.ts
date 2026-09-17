@@ -1,3 +1,46 @@
-// STUB: client-reader
-// French UI strings for the "help" area. Nested plain objects of strings; placeholders use {name}.
-export const help = {} as const;
+// French UI strings for the "help" area (definition, explanation, simplification, question on the text).
+// Messages for AI statuses come from KID_MESSAGES (shared constants). Placeholders use {name}.
+export const help = {
+  titles: {
+    definition: '📖 Définition',
+    explain: '💡 Explication',
+    simplify: '✨ Plus simple',
+    question: '❓ Une question sur le texte',
+  },
+  loading: {
+    definition: 'Je cherche ce mot…',
+    explain: 'Je réfléchis pour t’aider…',
+    simplify: 'Je rends le texte plus simple…',
+    question: 'Je cherche dans le texte…',
+  },
+  selectedText: 'Tu as choisi :',
+  listen: '🔊 Écouter',
+  listenLabel: 'Écouter la réponse',
+  example: 'Exemple',
+  attribution: 'Source : {source}',
+  wiktionnaireDefault: 'Wiktionnaire (licence CC BY-SA)',
+  definitionHard: 'Cette définition est peut-être difficile. Tu peux demander une explication.',
+  notFound: 'Je ne connais pas encore ce mot.',
+  askExplain: '💡 Demander une explication',
+  moreHelp: '💡 Je ne comprends pas encore',
+  retry: 'Réessayer',
+  seeInText: '📍 Voir dans le texte · page {page}',
+  partOfSpeech: {
+    nom: 'nom',
+    verbe: 'verbe',
+    adjectif: 'adjectif',
+    adverbe: 'adverbe',
+    expression: 'expression',
+    autre: '',
+  },
+  question: {
+    intro: 'Pose une seule question sur ce livre. Je cherche la réponse dans le texte.',
+    label: 'Ta question',
+    placeholder: 'Par exemple : où se passe l’histoire ?',
+    counter: '{count} / {max}',
+    submit: 'Poser ma question',
+    empty: 'Écris d’abord ta question.',
+    another: 'Poser une autre question',
+    noText: 'Les pages de ce livre ne sont pas encore prêtes.',
+  },
+} as const;

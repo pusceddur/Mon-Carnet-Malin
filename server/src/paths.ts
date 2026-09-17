@@ -5,15 +5,20 @@ import type { AppConfig } from './config';
 // Paths are resolved from config or process.cwd() only: the production bundle is CJS and dev runs as ESM,
 // so __dirname / import.meta.url are deliberately not used.
 
-/** Built client directory (index.html), or null when not found. */
+/** Built client directory (index.html), or null when not found. `public/` is the layout of the deploy artifact. */
 export function clientDistDir(config: AppConfig, cwd: string = process.cwd()): string | null {
   const candidates = config.clientDistDir
     ? [resolve(cwd, config.clientDistDir)]
-    : [resolve(cwd, 'client', 'dist'), resolve(cwd, '..', 'client', 'dist')];
+    : [resolve(cwd, 'client', 'dist'), resolve(cwd, '..', 'client', 'dist'), resolve(cwd, 'public')];
   return candidates.find((dir) => existsSync(resolve(dir, 'index.html'))) ?? null;
 }
 
 /** Writable data directory (uploaded originals, sqlite files, caches). Not created here. */
 export function dataDir(config: AppConfig, cwd: string = process.cwd()): string {
   return resolve(cwd, config.dataDir ?? 'data');
+}
+
+/** Root of uploaded files (§15.6): `<dataDir>/uploads`, never served statically. Not created here. */
+export function uploadsDir(config: AppConfig, cwd: string = process.cwd()): string {
+  return resolve(dataDir(config, cwd), 'uploads');
 }

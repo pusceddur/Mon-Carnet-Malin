@@ -1,0 +1,6 @@
+== {{langue|fr}} ==
+=== {{S|nom|fr}} ===
+{{fr-rég|kle}}
+'''clef''' {{pron|kle|fr}} {{f}}
+# ''Variante orthographique de'' [[clé]].
+#* {{exemple|lang=fr|Il a perdu la '''clef''' de la porte.}}

@@ -1,0 +1,7 @@
+== {{langue|fr}} ==
+=== {{S|nom|fr|flexion}} ===
+{{fr-rég|jø|s=œil}}
+'''yeux''' {{pron|jø|fr}} {{m}}
+# ''Pluriel de'' [[œil]].
+#* {{exemple|lang=fr|Elle ferma les '''yeux''' pour écouter la musique.}}
+# ''Pluriel de'' [[œil]] ''(sens 1)'' ; {{cf|œils}} pour les autres sens.

@@ -1,0 +1,344 @@
+/* Pencil module: ink overlay, floating toolbar, answer pad. */
+
+/* ---------- Ink overlay ---------- */
+/* No z-index/opacity/transform on the wrapper: it would isolate the highlighter blending. */
+.ink-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ink-layer__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.ink-layer__svg * {
+  pointer-events: none;
+}
+
+/* Highlighter: transparent colour multiplied with the text below. */
+.ink-layer__svg--highlighter {
+  mix-blend-mode: multiply;
+}
+
+[data-theme='sombre'] .ink-layer__svg--highlighter {
+  mix-blend-mode: normal;
+  opacity: 0.75;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .ink-layer__svg--highlighter {
+    mix-blend-mode: normal;
+    opacity: 0.75;
+  }
+}
+
+.ink-layer__cursor {
+  fill: rgba(255, 255, 255, 0.35);
+  stroke: var(--ink-soft, #5b5750);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+/* ---------- Floating toolbar ---------- */
+.pencil-toolbar {
+  position: fixed;
+  left: 50%;
+  /* Above the reader's bottom dock (selection / read-aloud bar) when it is open (--rd-dock-h set by the reader). */
+  bottom: calc(max(var(--safe-bottom, 0px), var(--rd-dock-h, 0px)) + var(--space-4, 16px));
+  z-index: var(--z-toolbar, 40);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  max-width: calc(100vw - var(--space-4, 16px) * 2);
+  font-family: var(--font-ui);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.pencil-toolbar__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  padding: var(--space-2, 8px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill, 999px);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.pencil-toolbar__bar::-webkit-scrollbar {
+  display: none;
+}
+
+.pencil-toolbar__sep {
+  flex: none;
+  width: 1px;
+  height: 36px;
+  margin: 0 var(--space-1, 4px);
+  background: var(--line);
+}
+
+.pencil-toolbar .pencil-tool {
+  flex: none;
+  min-width: var(--tap, 56px);
+  min-height: var(--tap, 56px);
+  border-radius: 50%;
+  font-size: 28px;
+}
+
+.pencil-tool[aria-pressed='true'],
+.pencil-tool[aria-expanded='true'] {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 3px var(--accent);
+}
+
+.pencil-tool__dot {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.pencil-popover {
+  width: min(420px, calc(100vw - var(--space-4, 16px) * 2));
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  padding: var(--space-4, 16px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg, 24px);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-2);
+}
+
+.pencil-popover__title {
+  margin: 0 0 var(--space-2, 8px);
+  font-size: var(--text-md, 18px);
+  font-weight: var(--weight-bold, 700);
+}
+
+.pencil-popover__section + .pencil-popover__section {
+  margin-top: var(--space-4, 16px);
+}
+
+.pencil-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pencil-swatch {
+  position: relative;
+  width: var(--tap, 56px);
+  height: var(--tap, 56px);
+  margin: 0;
+  padding: 0;
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--line-strong);
+  cursor: pointer;
+}
+
+.pencil-swatch[aria-checked='true'] {
+  box-shadow: 0 0 0 4px var(--accent);
+}
+
+.pencil-swatch[aria-checked='true']::after {
+  content: '';
+  position: absolute;
+  inset: 16px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.pencil-thickness-dot {
+  display: inline-block;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.pencil-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pencil-menu__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  width: 100%;
+  min-height: var(--tap, 56px);
+  margin: 0;
+  padding: var(--space-2, 8px) var(--space-4, 16px);
+  border: 2px solid var(--line);
+  border-radius: var(--radius, 16px);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-md, 18px);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pencil-menu__option[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: var(--weight-bold, 700);
+}
+
+.pencil-menu__icon {
+  flex: none;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.pencil-hint {
+  margin: var(--space-1, 4px) 0 0;
+  color: var(--ink-soft);
+  font-size: var(--text-sm, 16px);
+}
+
+/* ---------- Answer pad ---------- */
+.answer-pad {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  width: 100%;
+  font-family: var(--font-ui);
+}
+
+.answer-pad__tabs {
+  display: flex;
+  gap: var(--space-2, 8px);
+  padding: var(--space-1, 4px);
+  border-radius: var(--radius, 16px);
+  background: var(--surface-sunken);
+}
+
+.answer-pad__tab {
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2, 8px);
+  min-height: var(--tap, 56px);
+  margin: 0;
+  padding: var(--space-2, 8px) var(--space-4, 16px);
+  border: 0;
+  border-radius: calc(var(--radius, 16px) - 4px);
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--font-ui);
+  font-size: var(--text-md, 18px);
+  font-weight: var(--weight-bold, 700);
+  cursor: pointer;
+}
+
+.answer-pad__tab[aria-selected='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-1);
+}
+
+.answer-pad__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.answer-pad__tools .pencil-tool {
+  border-radius: var(--radius, 16px);
+  font-size: 26px;
+}
+
+/* Notebook lines: one line every 1/12 of the box width, the box is half as tall as wide. */
+.answer-pad__box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  overflow: hidden;
+  border: 2px solid var(--line-strong);
+  border-radius: var(--radius, 16px);
+  background-color: var(--paper-clair);
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.answer-pad__lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.answer-pad__lines line {
+  stroke: var(--accent-soft);
+  stroke-width: 2;
+}
+
+.answer-pad__lines .answer-pad__margin {
+  stroke: var(--danger-soft);
+}
+
+.answer-pad__textarea {
+  display: block;
+  width: 100%;
+  min-height: 200px;
+  padding: var(--space-4, 16px);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--radius, 16px);
+  background: var(--paper-clair);
+  color: var(--ink);
+  font-family: var(--read-font, var(--font-ui));
+  font-size: 24px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.answer-pad__textarea:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pencil-popover {
+    animation: pencil-pop var(--dur, 180ms) var(--ease-out);
+  }
+}
+
+@keyframes pencil-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

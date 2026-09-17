@@ -1,33 +1,263 @@
-/* STUB: client-shell — design tokens (contract §12) */
+/*
+ * Design tokens (contract §12).
+ * Themes: crème (default), clair, sombre. A theme applies to the element carrying [data-theme] and its subtree,
+ * so the reader can scope a theme to its own container. Without [data-theme] on the root, the system
+ * dark preference selects sombre.
+ * Every theme block declares all colour tokens: custom properties resolve where they are declared.
+ */
+
 :root {
+  /* Theme-independent tokens */
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  --tap: 56px;          /* child touch targets */
+  --tap-parent: 44px;   /* parent area touch targets */
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  --font-lexend: 'Lexend', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-andika: 'Andika', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-atkinson: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-opendyslexic: 'OpenDyslexic', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-systeme: system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-ui: var(--font-lexend);
+
+  /* UI type scale (ratio ~1.2). 16px is the floor: smaller text is hard to decode and iOS zooms on inputs. */
+  --text-sm: 16px;
+  --text-md: 18px;
+  --text-lg: 22px;
+  --text-xl: 27px;
+  --text-2xl: 33px;
+  --leading-tight: 1.25;
+  --leading: 1.5;
+  --tracking-ui: 0.01em;
+
+  --weight-regular: 400;
+  --weight-bold: 700;
+
+  /* Motion: short and state-driven (≤ 200 ms) */
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --dur-slow: 200ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  --z-header: 20;
+  --z-scrim: 30;
+  --z-toolbar: 40;
+  --z-layer: 100;
+  --z-toast: 200;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* Reading variables (profile preferences, defaults = DEFAULT_READING_PREFERENCES) */
+  --read-font: var(--font-lexend);
+  --read-size: 24px;
+  --read-line-height: 1.8;
+  --read-letter-spacing: 0.04em;
+  --read-word-spacing: 0.16em;
+  --read-column: 30em;
+}
+
+/* ---------- crème (default) ---------- */
+:root,
+[data-theme='creme'] {
   color-scheme: light;
   --paper: #FBF6EC;
   --paper-clair: #FFFFFF;
+  --surface: #FFFDF8;          /* raised: sheets, tiles, inputs */
+  --surface-sunken: #F2EBDD;   /* tracks, segmented background */
+  --surface-press: #EAE1CF;
+  --line: #E4DACA;             /* hairlines (decorative) */
+  --line-strong: #8C8579;      /* control borders, ≥ 3:1 */
+
   --ink: #2B2A28;
   --ink-soft: #5B5750;
+  --ink-placeholder: #6B665D;
+
   --accent: #2F6FDB;
+  --accent-strong: #2459B8;
+  --accent-ink: #2459B8;       /* accent used as text on paper (AA) */
+  --accent-soft: #E3ECFB;
+  --on-accent: #FFFFFF;
   --accent-warm: #E8963A;
+  --accent-warm-soft: #FBE9D2;
+
   --ok: #2E7D4F;
+  --ok-ink: #256A42;
+  --ok-soft: #E1F0E6;
   --warn: #B8640A;
+  --warn-ink: #8F4E08;
+  --warn-soft: #FBEBD3;
   --danger: #B83A2E;
+  --danger-strong: #9A3026;
+  --danger-ink: #9A3026;
+  --danger-soft: #F8E2DF;
+  --on-danger: #FFFFFF;
+
+  --violet-soft: #EEE6F8;
   --speaking: #FFF0B3;
+  --selection: #FFE38A;
   --focus: #1D4ED8;
-  --radius: 16px;
-  --tap: 56px;
-  --tap-parent: 44px;
-  --font-ui: 'Lexend', system-ui, -apple-system, sans-serif;
+
+  --overlay: rgba(43, 36, 24, 0.42);
+  --shadow-1: 0 1px 2px rgba(74, 58, 30, 0.08), 0 2px 8px rgba(74, 58, 30, 0.06);
+  --shadow-2: 0 2px 4px rgba(74, 58, 30, 0.08), 0 10px 24px rgba(74, 58, 30, 0.1);
+  --shadow-sheet: 0 -6px 32px rgba(74, 58, 30, 0.16);
+  --shadow-toast: 0 6px 20px rgba(74, 58, 30, 0.18);
 }
 
-[data-theme="sombre"] {
+/* ---------- clair ---------- */
+[data-theme='clair'] {
+  color-scheme: light;
+  --paper: #FFFFFF;
+  --paper-clair: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-sunken: #F3F3F1;
+  --surface-press: #E8E7E3;
+  --line: #E5E4E0;
+  --line-strong: #8A877F;
+
+  --ink: #2B2A28;
+  --ink-soft: #5B5750;
+  --ink-placeholder: #6B665D;
+
+  --accent: #2F6FDB;
+  --accent-strong: #2459B8;
+  --accent-ink: #2459B8;
+  --accent-soft: #E6EEFB;
+  --on-accent: #FFFFFF;
+  --accent-warm: #E8963A;
+  --accent-warm-soft: #FCEEDC;
+
+  --ok: #2E7D4F;
+  --ok-ink: #256A42;
+  --ok-soft: #E4F2E8;
+  --warn: #B8640A;
+  --warn-ink: #8F4E08;
+  --warn-soft: #FCEFDC;
+  --danger: #B83A2E;
+  --danger-strong: #9A3026;
+  --danger-ink: #9A3026;
+  --danger-soft: #FAE6E3;
+  --on-danger: #FFFFFF;
+
+  --violet-soft: #F0EAF9;
+  --speaking: #FFF0B3;
+  --selection: #FFE38A;
+  --focus: #1D4ED8;
+
+  --overlay: rgba(30, 30, 28, 0.4);
+  --shadow-1: 0 1px 2px rgba(20, 20, 18, 0.08), 0 2px 8px rgba(20, 20, 18, 0.06);
+  --shadow-2: 0 2px 4px rgba(20, 20, 18, 0.08), 0 10px 24px rgba(20, 20, 18, 0.1);
+  --shadow-sheet: 0 -6px 32px rgba(20, 20, 18, 0.16);
+  --shadow-toast: 0 6px 20px rgba(20, 20, 18, 0.18);
+}
+
+/* ---------- sombre ---------- */
+[data-theme='sombre'] {
   color-scheme: dark;
   --paper: #1F2023;
+  --paper-clair: #2A2B2F;
+  --surface: #2A2B2F;
+  --surface-sunken: #17181A;
+  --surface-press: #34363B;
+  --line: #3A3C41;
+  --line-strong: #948D80;
+
   --ink: #ECE6DA;
+  --ink-soft: #B8B1A4;
+  --ink-placeholder: #A39C90;
+
+  --accent: #2F6FDB;
+  --accent-strong: #2459B8;
+  --accent-ink: #8CB2F5;
+  --accent-soft: #243552;
+  --on-accent: #FFFFFF;
+  --accent-warm: #E8963A;
+  --accent-warm-soft: #46351F;
+
+  --ok: #2E7D4F;
+  --ok-ink: #6CC08E;
+  --ok-soft: #1F3A2A;
+  --warn: #B8640A;
+  --warn-ink: #E9A55A;
+  --warn-soft: #45331C;
+  --danger: #B83A2E;
+  --danger-strong: #9A3026;
+  --danger-ink: #F08A7E;
+  --danger-soft: #472824;
+  --on-danger: #FFFFFF;
+
+  --violet-soft: #372E48;
+  --speaking: #4D4322;
+  --selection: #5A4A1C;
+  --focus: #8CB2F5;
+
+  --overlay: rgba(0, 0, 0, 0.56);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.24);
+  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.4), 0 10px 24px rgba(0, 0, 0, 0.32);
+  --shadow-sheet: 0 -6px 32px rgba(0, 0, 0, 0.5);
+  --shadow-toast: 0 6px 20px rgba(0, 0, 0, 0.5);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
     color-scheme: dark;
     --paper: #1F2023;
+    --paper-clair: #2A2B2F;
+    --surface: #2A2B2F;
+    --surface-sunken: #17181A;
+    --surface-press: #34363B;
+    --line: #3A3C41;
+    --line-strong: #948D80;
+
     --ink: #ECE6DA;
+    --ink-soft: #B8B1A4;
+    --ink-placeholder: #A39C90;
+
+    --accent: #2F6FDB;
+    --accent-strong: #2459B8;
+    --accent-ink: #8CB2F5;
+    --accent-soft: #243552;
+    --on-accent: #FFFFFF;
+    --accent-warm: #E8963A;
+    --accent-warm-soft: #46351F;
+
+    --ok: #2E7D4F;
+    --ok-ink: #6CC08E;
+    --ok-soft: #1F3A2A;
+    --warn: #B8640A;
+    --warn-ink: #E9A55A;
+    --warn-soft: #45331C;
+    --danger: #B83A2E;
+    --danger-strong: #9A3026;
+    --danger-ink: #F08A7E;
+    --danger-soft: #472824;
+    --on-danger: #FFFFFF;
+
+    --violet-soft: #372E48;
+    --speaking: #4D4322;
+    --selection: #5A4A1C;
+    --focus: #8CB2F5;
+
+    --overlay: rgba(0, 0, 0, 0.56);
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.24);
+    --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.4), 0 10px 24px rgba(0, 0, 0, 0.32);
+    --shadow-sheet: 0 -6px 32px rgba(0, 0, 0, 0.5);
+    --shadow-toast: 0 6px 20px rgba(0, 0, 0, 0.5);
   }
 }

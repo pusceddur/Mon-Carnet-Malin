@@ -1,0 +1,108 @@
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.ui-field__label {
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-tight);
+}
+
+.ui-field--parent .ui-field__label {
+  font-size: var(--text-sm);
+}
+
+.ui-field__optional {
+  color: var(--ink-soft);
+  font-weight: var(--weight-regular);
+}
+
+.ui-field__hint {
+  margin: calc(-1 * var(--space-1)) 0 0;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.ui-field__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  color: var(--danger-ink);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.ui-field__error-icon {
+  flex: none;
+  margin-top: 1px;
+}
+
+.ui-input {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  margin: 0;
+  padding: 0 var(--space-4);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  line-height: var(--leading-tight);
+  -webkit-appearance: none;
+  appearance: none;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.ui-input--parent {
+  min-height: var(--tap-parent);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  /* 16px minimum: smaller text makes iPad Safari zoom in on focus. */
+  font-size: var(--text-sm);
+}
+
+.ui-input--multiline {
+  min-height: 132px;
+  padding: var(--space-3) var(--space-4);
+  line-height: var(--leading);
+  resize: vertical;
+}
+
+.ui-input:focus {
+  border-color: var(--accent);
+}
+
+.ui-input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.ui-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ui-select {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.ui-select__control {
+  padding-right: 52px;
+  cursor: pointer;
+}
+
+.ui-select__chevron {
+  position: absolute;
+  top: 50%;
+  right: var(--space-4);
+  color: var(--ink-soft);
+  transform: translateY(-50%);
+  pointer-events: none;
+}

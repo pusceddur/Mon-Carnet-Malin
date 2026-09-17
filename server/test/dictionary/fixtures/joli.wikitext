@@ -1,0 +1,6 @@
+== {{langue|fr}} ==
+=== {{S|adjectif|fr}} ===
+{{fr-accord-rég|ʒɔ.li}}
+'''joli''' {{pron|ʒɔ.li|fr}}
+# Qui est [[agréable]] à [[regarder]] ; [[mignon]].
+#* {{exemple|lang=fr|Une '''jolie''' robe bleue.}}

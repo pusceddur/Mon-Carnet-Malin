@@ -1,0 +1,9 @@
+== {{langue|fr}} ==
+=== {{S|verbe|fr|flexion}} ===
+{{fr-verbe-flexion|manger|ind.i.3s=oui}}
+'''mangeait''' {{pron|mɑ̃.ʒɛ|fr}}
+# ''Troisième personne du singulier de l’imparfait de l’indicatif de'' [[manger]].
+#* {{exemple|lang=fr|Le lapin '''mangeait''' une carotte.}}
+
+=== {{S|prononciation}} ===
+* {{pron|mɑ̃.ʒɛ|fr}}

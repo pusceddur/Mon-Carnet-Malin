@@ -1,0 +1,27 @@
+{{voir|Livre}}
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: ''(Nom 1)'' Du {{étyl|la|fr|mot=liber}}.
+: ''(Nom 2)'' Du {{étyl|la|fr|mot=libra}}.
+
+=== {{S|nom|fr|num=1}} ===
+{{fr-rég|livʁ}}
+'''livre''' {{pron|livʁ|fr}} {{m}}
+# [[assemblage|Assemblage]] de [[feuille]]s [[imprimé]]es et [[relier|reliées]] ensemble, formant un [[volume]].
+#* {{exemple|lang=fr|Elle a lu ce '''livre''' en deux jours.}}
+# {{par extension}} [[œuvre|Œuvre]] de l’esprit publiée sous cette forme.
+
+=== {{S|nom|fr|num=2}} ===
+{{fr-rég|livʁ}}
+'''livre''' {{pron|livʁ|fr}} {{f}}
+# {{lexique|métrologie|fr}} Ancienne [[unité]] de [[masse]] valant environ un [[demi]]-[[kilogramme]].
+# {{lexique|numismatique|fr}} Ancienne [[monnaie]] de [[compte]] française.
+
+=== {{S|verbe|fr|flexion}} ===
+{{fr-verbe-flexion|livrer|ind.p.1s=oui|ind.p.3s=oui|sub.p.1s=oui|sub.p.3s=oui|imp.p.2s=oui}}
+'''livre''' {{pron|livʁ|fr}}
+# ''Première personne du singulier du présent de l’indicatif de'' [[livrer]].
+# ''Troisième personne du singulier du présent de l’indicatif de'' [[livrer]].
+
+=== {{S|prononciation}} ===
+* {{pron|livʁ|fr}}

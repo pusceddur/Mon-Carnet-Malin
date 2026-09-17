@@ -1,0 +1,127 @@
+/* « Mes notes ». */
+
+.notes-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-1);
+}
+
+.notes-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.notes-card__title {
+  font-size: var(--text-lg);
+  overflow-wrap: anywhere;
+}
+
+.notes-card__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.notes-card__subtitle {
+  font-size: var(--text-md);
+}
+
+.notes-card__hint,
+.notes-card__ink {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.note-item:active {
+  background: var(--surface-press);
+}
+
+.note-item__mark {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0.1em 0.3em;
+  border-radius: 6px;
+  color: #2b2a28;
+  overflow-wrap: anywhere;
+}
+
+.note-item__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.note-item__page {
+  flex: none;
+  margin-left: auto;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.note-item--detached {
+  border-style: dashed;
+}
+
+.note-item__badge {
+  flex: none;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+  font-size: var(--text-sm);
+}
+
+.note-answer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+}
+
+.note-answer__prompt {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.note-answer__text {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

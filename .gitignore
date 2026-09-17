@@ -23,10 +23,25 @@ uploads/
 *.crt
 *.p12
 *.pfx
+id_rsa*
+id_ecdsa*
+id_ed25519*
+*_deploy
+*.ppk
+secrets.json
+
+# Database dumps and backups (never published: real content)
+*.sql
+*.dump
+*.bak
+backups/
 
 # Private documents and modules (never published)
 docs/
 private/
+/scripts/
+# Test of the private deploy script
+server/test/platform/build-deploy.test.ts
 FirstPrompt.txt
 *.local.*
 
@@ -43,6 +58,14 @@ blob-report/
 # Editors and OS
 .vscode/
 .idea/
+.history/
+tmp/
 *.log
 .DS_Store
 Thumbs.db
+
+# Deploy artifact (generated)
+deploy/
+
+# iPad app: Xcode project generated on the Mac (contains the signing team)
+ipad/ios/

@@ -2,11 +2,20 @@ import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import knexFactory, { type Knex } from 'knex';
 import * as m001 from './migrations/001_initial';
+import * as m002 from './migrations/002_invitations';
+import * as m003 from './migrations/003_client_diagnostics';
+import * as m004 from './migrations/004_worker_jobs';
 
 // Migrations are imported statically (no filesystem loader) so they work inside the esbuild bundle.
 const MIGRATIONS: ReadonlyArray<readonly [string, Knex.Migration]> = [
   ['001_initial', { up: m001.up, down: m001.down }],
+  ['002_invitations', { up: m002.up, down: m002.down }],
+  ['003_client_diagnostics', { up: m003.up, down: m003.down }],
+  ['004_worker_jobs', { up: m004.up, down: m004.down }],
 ];
+
+/** Names of the bundled migrations, in order. */
+export const MIGRATION_NAMES: readonly string[] = MIGRATIONS.map(([name]) => name);
 
 class StaticMigrationSource implements Knex.MigrationSource<string> {
   getMigrations(): Promise<string[]> {

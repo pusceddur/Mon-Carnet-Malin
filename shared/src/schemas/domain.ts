@@ -7,6 +7,7 @@ export const ParentUserSchema = z.object({
   email: z.string().max(254),
   displayName: z.string().max(80),
   createdAt: MillisSchema,
+  isOwner: z.boolean(),
 });
 
 export const ReadingLevelSchema = z.enum(['debutant', 'intermediaire', 'avance']);
@@ -31,7 +32,9 @@ export const ReadingPreferencesSchema = z.object({
 export const TTSPreferencesSchema = z.object({
   rate: z.number().min(R.ttsRate.min).max(R.ttsRate.max),
   pitch: z.number().min(R.ttsPitch.min).max(R.ttsPitch.max),
-  voiceURI: z.string().max(500).nullable(),
+  // Defaults: profiles saved before the pause settings existed stay valid.
+  sentencePauseMs: z.number().int().min(R.ttsSentencePauseMs.min).max(R.ttsSentencePauseMs.max).default(250),
+  paragraphPauseMs: z.number().int().min(R.ttsParagraphPauseMs.min).max(R.ttsParagraphPauseMs.max).default(700),
 });
 
 export const QuestionCountSchema = z.union([z.literal(3), z.literal(5), z.literal(10)]);
@@ -57,11 +60,11 @@ export const ChildProfileSchema = z.object({
   deletedAt: MillisSchema.nullable(),
 });
 
-export const DocumentKindSchema = z.enum(['pdf', 'images']);
+export const DocumentKindSchema = z.enum(['pdf', 'images', 'epub']);
 export const DocumentStatusSchema = z.enum(['processing', 'ready', 'partial']);
 export const PageStatusSchema = z.enum(['pending', 'processing', 'ready', 'low_confidence', 'failed']);
-export const PageTextSourceSchema = z.enum(['pdf-text', 'ocr-local', 'ocr-server', 'manual']);
-export const PageWarningSchema = z.enum(['low_confidence', 'server_fallback_used', 'manually_corrected', 'suspicious_instructions', 'no_text_found']);
+export const PageTextSourceSchema = z.enum(['pdf-text', 'ocr-local', 'ocr-server', 'manual', 'epub-text', 'ocr-ai']);
+export const PageWarningSchema = z.enum(['low_confidence', 'server_fallback_used', 'manually_corrected', 'suspicious_instructions', 'no_text_found', 'awaiting_ai']);
 
 export const DocumentMetaSchema = z.object({
   id: IdSchema,

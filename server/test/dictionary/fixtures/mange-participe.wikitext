@@ -1,0 +1,9 @@
+== {{langue|fr}} ==
+=== {{S|verbe|fr|flexion}} ===
+{{fr-verbe-flexion|manger|pp=oui}}
+'''mangé''' {{pron|mɑ̃.ʒe|fr}}
+# ''Participe passé masculin singulier de'' [[manger]].
+#* {{exemple|lang=fr|J’ai '''mangé''' une pomme.}}
+
+=== {{S|anagrammes}} ===
+* [[magné]]

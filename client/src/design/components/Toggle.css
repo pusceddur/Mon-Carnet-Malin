@@ -1,0 +1,111 @@
+.ui-toggle {
+  --toggle-w: 64px;
+  --toggle-h: 36px;
+  --toggle-thumb: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: var(--tap);
+  margin: 0;
+  padding: var(--space-2) 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ui-toggle--parent {
+  --toggle-w: 52px;
+  --toggle-h: 30px;
+  --toggle-thumb: 20px;
+  min-height: var(--tap-parent);
+}
+
+.ui-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ui-toggle:focus-visible {
+  outline: none;
+}
+
+.ui-toggle:focus-visible .ui-toggle__track {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.ui-toggle__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ui-toggle__label {
+  font-size: var(--text-md);
+  line-height: var(--leading-tight);
+}
+
+.ui-toggle--parent .ui-toggle__label {
+  font-size: var(--text-sm);
+}
+
+.ui-toggle__desc {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  line-height: var(--leading);
+}
+
+.ui-toggle__track {
+  position: relative;
+  flex: none;
+  width: var(--toggle-w);
+  height: var(--toggle-h);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  transition:
+    background-color var(--dur) var(--ease-out),
+    border-color var(--dur) var(--ease-out);
+}
+
+.ui-toggle__thumb {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  display: grid;
+  place-items: center;
+  width: var(--toggle-thumb);
+  height: var(--toggle-thumb);
+  border-radius: 50%;
+  background: var(--ink-soft);
+  color: var(--accent);
+  transform: translate3d(0, -50%, 0);
+  transition:
+    transform var(--dur) var(--ease-out),
+    background-color var(--dur) var(--ease-out);
+}
+
+.ui-toggle__check {
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.ui-toggle[aria-checked='true'] .ui-toggle__track {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.ui-toggle[aria-checked='true'] .ui-toggle__thumb {
+  background: #FFFFFF;
+  transform: translate3d(calc(var(--toggle-w) - var(--toggle-thumb) - 10px), -50%, 0);
+}
+
+.ui-toggle[aria-checked='true'] .ui-toggle__check {
+  opacity: 1;
+}

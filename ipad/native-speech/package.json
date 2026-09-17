@@ -1,0 +1,16 @@
+{
+  "name": "carnet-native-speech",
+  "version": "0.1.0",
+  "private": true,
+  "description": "System voices of the iPad for the reader (word ranges, downloaded enhanced and premium voices).",
+  "main": "index.js",
+  "license": "UNLICENSED",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=8.0.0"
+  }
+}

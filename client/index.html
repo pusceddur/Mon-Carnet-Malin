@@ -6,16 +6,20 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Carnet Malin" />
+    <meta name="apple-mobile-web-app-title" content="%APP_SHORT_NAME%" />
+    <meta name="application-name" content="%APP_SHORT_NAME%" />
     <meta name="theme-color" content="#FBF6EC" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="format-detection" content="telephone=no" />
-    <meta name="description" content="Lire, écouter et comprendre ses livres." />
+    <meta name="description" content="%APP_DESCRIPTION%" />
+    <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <title>Mon Carnet Malin</title>
+    <link rel="icon" href="/icons/icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
+    <title>%APP_NAME%</title>
   </head>
   <body>
-    <noscript>Mon Carnet Malin a besoin de JavaScript pour fonctionner.</noscript>
+    <noscript>%APP_NAME% a besoin de JavaScript pour fonctionner.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

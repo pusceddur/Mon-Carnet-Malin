@@ -1,0 +1,10 @@
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: Du {{étyl|la|fr|mot=oculus}}.
+
+=== {{S|nom|fr}} ===
+{{fr-inv|œj|p=yeux}}
+'''œil''' {{pron|œj|fr}} {{m}} ''(pluriel :'' '''[[yeux]]''' ''ou'' '''[[œils]]''')''
+# {{lexique|anatomie|fr}} [[organe|Organe]] de la [[vue]].
+#* {{exemple|lang=fr|Il a un grain de poussière dans l’'''œil'''.}}
+# [[regard|Regard]].

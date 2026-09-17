@@ -1,0 +1,976 @@
+{
+  "version": "tesseract.js@7.0.0+tesseract.js-core@7.0.0+pdfjs-dist@6.3.289+mots-fr@318883",
+  "totalBytes": 19070128,
+  "files": [
+    {
+      "url": "/ocr/worker.min.js",
+      "bytes": 111307,
+      "group": "ocr"
+    },
+    {
+      "url": "/ocr/tesseract-core-lstm.wasm.js",
+      "bytes": 3896484,
+      "group": "ocr"
+    },
+    {
+      "url": "/ocr/tesseract-core-relaxedsimd-lstm.wasm.js",
+      "bytes": 3905767,
+      "group": "ocr"
+    },
+    {
+      "url": "/ocr/tesseract-core-simd-lstm.wasm.js",
+      "bytes": 3899472,
+      "group": "ocr"
+    },
+    {
+      "url": "/ocr/fra.traineddata.gz",
+      "bytes": 707406,
+      "group": "ocr"
+    },
+    {
+      "url": "/pdfjs/wasm/jbig2.wasm",
+      "bytes": 104852,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/wasm/jbig2_nowasm_fallback.js",
+      "bytes": 145703,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/wasm/openjpeg.wasm",
+      "bytes": 252032,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/wasm/openjpeg_nowasm_fallback.js",
+      "bytes": 451590,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/wasm/qcms_bg.wasm",
+      "bytes": 96589,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/standard_fonts/FoxitDingbats.pfb",
+      "bytes": 29513,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/standard_fonts/FoxitFixed.pfb",
+      "bytes": 17597,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/standard_fonts/FoxitFixedBold.pfb",
+      "bytes": 18055,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/standard_fonts/FoxitFixedBoldItalic.pfb",
+      "bytes": 19151,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/standard_fonts/FoxitFixedItalic.pfb",
+      "bytes": 18746,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/standard_fonts/FoxitSerif.pfb",
+      "bytes": 19469,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/standard_fonts/FoxitSerifBold.pfb",
+      "bytes": 19395,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/standard_fonts/FoxitSerifBoldItalic.pfb",
+      "bytes": 20733,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/standard_fonts/FoxitSerifItalic.pfb",
+      "bytes": 21227,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/standard_fonts/FoxitSymbol.pfb",
+      "bytes": 16729,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/standard_fonts/LiberationSans-Bold.ttf",
+      "bytes": 137052,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/standard_fonts/LiberationSans-BoldItalic.ttf",
+      "bytes": 135124,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/standard_fonts/LiberationSans-Italic.ttf",
+      "bytes": 162036,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/standard_fonts/LiberationSans-Regular.ttf",
+      "bytes": 139512,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/78-EUC-H.bcmap",
+      "bytes": 2404,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/78-EUC-V.bcmap",
+      "bytes": 173,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/78-H.bcmap",
+      "bytes": 2379,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/78-RKSJ-H.bcmap",
+      "bytes": 2398,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/78-RKSJ-V.bcmap",
+      "bytes": 173,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/78-V.bcmap",
+      "bytes": 169,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/78ms-RKSJ-H.bcmap",
+      "bytes": 2651,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/78ms-RKSJ-V.bcmap",
+      "bytes": 290,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/83pv-RKSJ-H.bcmap",
+      "bytes": 905,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/90ms-RKSJ-H.bcmap",
+      "bytes": 721,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/90ms-RKSJ-V.bcmap",
+      "bytes": 290,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/90msp-RKSJ-H.bcmap",
+      "bytes": 715,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/90msp-RKSJ-V.bcmap",
+      "bytes": 291,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/90pv-RKSJ-H.bcmap",
+      "bytes": 982,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/90pv-RKSJ-V.bcmap",
+      "bytes": 260,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Add-H.bcmap",
+      "bytes": 2419,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Add-RKSJ-H.bcmap",
+      "bytes": 2413,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Add-RKSJ-V.bcmap",
+      "bytes": 287,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Add-V.bcmap",
+      "bytes": 282,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-CNS1-0.bcmap",
+      "bytes": 317,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-CNS1-1.bcmap",
+      "bytes": 371,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-CNS1-2.bcmap",
+      "bytes": 376,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-CNS1-3.bcmap",
+      "bytes": 401,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-CNS1-4.bcmap",
+      "bytes": 405,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-CNS1-5.bcmap",
+      "bytes": 406,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-CNS1-6.bcmap",
+      "bytes": 406,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-CNS1-UCS2.bcmap",
+      "bytes": 41193,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-GB1-0.bcmap",
+      "bytes": 217,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-GB1-1.bcmap",
+      "bytes": 250,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-GB1-2.bcmap",
+      "bytes": 465,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-GB1-3.bcmap",
+      "bytes": 470,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-GB1-4.bcmap",
+      "bytes": 601,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-GB1-5.bcmap",
+      "bytes": 625,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-GB1-UCS2.bcmap",
+      "bytes": 33974,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-Japan1-0.bcmap",
+      "bytes": 225,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-Japan1-1.bcmap",
+      "bytes": 226,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-Japan1-2.bcmap",
+      "bytes": 233,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-Japan1-3.bcmap",
+      "bytes": 242,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-Japan1-4.bcmap",
+      "bytes": 337,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-Japan1-5.bcmap",
+      "bytes": 430,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-Japan1-6.bcmap",
+      "bytes": 485,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-Japan1-UCS2.bcmap",
+      "bytes": 40951,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-Korea1-0.bcmap",
+      "bytes": 241,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-Korea1-1.bcmap",
+      "bytes": 386,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-Korea1-2.bcmap",
+      "bytes": 391,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Adobe-Korea1-UCS2.bcmap",
+      "bytes": 23293,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/B5-H.bcmap",
+      "bytes": 1086,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/B5-V.bcmap",
+      "bytes": 142,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/B5pc-H.bcmap",
+      "bytes": 1099,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/B5pc-V.bcmap",
+      "bytes": 144,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/CNS-EUC-H.bcmap",
+      "bytes": 1780,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/CNS-EUC-V.bcmap",
+      "bytes": 1920,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/CNS1-H.bcmap",
+      "bytes": 706,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/CNS1-V.bcmap",
+      "bytes": 143,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/CNS2-H.bcmap",
+      "bytes": 504,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/CNS2-V.bcmap",
+      "bytes": 93,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/ETHK-B5-H.bcmap",
+      "bytes": 4426,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/ETHK-B5-V.bcmap",
+      "bytes": 158,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/ETen-B5-H.bcmap",
+      "bytes": 1125,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/ETen-B5-V.bcmap",
+      "bytes": 158,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/ETenms-B5-H.bcmap",
+      "bytes": 101,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/ETenms-B5-V.bcmap",
+      "bytes": 172,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/EUC-H.bcmap",
+      "bytes": 578,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/EUC-V.bcmap",
+      "bytes": 170,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Ext-H.bcmap",
+      "bytes": 2536,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Ext-RKSJ-H.bcmap",
+      "bytes": 2542,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Ext-RKSJ-V.bcmap",
+      "bytes": 218,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Ext-V.bcmap",
+      "bytes": 215,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GB-EUC-H.bcmap",
+      "bytes": 549,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GB-EUC-V.bcmap",
+      "bytes": 179,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GB-H.bcmap",
+      "bytes": 528,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GB-V.bcmap",
+      "bytes": 175,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GBK-EUC-H.bcmap",
+      "bytes": 14692,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GBK-EUC-V.bcmap",
+      "bytes": 180,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GBK2K-H.bcmap",
+      "bytes": 19662,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GBK2K-V.bcmap",
+      "bytes": 219,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GBKp-EUC-H.bcmap",
+      "bytes": 14686,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GBKp-EUC-V.bcmap",
+      "bytes": 181,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GBT-EUC-H.bcmap",
+      "bytes": 7290,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GBT-EUC-V.bcmap",
+      "bytes": 180,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GBT-H.bcmap",
+      "bytes": 7269,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GBT-V.bcmap",
+      "bytes": 176,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GBTpc-EUC-H.bcmap",
+      "bytes": 7298,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GBTpc-EUC-V.bcmap",
+      "bytes": 182,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GBpc-EUC-H.bcmap",
+      "bytes": 557,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/GBpc-EUC-V.bcmap",
+      "bytes": 181,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/H.bcmap",
+      "bytes": 553,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/HKdla-B5-H.bcmap",
+      "bytes": 2654,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/HKdla-B5-V.bcmap",
+      "bytes": 148,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/HKdlb-B5-H.bcmap",
+      "bytes": 2414,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/HKdlb-B5-V.bcmap",
+      "bytes": 148,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/HKgccs-B5-H.bcmap",
+      "bytes": 2292,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/HKgccs-B5-V.bcmap",
+      "bytes": 149,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/HKm314-B5-H.bcmap",
+      "bytes": 1772,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/HKm314-B5-V.bcmap",
+      "bytes": 149,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/HKm471-B5-H.bcmap",
+      "bytes": 2171,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/HKm471-B5-V.bcmap",
+      "bytes": 149,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/HKscs-B5-H.bcmap",
+      "bytes": 4437,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/HKscs-B5-V.bcmap",
+      "bytes": 159,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Hankaku.bcmap",
+      "bytes": 132,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Hiragana.bcmap",
+      "bytes": 124,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/KSC-EUC-H.bcmap",
+      "bytes": 1848,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/KSC-EUC-V.bcmap",
+      "bytes": 164,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/KSC-H.bcmap",
+      "bytes": 1831,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/KSC-Johab-H.bcmap",
+      "bytes": 16791,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/KSC-Johab-V.bcmap",
+      "bytes": 166,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/KSC-V.bcmap",
+      "bytes": 160,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/KSCms-UHC-H.bcmap",
+      "bytes": 2787,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/KSCms-UHC-HW-H.bcmap",
+      "bytes": 2789,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/KSCms-UHC-HW-V.bcmap",
+      "bytes": 169,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/KSCms-UHC-V.bcmap",
+      "bytes": 166,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/KSCpc-EUC-H.bcmap",
+      "bytes": 2024,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/KSCpc-EUC-V.bcmap",
+      "bytes": 166,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Katakana.bcmap",
+      "bytes": 100,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/NWP-H.bcmap",
+      "bytes": 2765,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/NWP-V.bcmap",
+      "bytes": 252,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/RKSJ-H.bcmap",
+      "bytes": 534,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/RKSJ-V.bcmap",
+      "bytes": 170,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/Roman.bcmap",
+      "bytes": 96,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniCNS-UCS2-H.bcmap",
+      "bytes": 48280,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniCNS-UCS2-V.bcmap",
+      "bytes": 156,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniCNS-UTF16-H.bcmap",
+      "bytes": 50419,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniCNS-UTF16-V.bcmap",
+      "bytes": 156,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniCNS-UTF32-H.bcmap",
+      "bytes": 52679,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniCNS-UTF32-V.bcmap",
+      "bytes": 160,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniCNS-UTF8-H.bcmap",
+      "bytes": 53629,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniCNS-UTF8-V.bcmap",
+      "bytes": 157,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniGB-UCS2-H.bcmap",
+      "bytes": 43366,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniGB-UCS2-V.bcmap",
+      "bytes": 193,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniGB-UTF16-H.bcmap",
+      "bytes": 44086,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniGB-UTF16-V.bcmap",
+      "bytes": 178,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniGB-UTF32-H.bcmap",
+      "bytes": 45738,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniGB-UTF32-V.bcmap",
+      "bytes": 182,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniGB-UTF8-H.bcmap",
+      "bytes": 46837,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniGB-UTF8-V.bcmap",
+      "bytes": 181,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS-UCS2-H.bcmap",
+      "bytes": 25439,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS-UCS2-HW-H.bcmap",
+      "bytes": 119,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS-UCS2-HW-V.bcmap",
+      "bytes": 680,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS-UCS2-V.bcmap",
+      "bytes": 664,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS-UTF16-H.bcmap",
+      "bytes": 39443,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS-UTF16-V.bcmap",
+      "bytes": 643,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS-UTF32-H.bcmap",
+      "bytes": 40539,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS-UTF32-V.bcmap",
+      "bytes": 677,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS-UTF8-H.bcmap",
+      "bytes": 41695,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS-UTF8-V.bcmap",
+      "bytes": 678,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS2004-UTF16-H.bcmap",
+      "bytes": 39534,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS2004-UTF16-V.bcmap",
+      "bytes": 647,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS2004-UTF32-H.bcmap",
+      "bytes": 40630,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS2004-UTF32-V.bcmap",
+      "bytes": 681,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS2004-UTF8-H.bcmap",
+      "bytes": 41779,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJIS2004-UTF8-V.bcmap",
+      "bytes": 682,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJISPro-UCS2-HW-V.bcmap",
+      "bytes": 705,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJISPro-UCS2-V.bcmap",
+      "bytes": 689,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJISPro-UTF8-V.bcmap",
+      "bytes": 726,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJISX0213-UTF32-H.bcmap",
+      "bytes": 40517,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJISX0213-UTF32-V.bcmap",
+      "bytes": 684,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJISX02132004-UTF32-H.bcmap",
+      "bytes": 40608,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniJISX02132004-UTF32-V.bcmap",
+      "bytes": 688,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniKS-UCS2-H.bcmap",
+      "bytes": 25783,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniKS-UCS2-V.bcmap",
+      "bytes": 178,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniKS-UTF16-H.bcmap",
+      "bytes": 26327,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniKS-UTF16-V.bcmap",
+      "bytes": 164,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniKS-UTF32-H.bcmap",
+      "bytes": 26451,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniKS-UTF32-V.bcmap",
+      "bytes": 168,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniKS-UTF8-H.bcmap",
+      "bytes": 27790,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/UniKS-UTF8-V.bcmap",
+      "bytes": 169,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/V.bcmap",
+      "bytes": 166,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/cmaps/WP-Symbol.bcmap",
+      "bytes": 179,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/pdfjs/iccs/CGATS001Compat-v2-micro.icc",
+      "bytes": 8464,
+      "group": "pdfjs"
+    },
+    {
+      "url": "/data/mots-fr.txt",
+      "bytes": 3550456,
+      "group": "data"
+    }
+  ]
+}

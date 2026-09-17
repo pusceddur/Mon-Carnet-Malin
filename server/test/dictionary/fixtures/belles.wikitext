@@ -1,0 +1,10 @@
+== {{langue|fr}} ==
+=== {{S|adjectif|fr|flexion}} ===
+{{fr-accord-eau|b|bɛl}}
+'''belles''' {{pron|bɛl|fr}}
+# ''Féminin pluriel de'' [[beau]].
+
+=== {{S|nom|fr|flexion}} ===
+{{fr-rég|bɛl|s=belle}}
+'''belles''' {{pron|bɛl|fr}} {{f}}
+# ''Pluriel de'' [[belle]].

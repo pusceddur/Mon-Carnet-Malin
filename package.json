@@ -16,6 +16,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:ocr": "npm run test:ocr -w client",
+    "eval:ai": "tsx private/ai-eval/ai-eval.ts",
+    "eval:ai:mock": "tsx private/ai-eval/ai-eval.ts --mock",
     "db:migrate": "npm run migrate -w server",
     "create-parent": "npm run create-parent -w server --"
   },

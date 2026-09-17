@@ -1,0 +1,5 @@
+== {{langue|fr}} ==
+=== {{S|adjectif|fr|flexion}} ===
+{{fr-accord-rég|ʒɔ.li|ms=joli}}
+'''jolies''' {{pron|ʒɔ.li|fr}}
+# ''Féminin pluriel de'' {{lien|joli|fr}}.

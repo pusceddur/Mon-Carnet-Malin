@@ -1,0 +1,13 @@
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: {{siècle|lang=fr|XIII}} Composé de ''{{lien|bon|fr}}'' et de ''{{lien|jour|fr}}''.
+
+=== {{S|interjection|fr}} ===
+'''bonjour''' {{pron|bɔ̃.ʒuʁ|fr}}
+# [[salutation|Salutation]] utilisée quand on [[rencontrer|rencontre]] quelqu’un dans la [[journée]].
+#* {{exemple|lang=fr|'''Bonjour''', madame !}}
+
+=== {{S|nom|fr}} ===
+{{fr-rég|bɔ̃.ʒuʁ}}
+'''bonjour''' {{pron|bɔ̃.ʒuʁ|fr}} {{m}}
+# [[salut|Salut]] que l’on donne en disant « bonjour ».

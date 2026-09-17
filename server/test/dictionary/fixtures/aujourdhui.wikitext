@@ -1,0 +1,14 @@
+{{voir|aujourd'hui}}
+== {{langue|fr}} ==
+=== {{S|étymologie}} ===
+: De ''{{lien|au jour|fr}}'' et de ''{{lien|hui|fro}}''.
+
+=== {{S|adverbe|fr}} ===
+'''aujourd’hui''' {{pron|o.ʒuʁ.dɥi|fr}}
+# Au {{lien|jour|fr}} où l’on est, [[ce]] jour-ci.
+#* {{exemple|lang=fr|'''Aujourd’hui''', il pleut.}}
+# {{par extension}} À l’[[époque]] [[actuel]]le, de nos jours.
+
+=== {{S|nom|fr}} ===
+'''aujourd’hui''' {{pron|o.ʒuʁ.dɥi|fr}} {{m}}
+# Le temps présent.

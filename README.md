@@ -36,6 +36,8 @@ Ce projet s'appuie sur les bibliothèques gratuites et open source suivantes, ch
 | [perfect-freehand](https://github.com/steveruizok/perfect-freehand) | Tracés à main levée | MIT |
 | [Workbox](https://developer.chrome.com/docs/workbox) (workbox-window) | Fonctionnement hors ligne | MIT |
 | [an-array-of-french-words](https://github.com/words/an-array-of-french-words) | Liste de mots français | MIT |
+| [fflate](https://github.com/101arrowz/fflate) | Lecture des fichiers EPUB (zip) | MIT |
+| [Capacitor](https://capacitorjs.com) (@capacitor/core) | Application iPad : voix du système | MIT |
 
 ### Polices de caractères
 
@@ -83,6 +85,7 @@ Ce projet s'appuie sur les bibliothèques gratuites et open source suivantes, ch
 |---|---|---|
 | [Wiktionnaire](https://fr.wiktionary.org) | Définitions de mots | CC BY-SA 4.0 |
 | Web Speech API | Lecture à voix haute avec les voix de l'appareil | Fonction intégrée du navigateur |
+| Synthèse vocale d'iPadOS | Lecture à voix haute dans l'app iPad | Fonction intégrée du système |
 
 ---
 

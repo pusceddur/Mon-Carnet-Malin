@@ -1,3 +1,21 @@
-// STUB: client-shell
-// French UI strings for the "notes" area. Nested plain objects of strings; placeholders use {name}.
-export const notes = {} as const;
+// French UI strings of « Mes notes ». Placeholders use {name}.
+export const notes = {
+  documentTitle: 'Mes notes',
+  title: 'Mes notes',
+  back: 'Accueil',
+  openBook: 'Ouvrir le livre',
+  page: 'Page {page}',
+  openAtPage: 'Ouvrir à la page {page}',
+  highlights: 'Ce que j’ai surligné',
+  drawingsOne: '1 dessin ou note écrite',
+  drawingsMany: '{count} dessins ou notes écrites',
+  answers: 'Mes réponses écrites',
+  drawnAnswer: 'Réponse dessinée',
+  openQuiz: 'Revoir l’exercice',
+  detached: 'Note détachée du texte',
+  detachedHint: 'Le texte de la page a changé : cette note n’a plus de place.',
+  detachedDrawing: 'Dessin sur le texte',
+  emptyTitle: 'Pas encore de note',
+  emptyMessage: 'Surligne ou écris dans un livre : tes notes seront ici.',
+  untitled: 'Livre sans titre',
+} as const;
