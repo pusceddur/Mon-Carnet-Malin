@@ -8,7 +8,9 @@ import { applyPush, type RawChanges } from '../db/sync/push';
 import { appError, parseOrThrow } from '../errors';
 import type { AppDeps } from '../types';
 
-const RawList = z.array(z.unknown()).default([]);
+/** Well above the client batch (1000 entities per request), low enough to bound memory and transaction time. */
+const MAX_ROWS_PER_TABLE = 2000;
+const RawList = z.array(z.unknown()).max(MAX_ROWS_PER_TABLE).default([]);
 
 /** Envelope only: every entity is validated on its own so that one bad row yields a `rejected` entry, not a 400. */
 const SyncEnvelopeSchema = z.object({

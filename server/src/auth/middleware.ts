@@ -1,5 +1,5 @@
 import type { Request, RequestHandler } from 'express';
-import { rateLimit } from 'express-rate-limit';
+import { ipKeyGenerator, rateLimit } from 'express-rate-limit';
 import { findUserById } from '../db/repositories/users';
 import { appError, ERROR_MESSAGES_FR, sendError } from '../errors';
 import type { AppDeps } from '../types';
@@ -69,6 +69,11 @@ export interface LimiterOptions {
 }
 
 /** In-memory rate limiter answering 429 `rate_limited` (no-op when deps.disableRateLimits). */
+/** Rate-limit key of the caller's address (IPv6 safe). Needs TRUST_PROXY behind a reverse proxy, else every caller shares one key. */
+export function ipKey(req: Request): string {
+  return ipKeyGenerator(req.ip ?? 'unknown');
+}
+
 export function rateLimiter(deps: AppDeps, opts: LimiterOptions): RequestHandler {
   if (deps.disableRateLimits) return (_req, _res, next) => next();
   return rateLimit({

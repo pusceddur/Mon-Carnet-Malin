@@ -7,7 +7,7 @@ import { pipeline } from 'node:stream/promises';
 import { IdSchema, PageIndexSchema } from '@aide/shared';
 import { type RequestHandler, Router } from 'express';
 import { z } from 'zod';
-import { parentIdOf, rateLimiter, requireAuth, requireParentUnlock, requireXRequestedWith } from '../auth/middleware';
+import { ipKey, parentIdOf, rateLimiter, requireAuth, requireParentUnlock, requireXRequestedWith } from '../auth/middleware';
 import { getDocument } from '../db/repositories/documents';
 import { findStoredFile } from '../db/repositories/files';
 import {
@@ -38,6 +38,16 @@ const LEASE_CANDIDATES = 10;
 /** Housekeeping (expired leases and jobs) runs at most this often during a long poll. */
 const RECLAIM_EVERY_MS = 5_000;
 const RATE_LIMIT_PER_MINUTE = 600;
+/** Requests allowed before the token is checked (a worker sends a few per minute). */
+const ANONYMOUS_RATE_LIMIT_PER_MINUTE = 120;
+
+/** Worker name of the request (body or query), for the per-worker rate limit. */
+function workerKey(req: { body?: unknown; query?: unknown }): string {
+  const fromBody = (req.body as { worker?: unknown } | undefined)?.worker;
+  const fromQuery = (req.query as { worker?: unknown } | undefined)?.worker;
+  const name = typeof fromBody === 'string' ? fromBody : typeof fromQuery === 'string' ? fromQuery : '';
+  return name.slice(0, 64) || 'unknown';
+}
 
 function tokenDigest(token: string): Buffer {
   return createHash('sha256').update(token, 'utf8').digest();
@@ -151,8 +161,11 @@ export function createWorkerRouter(deps: AppDeps): Router {
   });
 
   // ---- worker (bearer token)
-  router.use(rateLimiter(deps, { windowMs: 60_000, limit: RATE_LIMIT_PER_MINUTE, key: (req) => `worker:${req.ip ?? 'unknown'}` }));
+  // Before the token check: bounds anonymous traffic (needs TRUST_PROXY behind a reverse proxy, otherwise one shared bucket).
+  router.use(rateLimiter(deps, { windowMs: 60_000, limit: ANONYMOUS_RATE_LIMIT_PER_MINUTE, key: (req) => `worker-anon:${ipKey(req)}` }));
   router.use(bearerAuth(deps, tokenSha256));
+  // After the token check: per worker, so wrong-token traffic can never spend the real worker's budget.
+  router.use(rateLimiter(deps, { windowMs: 60_000, limit: RATE_LIMIT_PER_MINUTE, key: (req) => `worker:${workerKey(req)}` }));
 
   router.post('/lease', async (req, res) => {
     const body = parseOrThrow(LeaseRequestSchema, req.body);

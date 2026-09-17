@@ -16,7 +16,7 @@ import {
   getInvitation, invitationLockedUntil, inviteCodeMatches, isInvitationUsable, registerInvitationFailure, resetInvitationFailures,
 } from './invitation';
 import { isLocked, lockUntilAfterFailure } from './lockout';
-import { rateLimiter, requireAuth, requireParentUnlock } from './middleware';
+import { rateLimiter, requireAuth, requireParentUnlock, ipKey } from './middleware';
 import { dummyHash, hashSecret, timingSafeEqualString, verifySecret } from './passwords';
 import { type AuthContext, clearSessionCookie, createSession, readSessionToken, hashSessionToken, resolveSession, setSessionCookie } from './sessions';
 
@@ -94,6 +94,10 @@ export function createAuthRouter(deps: AppDeps): Router {
   const setupLimiter = rateLimiter(deps, { windowMs: FIFTEEN_MINUTES, limit: 10, key: () => 'setup', failedOnly: true });
   const registerLimiter = rateLimiter(deps, { windowMs: FIFTEEN_MINUTES, limit: 10, key: () => 'register', failedOnly: true });
   const loginLimiter = rateLimiter(deps, { windowMs: FIFTEEN_MINUTES, limit: 10, key: emailKey, failedOnly: true });
+  // Every login verifies a password hash on purpose (also for unknown e-mails, against account enumeration), which costs
+  // CPU: these two limiters bound that cost before the hash is computed, per caller and for the whole server.
+  const loginIpLimiter = rateLimiter(deps, { windowMs: FIFTEEN_MINUTES, limit: 30, key: (req) => `login-ip:${ipKey(req)}` });
+  const loginAllLimiter = rateLimiter(deps, { windowMs: 60_000, limit: 60, key: () => 'login-all' });
   const unlockLimiter = rateLimiter(deps, {
     windowMs: FIFTEEN_MINUTES,
     limit: 5,
@@ -148,7 +152,7 @@ export function createAuthRouter(deps: AppDeps): Router {
     res.status(201).json(await buildAuthStatus(deps, ctx));
   });
 
-  router.post('/login', loginLimiter, async (req, res) => {
+  router.post('/login', loginAllLimiter, loginIpLimiter, loginLimiter, async (req, res) => {
     const body = parseOrThrow(LoginRequestSchema, req.body);
     const user = await findUserByEmail(deps.db, body.email);
     if (!user) {
