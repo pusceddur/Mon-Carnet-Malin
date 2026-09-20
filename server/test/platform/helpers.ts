@@ -12,6 +12,7 @@ import { createApp } from '../../src/app';
 import { createParentAccount } from '../../src/auth/createParent';
 import { type AppConfig, loadConfig } from '../../src/config';
 import { createDb, runMigrations } from '../../src/db/knex';
+import type { Mailer } from '../../src/email/mailer';
 import { silentLogger } from '../../src/logger';
 
 export const PASSWORD = 'motdepasse-solide-42';
@@ -34,7 +35,9 @@ export interface TestContext {
   close(): Promise<void>;
 }
 
-export async function createTestContext(opts: { env?: Record<string, string>; rateLimits?: boolean; clientDist?: string } = {}): Promise<TestContext> {
+export async function createTestContext(
+  opts: { env?: Record<string, string>; rateLimits?: boolean; clientDist?: string; mailer?: Mailer } = {},
+): Promise<TestContext> {
   const dataDir = mkdtempSync(join(tmpdir(), 'aide-platform-'));
   const config = loadConfig({
     NODE_ENV: 'test',
@@ -46,7 +49,7 @@ export async function createTestContext(opts: { env?: Record<string, string>; ra
   const db = createDb(config.databaseUrl);
   await runMigrations(db);
   const clock = { now: T0 };
-  const app = createApp({ config, db, logger: silentLogger, now: () => clock.now, disableRateLimits: !opts.rateLimits });
+  const app = createApp({ config, db, logger: silentLogger, now: () => clock.now, disableRateLimits: !opts.rateLimits, mailer: opts.mailer });
   return {
     app,
     db,
@@ -135,6 +138,9 @@ export function makeDocument(parentId: string, overrides: Partial<DocumentMeta> 
     childIds: [],
     title: 'Les volcans',
     kind: 'pdf',
+    textMode: 'faithful',
+    purpose: 'reading',
+    homeworkDoneAt: null,
     sourceHash: HASH_A,
     pageCount: 2,
     status: 'ready',

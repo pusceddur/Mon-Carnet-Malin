@@ -1,5 +1,6 @@
-// Annotation persistence (Dexie through saveEntity) and undoable commands: add, erase, partial erase, clear page, highlight.
-import { newId, type Annotation, type Id, type InkAnnotation, type PageContent, type TextHighlight } from '@aide/shared';
+// Annotation persistence (Dexie through saveEntity) and undoable commands: add, erase, partial erase, clear page, highlight,
+// text boxes of the original page (§19.2).
+import { newId, type Annotation, type Id, type InkAnnotation, type PageContent, type TextBoxAnnotation, type TextHighlight } from '@aide/shared';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo } from 'react';
 import { db } from '../db/localDb';
@@ -120,6 +121,50 @@ export async function addTextHighlight(h: Omit<TextHighlight, 'id' | 'type' | 'c
   return highlight;
 }
 
+/** Text boxes of a page of the original view, oldest first. */
+export function useTextBoxes(documentId: Id, childId: Id, pageIndex: number): TextBoxAnnotation[] {
+  const all = useAnnotations(documentId, childId);
+  return useMemo(
+    () => all.filter((a): a is TextBoxAnnotation => a.type === 'textbox' && a.pageIndex === pageIndex).sort((x, y) => x.createdAt - y.createdAt),
+    [all, pageIndex],
+  );
+}
+
+export type TextBoxInput = Omit<TextBoxAnnotation, 'id' | 'type' | 'createdAt' | 'updatedAt' | 'deletedAt'>;
+export type TextBoxPatch = Partial<Pick<TextBoxAnnotation, 'text' | 'x' | 'y' | 'width' | 'fontSize' | 'color'>>;
+
+/** New text box, as one undoable action. */
+export async function addTextBox(input: TextBoxInput): Promise<TextBoxAnnotation> {
+  const now = Date.now();
+  const box: TextBoxAnnotation = { ...input, id: newId(), type: 'textbox', createdAt: now, updatedAt: now, deletedAt: null };
+  await addAnnotations([box], historyKeyFor(box));
+  return box;
+}
+
+/**
+ * Text, place, size or colour of a text box. Not in the undo history (the text field has its own undo). Serialized with the
+ * other annotation writes, so that a late save never brings back a box that was just removed.
+ */
+export function updateTextBox(id: Id, patch: TextBoxPatch): Promise<void> {
+  return runExclusive(async () => {
+    const current = await db.annotations.get(id);
+    if (!current || current.type !== 'textbox' || current.deletedAt !== null) return;
+    if ((Object.keys(patch) as (keyof TextBoxPatch)[]).every((k) => patch[k] === current[k])) return;
+    await saveEntity('annotations', { ...current, ...patch, updatedAt: nextUpdatedAt(current.updatedAt) });
+  });
+}
+
+/** Last text of a box the child leaves: saved, or the box disappears when it is empty (without an undo step). */
+export function finishTextBox(id: Id, text: string): Promise<void> {
+  return runExclusive(async () => {
+    const current = await db.annotations.get(id);
+    if (!current || current.type !== 'textbox' || current.deletedAt !== null) return;
+    const updatedAt = nextUpdatedAt(current.updatedAt);
+    if (text.trim() === '') await saveEntity('annotations', { ...current, text: '', deletedAt: updatedAt, updatedAt });
+    else if (text !== current.text) await saveEntity('annotations', { ...current, text, updatedAt });
+  });
+}
+
 export async function removeAnnotation(id: Id): Promise<void> {
   const existing = await db.annotations.get(id);
   if (!existing || existing.deletedAt !== null) return;
@@ -140,6 +185,8 @@ export function clearPageAnnotations(target: PageTarget): Promise<number> {
     const onPage = all.filter((a) => {
       if (annotationPageIndex(a) !== target.pageIndex) return false;
       if (a.type === 'highlight') return target.view === 'text';
+      // Text boxes (§19.2) live on the original page.
+      if (a.type === 'textbox') return target.view === 'original';
       return a.space.kind === target.view;
     });
     const snapshots: Annotation[] = [];

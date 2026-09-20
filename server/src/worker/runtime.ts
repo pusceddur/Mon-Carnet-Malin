@@ -84,6 +84,8 @@ export class WorkerPresence {
   }
 }
 
+const QUEUED_EVENT = '\u0000queued';
+
 export class WorkerRuntime {
   readonly presence: WorkerPresence;
   private readonly events = new EventEmitter();
@@ -102,6 +104,16 @@ export class WorkerRuntime {
   onJob(jobId: string, listener: () => void): () => void {
     this.events.on(jobId, listener);
     return () => this.events.off(jobId, listener);
+  }
+
+  /** A job was queued in this process: a waiting lease of this process looks at once. */
+  notifyQueued(): void {
+    this.events.emit(QUEUED_EVENT);
+  }
+
+  onQueued(listener: () => void): () => void {
+    this.events.on(QUEUED_EVENT, listener);
+    return () => this.events.off(QUEUED_EVENT, listener);
   }
 
   /** Aborted on graceful shutdown: long polls answer at once and pending waits give up. */

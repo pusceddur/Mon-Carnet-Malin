@@ -70,4 +70,24 @@ export const TextHighlightSchema = z.object({
   deletedAt: MillisSchema.nullable(),
 });
 
-export const AnnotationSchema = z.discriminatedUnion('type', [InkAnnotationSchema, TextHighlightSchema]);
+export const TEXT_BOX_MAX_CHARS = 2000;
+export const TEXT_BOX_FONT_SIZE = { min: 0.012, max: 0.08, default: 0.022 } as const;
+
+export const TextBoxAnnotationSchema = z.object({
+  id: IdSchema,
+  type: z.literal('textbox'),
+  childId: IdSchema,
+  documentId: IdSchema,
+  pageIndex: PageIndexSchema,
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  width: z.number().min(0.02).max(1),
+  fontSize: z.number().min(TEXT_BOX_FONT_SIZE.min).max(TEXT_BOX_FONT_SIZE.max),
+  color: ColorHexSchema,
+  text: z.string().max(TEXT_BOX_MAX_CHARS),
+  createdAt: MillisSchema,
+  updatedAt: MillisSchema,
+  deletedAt: MillisSchema.nullable(),
+});
+
+export const AnnotationSchema = z.discriminatedUnion('type', [InkAnnotationSchema, TextHighlightSchema, TextBoxAnnotationSchema]);

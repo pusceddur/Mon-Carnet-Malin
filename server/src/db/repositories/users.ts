@@ -12,6 +12,11 @@ export interface UserRecord {
   loginFailedCount: number;
   loginLockedUntil: number | null;
   isOwner: boolean;
+  /** §20: false = the Réglages open without the code. */
+  pinRequired: boolean;
+  /** §20: last confirmation of use (login, or link of the e-mail sent every 180 days). */
+  continuityConfirmedAt: number | null;
+  continuityEmailSentAt: number | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -28,6 +33,9 @@ function fromRow(row: Row): UserRecord {
     loginFailedCount: toNum(row.login_failed_count),
     loginLockedUntil: toNumOrNull(row.login_locked_until),
     isOwner: toBool(row.is_owner),
+    pinRequired: row.pin_required === undefined || row.pin_required === null ? true : toBool(row.pin_required),
+    continuityConfirmedAt: toNumOrNull(row.continuity_confirmed_at),
+    continuityEmailSentAt: toNumOrNull(row.continuity_email_sent_at),
     createdAt: toNum(row.created_at),
     updatedAt: toNum(row.updated_at),
   };
@@ -67,6 +75,8 @@ export async function insertUser(
     login_failed_count: 0,
     login_locked_until: null,
     is_owner: user.isOwner,
+    pin_required: true,
+    continuity_confirmed_at: user.now,
     created_at: user.now,
     updated_at: user.now,
   });
@@ -78,6 +88,33 @@ export async function updatePasswordHash(db: Db, id: string, passwordHash: strin
 
 export async function updatePinHash(db: Db, id: string, pinHash: string, now: number): Promise<void> {
   await db('users').where('id', id).update({ pin_hash: pinHash, pin_failed_count: 0, pin_locked_until: null, updated_at: now });
+}
+
+export async function setPinRequired(db: Db, id: string, required: boolean, now: number): Promise<void> {
+  await db('users').where('id', id).update({ pin_required: required, updated_at: now });
+}
+
+/** §20: the account is still in use (login, or the link of the e-mail): the next e-mail comes 180 days later. */
+export async function confirmContinuity(db: Db, id: string, now: number): Promise<void> {
+  await db('users').where('id', id).update({ continuity_confirmed_at: now, continuity_email_sent_at: null });
+}
+
+export async function markContinuityEmailSent(db: Db, id: string, now: number): Promise<void> {
+  await db('users').where('id', id).update({ continuity_email_sent_at: now });
+}
+
+/** Accounts whose last confirmation is older than `confirmedBefore` and that have no e-mail pending. */
+export async function listUsersToAskContinuity(db: Db, confirmedBefore: number): Promise<UserRecord[]> {
+  const rows = (await db('users')
+    .where((q) => q.whereNull('continuity_confirmed_at').orWhere('continuity_confirmed_at', '<', confirmedBefore))
+    .whereNull('continuity_email_sent_at')) as Row[];
+  return rows.map(fromRow);
+}
+
+/** Accounts that received the e-mail before `sentBefore` and did not confirm since. */
+export async function listUsersWithExpiredContinuity(db: Db, sentBefore: number): Promise<UserRecord[]> {
+  const rows = (await db('users').whereNotNull('continuity_email_sent_at').andWhere('continuity_email_sent_at', '<', sentBefore)) as Row[];
+  return rows.map(fromRow);
 }
 
 export type AttemptKind = 'pin' | 'login';

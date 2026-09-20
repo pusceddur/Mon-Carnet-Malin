@@ -1,4 +1,4 @@
-import type { ExplanationDifficulty, ExercisePreferences, ReadingPreferences, TTSPreferences } from './types/domain';
+import type { ExplanationDifficulty, ExercisePreferences, ReadingAids, ReadingPreferences, TTSPreferences } from './types/domain';
 import type { InkTool, Thickness } from './types/annotations';
 import type { QuestionType } from './types/exercises';
 import type { ParentSettings } from './types/settings';
@@ -11,6 +11,8 @@ export const PROMPT_VERSION = '2026-09-16.1';
 
 export const QUESTION_TYPES: readonly QuestionType[] = ['qcm', 'vrai_faux', 'reponse_libre', 'association', 'ordre'];
 
+export const DEFAULT_READING_AIDS: ReadingAids = { syllables: false, silentLetters: false, sounds: false, changedLetters: false, liaisons: false };
+
 export const DEFAULT_READING_PREFERENCES: ReadingPreferences = {
   font: 'lexend',
   fontSizePx: 24,
@@ -22,6 +24,7 @@ export const DEFAULT_READING_PREFERENCES: ReadingPreferences = {
   layoutMode: 'page',
   sentenceHighlight: true,
   readingGuide: false,
+  aids: DEFAULT_READING_AIDS,
 };
 
 export const DEFAULT_TTS_PREFERENCES: TTSPreferences = {
@@ -47,6 +50,8 @@ export const DEFAULT_PARENT_SETTINGS: ParentSettings = {
       questions: true,
       correctAnswers: true,
       questionOnText: true,
+      freeQuestion: true,
+      correctWriting: true,
     },
     dailyRequestLimitPerChild: 60,
     monthlyBudgetEur: 10,
@@ -84,6 +89,8 @@ export const LIMITS = {
   explainTextMaxChars: 1200,
   selectionMaxChars: 4000,
   questionOnTextMaxChars: 200,
+  freeQuestionMaxChars: 300,            // §18 « Pose ta question »
+  writingMaxLines: 100,                 // §24 « Corriger »: lines of a text box sent for correction
   answerMaxChars: 1000,
   pagesMaxTotalChars: 200000,
   // tier selection (§8.2 step 5, §15.4)
@@ -177,6 +184,10 @@ export const KID_MESSAGES = {
   budget: "Tu as beaucoup travaillé ce mois-ci ! L'aide revient bientôt.",
   strict: "Demande à un adulte de t'aider pour ce passage.",
   sourceWarning: '⚠️ Une partie du texte a peut-être été mal lue.',
+  // §18 free questions (not about a book passage).
+  questionBlocked: "Je ne peux pas répondre à cette question. Tu peux en parler avec un adulte de confiance.",
+  questionAdultRedirect: 'Cette question est importante. Parles-en avec un adulte de confiance, il saura t’aider. 💛',
+  questionStrict: "Pour cette question, demande plutôt à un adulte.",
 } as const;
 
 /** §11.5 ink palette. */

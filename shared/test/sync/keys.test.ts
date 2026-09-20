@@ -32,7 +32,7 @@ describe('syncEntityKey', () => {
       id: 'ses-1', childId: 'c', documentId: 'd', startedAt: 1, endedAt: 2, pagesViewed: [], ttsSeconds: 0, wordsLookedUp: 0, aiRequests: 0, updatedAt: 2,
     })).toBe('ses-1');
     expect(syncEntityKey('documents', {
-      id: 'doc-1', ownerParentId: 'p', childIds: [], title: 'Livre', kind: 'pdf', sourceHash: 'x', pageCount: 1, status: 'ready',
+      id: 'doc-1', ownerParentId: 'p', childIds: [], title: 'Livre', kind: 'pdf', textMode: 'faithful', purpose: 'reading', homeworkDoneAt: null, sourceHash: 'x', pageCount: 1, status: 'ready',
       createdAt: 1, updatedAt: 1, deletedAt: null,
     })).toBe('doc-1');
     expect(syncEntityKey('children', {

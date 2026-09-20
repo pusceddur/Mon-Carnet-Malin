@@ -29,6 +29,12 @@ export function isFrenchVoice(voice: Pick<VoiceLike, 'lang'>): boolean {
   return normalizeLang(voice.lang).startsWith('fr');
 }
 
+/** French of France (or French without a region). The other accents (Canada, Belgique, Suisse…) are a choice of their own. */
+export function isFranceFrench(voice: Pick<VoiceLike, 'lang'>): boolean {
+  const lang = normalizeLang(voice.lang);
+  return lang === 'fr-FR' || lang === 'fr';
+}
+
 /**
  * Perceived quality of a system voice, from its URI and name (Safari/iOS, macOS, Chrome, Edge):
  * - premium / enhanced: Apple voices downloaded in the device settings (natural prosody and pauses);
@@ -64,19 +70,22 @@ export function voiceQuality(voice: Pick<VoiceLike, 'voiceURI' | 'name' | 'local
 
 const QUALITY_ORDER: Readonly<Record<VoiceQuality, number>> = { premium: 0, enhanced: 1, natural: 2, standard: 3, robotic: 9 };
 
+/**
+ * Groups first: French of France, then the other accents (a natural Canadian voice never beats a standard French one: the
+ * accent is only chosen by hand, decision 2026-09-19), then network voices while offline (they cannot speak), then robotic
+ * voices. Inside a group: quality, system default, on-device.
+ */
 function rank(voice: VoiceLike, online: boolean): number {
   const quality = voiceQuality(voice);
-  // A network voice cannot speak offline: after the on-device voices.
-  const qualityRank = !voice.localService && !online ? 5 : QUALITY_ORDER[quality];
-  const lang = normalizeLang(voice.lang);
-  return qualityRank * 100 + (lang === 'fr-FR' ? 0 : 20) + (voice.default ? 0 : 2) + (voice.localService ? 0 : 1);
+  const group = quality === 'robotic' ? 3 : !voice.localService && !online ? 2 : isFranceFrench(voice) ? 0 : 1;
+  return group * 1000 + QUALITY_ORDER[quality] * 100 + (voice.default ? 0 : 2) + (voice.localService ? 0 : 1);
 }
 
 function isOnlineNow(): boolean {
   return typeof navigator === 'undefined' || navigator.onLine !== false;
 }
 
-/** French voices only, best quality first (robotic voices last), then fr-FR, system default, on-device, name. */
+/** French voices only: France first, then the other accents, each by quality (robotic voices last), then system default, on-device, name. */
 export function sortFrenchVoices<V extends VoiceLike>(voices: readonly V[], online: boolean = isOnlineNow()): V[] {
   return voices
     .filter(isFrenchVoice)
@@ -85,8 +94,9 @@ export function sortFrenchVoices<V extends VoiceLike>(voices: readonly V[], onli
 }
 
 /**
- * Voice to use: the preferred URI when it is still installed, otherwise the best French voice by quality.
- * Robotic voices are only used when they are the only French voices. Null when the device has no French voice.
+ * Voice to use: the preferred URI when it is still installed (any accent chosen by hand), otherwise the best voice of France,
+ * another accent only when the device has none. Robotic voices are only used when they are the only French voices. Null when
+ * the device has no French voice.
  */
 export function pickFrenchVoice<V extends VoiceLike>(voices: readonly V[], preferredURI: string | null, online: boolean = isOnlineNow()): V | null {
   if (preferredURI) {

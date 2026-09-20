@@ -3,11 +3,12 @@ import { LIMITS, PREFERENCE_RANGES } from '../constants';
 import type { AIOperation } from '../types/ai';
 import { IdSchema, PageIndexSchema, QuestionTypeSchema, Sha256HexSchema } from './common';
 import { ExplanationDifficultySchema, QuestionCountSchema, ReadingLevelSchema } from './domain';
+import { TEXT_BOX_MAX_CHARS } from './annotations';
 import { QuestionSchema, ReponseLibreQuestionSchema, SourceRefSchema, VerdictSchema } from './exercises';
 
 export const AIOperationSchema = z.enum([
   'explain_word', 'explain_text', 'simplify_text', 'summarize', 'generate_questions', 'correct_answer', 'question_on_text',
-  'recognize_handwriting',
+  'recognize_handwriting', 'free_question', 'correct_writing',
 ]);
 export const AIRouteSchema = z.enum(['local', 'light', 'complex']);
 export const SummaryLevelSchema = z.enum(['bref', 'normal', 'detaille']);
@@ -99,6 +100,27 @@ export const RecognizeHandwritingRequestSchema = AIRequestBaseSchema.extend({
     .regex(/^[A-Za-z0-9+/]+={0,2}$/),
 });
 
+/** §18: free question, never tied to a document. */
+export const FreeQuestionRequestSchema = AIRequestBaseSchema.extend({
+  documentId: z.null(),
+  documentHash: z.null(),
+  question: z.string().trim().min(1).max(LIMITS.freeQuestionMaxChars),
+  previous: z.object({
+    question: z.string().trim().min(1).max(LIMITS.freeQuestionMaxChars),
+    answer: z.string().max(LIMITS.answerMaxChars),
+  }).nullable().default(null),
+  mode: z.enum(['normal', 'simpler']).default('normal'),
+});
+
+/** §24 « Corriger »: the text of a text box, not empty, lines kept. */
+export const CorrectWritingRequestSchema = AIRequestBaseSchema.extend({
+  text: z.string().max(TEXT_BOX_MAX_CHARS)
+    .refine((t) => t.trim().length > 0, { message: 'empty_text' })
+    .refine((t) => t.split('\n').length <= LIMITS.writingMaxLines, { message: 'too_many_lines' }),
+  annotationId: IdSchema.nullable().default(null),
+  pageIndex: PageIndexSchema.nullable().default(null),
+});
+
 /** Request schema per operation (route `/api/ai/:operation`). */
 export const AIRequestSchemaByOperation = {
   explain_word: ExplainWordRequestSchema,
@@ -109,6 +131,8 @@ export const AIRequestSchemaByOperation = {
   correct_answer: CorrectAnswerRequestSchema,
   question_on_text: QuestionOnTextRequestSchema,
   recognize_handwriting: RecognizeHandwritingRequestSchema,
+  free_question: FreeQuestionRequestSchema,
+  correct_writing: CorrectWritingRequestSchema,
 } as const satisfies Record<AIOperation, z.ZodType>;
 
 /** Learner profile sent to providers (never the child's name or id). */
@@ -145,6 +169,21 @@ export const QuestionOnTextDataSchema = z.object({
   sourceRefs: z.array(SourceRefSchema),
 });
 export const HandwritingDataSchema = z.object({ text: z.string() });
+export const FreeQuestionDataSchema = z.object({
+  answer: z.string(),
+  example: z.string().nullable(),
+  suggestions: z.array(z.string()).max(3),
+});
+
+export const WritingChangeKindSchema = z.enum(['accent', 'orthographe', 'grammaire', 'ponctuation', 'majuscule', 'espace']);
+export const WritingChangeSchema = z.object({
+  line: z.number().int().nonnegative(),
+  from: z.string(),
+  to: z.string(),
+  kind: WritingChangeKindSchema,
+  rule: z.string().nullable(),
+});
+export const CorrectWritingDataSchema = z.object({ correctedText: z.string(), changes: z.array(WritingChangeSchema) });
 
 /** Data schema per operation (`summarize`: chunk stage or final stage). */
 export const AIDataSchemaByOperation = {
@@ -156,6 +195,8 @@ export const AIDataSchemaByOperation = {
   correct_answer: CorrectionDataSchema,
   question_on_text: QuestionOnTextDataSchema,
   recognize_handwriting: HandwritingDataSchema,
+  free_question: FreeQuestionDataSchema,
+  correct_writing: CorrectWritingDataSchema,
 } as const satisfies Record<AIOperation, z.ZodType>;
 
 export const AIMetaSchema = z.object({

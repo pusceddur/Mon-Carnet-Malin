@@ -65,6 +65,10 @@ export function verbatimSentences(text: string, maxWords = 18): string[] {
 }
 
 const EXPLANATION = 'Ce passage donne une information importante du texte. Relis la phrase citée pour bien la comprendre.';
+const FREE_ANSWER = "C'est une bonne question. Les scientifiques observent le monde et font des expériences pour trouver la réponse. Tu peux en apprendre plus dans un livre documentaire.";
+const FREE_ANSWER_SIMPLER = 'Les scientifiques regardent le monde avec attention. Ils essaient, puis ils vérifient.';
+const FREE_EXAMPLE = 'Comme toi quand tu testes si un objet flotte dans le bain.';
+const FREE_SUGGESTIONS = ['Comment travaillent les scientifiques ?', 'Où trouver un livre documentaire ?'];
 
 /** Deterministic valid outputs built from the request (quotes are verbatim document sentences). */
 export function generateMockOutput(req: AITransportRequest): unknown {
@@ -109,6 +113,20 @@ export function generateMockOutput(req: AITransportRequest): unknown {
         : { status: 'not_in_text', answer: '', sourceRefs: [] };
     case 'recognize_handwriting':
       return { status: 'ok', text: 'réponse écrite' };
+    case 'correct_writing': {
+      // Capital letter at the start of each line and a full stop at its end: a valid correction of any text.
+      const json = /<texte_de_l_enfant>\n([\s\S]*?)\n<\/texte_de_l_enfant>/.exec(req.userText)?.[1] ?? '[]';
+      const lines = (JSON.parse(json) as string[]).map((line) => {
+        if (line.trim() === '') return '';
+        const capital = line.charAt(0).toUpperCase() + line.slice(1);
+        return /[.!?…]$/.test(capital) ? capital : `${capital}.`;
+      });
+      return { status: 'ok', lines, notes: [{ from: 'x', to: 'X', rule: 'Majuscule au début de la phrase.' }] };
+    }
+    case 'free_question':
+      return /Réexplique beaucoup plus simplement/.test(req.userText)
+        ? { status: 'ok', answer: FREE_ANSWER_SIMPLER, example: FREE_EXAMPLE, suggestions: [] }
+        : { status: 'ok', answer: FREE_ANSWER, example: null, suggestions: FREE_SUGGESTIONS };
   }
 }
 

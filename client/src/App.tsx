@@ -1,9 +1,11 @@
 import { useEffect, type JSX } from 'react';
+import { setDeviceName } from './api/auth';
 import { RouterProvider } from 'react-router';
 import { useToast } from './design/components';
 import { applyTheme } from './design/reading';
 import { processingQueue } from './documents/ProcessingQueue';
 import { home } from './i18n/fr/home';
+import { describeThisDevice } from './platform/deviceName';
 import { isStandalonePwa, requestPersistentStorage } from './platform/support';
 import { router } from './routes';
 import { purgeStaleOfflineCaches } from './state/offlineAssets';
@@ -55,6 +57,15 @@ function ThemeSync(): null {
   return null;
 }
 
+/** §20: names this device in « Appareils connectés » once per start and account (best effort). */
+function DeviceNameSync(): null {
+  const parentId = useSessionStore((s) => (s.authStatus?.authenticated ? (s.authStatus.parent?.id ?? null) : null));
+  useEffect(() => {
+    if (parentId !== null) void setDeviceName({ name: describeThisDevice() }).catch(() => undefined);
+  }, [parentId]);
+  return null;
+}
+
 export default function App(): JSX.Element {
   useEffect(() => {
     bootOnce();
@@ -65,6 +76,7 @@ export default function App(): JSX.Element {
   return (
     <>
       <ThemeSync />
+      <DeviceNameSync />
       <UpdateNotice />
       <RouterProvider router={router} />
     </>

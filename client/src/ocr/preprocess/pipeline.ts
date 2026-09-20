@@ -40,12 +40,27 @@ export interface PreprocessOptions {
   regions?: boolean;
 }
 
+/**
+ * Geometric step of the preprocessing, relative to the image as it is at that step (so that it can be replayed at another
+ * resolution): the color copy of the page (§19.1) gets exactly the frame of the OCR image.
+ */
+export type FrameStep =
+  | { op: 'quarter'; turn: Exclude<QuarterTurn, 0> }
+  /** Page corners normalized 0..1 in the current image. */
+  | { op: 'warp'; quad: Point[] }
+  /** Rectangle as fractions of the current image. */
+  | { op: 'crop'; x: number; y: number; width: number; height: number }
+  /** Clockwise rotation, canvas expanded, white background. */
+  | { op: 'rotate'; degrees: number };
+
 export interface PreprocessResult {
   image: GrayImage;
   /** Detected skew (degrees, clockwise) that was corrected; 0 when none. */
   skewDegrees: number;
   /** Text regions in reading order when the page has columns; empty for a single-region page. */
   regions: Rect[];
+  /** Geometric steps applied to the input, in order (resizing excluded). */
+  frame: FrameStep[];
 }
 
 function fitSize(img: GrayImage, maxSide: number, minSide: number): GrayImage {
@@ -71,17 +86,24 @@ export function preprocessGray(input: GrayImage, options: PreprocessOptions = {}
   const maxSide = options.maxSide ?? MAX_PAGE_SIDE;
   const minSide = options.minSide ?? 1400;
   let img = input;
+  const frame: FrameStep[] = [];
+  const cropTo = (bounds: Rect): void => {
+    if (bounds.width >= img.width && bounds.height >= img.height) return;
+    frame.push({ op: 'crop', x: bounds.x / img.width, y: bounds.y / img.height, width: bounds.width / img.width, height: bounds.height / img.height });
+    img = cropGray(img, bounds);
+  };
 
   const turn = normalizeQuarterTurn(options.rotateDegrees ?? 0);
-  if (turn !== 0) img = rotateQuarter(img, turn);
+  if (turn !== 0) {
+    img = rotateQuarter(img, turn);
+    frame.push({ op: 'quarter', turn });
+  }
 
   const quad = options.quad && options.quad.length === 4 && !isFullFrameQuad(options.quad) ? options.quad : null;
   if (quad) {
-    const px = quad.map(([x, y]) => [
-      Math.min(1, Math.max(0, x)) * (img.width - 1),
-      Math.min(1, Math.max(0, y)) * (img.height - 1),
-    ] as const);
-    img = warpPerspective(img, px, maxSide);
+    const normalized = quad.map(([x, y]) => [Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y))] as const);
+    img = warpNormalized(img, normalized, maxSide);
+    frame.push({ op: 'warp', quad: normalized });
   }
 
   img = fitSize(img, maxSide, minSide);
@@ -93,8 +115,7 @@ export function preprocessGray(input: GrayImage, options: PreprocessOptions = {}
     // Dark background (table, scanner lid) first, so that it drives neither the skew estimate nor the OCR.
     img = whitenBorderBackground(img);
     if (options.flatten !== false) img = flattenIllumination(img);
-    const bounds = findContentBounds(img, { contentInkRatio: 1 });
-    if (bounds.width < img.width || bounds.height < img.height) img = cropGray(img, bounds);
+    cropTo(findContentBounds(img, { contentInkRatio: 1 }));
   }
 
   let skewDegrees = 0;
@@ -102,16 +123,20 @@ export function preprocessGray(input: GrayImage, options: PreprocessOptions = {}
     const angle = detectSkewAngle(img);
     if (Math.abs(angle) >= 0.3) {
       img = rotateArbitrary(img, -angle, { expand: true, background: 255 });
+      frame.push({ op: 'rotate', degrees: -angle });
       skewDegrees = angle;
     }
   }
 
-  if (crop) {
-    const bounds = findContentBounds(img);
-    if (bounds.width < img.width || bounds.height < img.height) img = cropGray(img, bounds);
-  }
+  if (crop) cropTo(findContentBounds(img));
   if (Math.max(img.width, img.height) > maxSide) img = fitSize(img, maxSide, 0);
-  return { image: img, skewDegrees, regions: options.regions === false ? [] : findTextRegions(img) };
+  return { image: img, skewDegrees, regions: options.regions === false ? [] : findTextRegions(img), frame };
+}
+
+/** Perspective correction from corners normalized 0..1 in `img`. */
+export function warpNormalized(img: GrayImage, quad: readonly Point[], maxSide: number): GrayImage {
+  const px = quad.map(([x, y]) => [x * (img.width - 1), y * (img.height - 1)] as const);
+  return warpPerspective(img, px, maxSide);
 }
 
 export function preprocessRgba(input: RgbaImage, options: PreprocessOptions = {}): PreprocessResult {

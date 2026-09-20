@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { newId, type PageContent } from '@aide/shared';
+import { type DocumentMeta, newId, type PageContent } from '@aide/shared';
 import request from 'supertest';
 import { insertWorkerJob, type NewWorkerJob } from '../../src/db/repositories/workerJobs';
 import type { LeaseResponse, WorkerJobKind } from '../../src/worker/protocol';
@@ -80,9 +80,11 @@ export interface PageFixture {
 }
 
 /** A parent with a synced document (pages pushed through /api/sync when given). */
-export async function parentWithDocument(ctx: TestContext, email: string, pages: Partial<PageContent>[] = []): Promise<PageFixture> {
+export async function parentWithDocument(
+  ctx: TestContext, email: string, pages: Partial<PageContent>[] = [], docOverrides: Partial<DocumentMeta> = {},
+): Promise<PageFixture> {
   const { parent, agent } = await newParent(ctx, email);
-  const doc = makeDocument(parent.id, { kind: 'images', pageCount: Math.max(1, pages.length) });
+  const doc = makeDocument(parent.id, { kind: 'images', pageCount: Math.max(1, pages.length), ...docOverrides });
   const res = await sync(agent, { changes: { documents: [doc], pages: pages.map((p) => makePage(doc.id, p)) } });
   if (res.rejected.length > 0) throw new Error(`sync rejected ${JSON.stringify(res.rejected)}`);
   return { parentId: parent.id, agent, documentId: doc.id };

@@ -1,6 +1,6 @@
-import type { ExplainWordRequest, GenerateQuestionsRequest, Question } from '@aide/shared';
+import { KID_MESSAGES, type ExplainWordRequest, type FreeQuestionRequest, type GenerateQuestionsRequest, type Question } from '@aide/shared';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { localAICacheKey, lookupDefinition, lookupLocalExplanation, requestAI, stableStringify } from '../../src/ai/aiClient';
+import { isLocallyCached, localAICacheKey, requestAI, stableStringify } from '../../src/ai/aiClient';
 import { db } from '../../src/db/localDb';
 import { useSessionStore } from '../../src/state/session';
 import { HASH, json, makeChild, meta, mockFetch, page, setOnline } from './helpers';
@@ -91,7 +91,8 @@ describe('requestAI', () => {
     });
     const result = await requestAI('simplify_text', { childId: 'child-1', documentId: 'doc-1', documentHash: HASH, text: 'x'.repeat(2000), pageIndex: 0, ocrLowConfidence: false });
     expect(result).toMatchObject({ status: 'ok', data: { simplifiedText: 'Plus simple.' } });
-    expect(calls.filter((c) => c.url === '/api/ai/jobs/job-1')).toHaveLength(2);
+    // Each poll waits on the server for the answer (long poll).
+    expect(calls.filter((c) => c.url.startsWith('/api/ai/jobs/job-1?waitMs='))).toHaveLength(2);
   });
 
   it('gives up with unavailable/timeout once the job deadline (AI_DEADLINES + 15 s) is past', async () => {
@@ -162,24 +163,52 @@ describe('requestAI', () => {
     expect(await requestAI('explain_word', wordBody, { signal: controller.signal })).toMatchObject({ status: 'unavailable', reason: 'timeout' });
   });
 
-  it('explain_word falls back to the local glossary (parent entries in Dexie) when the AI is unavailable', async () => {
+  it('nothing is answered on the device when the AI is unavailable (decision 2026-09-19)', async () => {
     setOnline(false);
     await db.glossary.put({ headword: 'photosynthèse', partOfSpeech: 'nom', kidDefinition: 'Comment la plante se nourrit avec la lumière.', example: null });
-    const result = await requestAI('explain_word', wordBody);
-    expect(result).toMatchObject({
-      status: 'ok',
-      data: { explanation: 'Comment la plante se nourrit avec la lumière.', example: null, sourceQuotes: [] },
-      meta: { route: 'local', cached: false },
-    });
-  });
-
-  it('generate_questions falls back to local questions (route local) when the server fails', async () => {
+    expect(await requestAI('explain_word', wordBody)).toMatchObject({ status: 'unavailable', reason: 'offline' });
+    setOnline(true);
     mockFetch(() => json({ error: { code: 'internal', message: 'Erreur' } }, 500));
     const body: GenerateQuestionsRequest = {
       childId: 'child-1', documentId: 'doc-1', documentHash: HASH, count: 3, types: ['qcm'], pages: [page(0, 'Le chat dort.', true)],
     };
-    const result = await requestAI('generate_questions', body);
-    expect(result).toMatchObject({ status: 'ok', data: { questions: [localQuestion] }, meta: { route: 'local', sourceWarning: true } });
+    expect(await requestAI('generate_questions', body)).toMatchObject({ status: 'unavailable' });
+  });
+
+  it('never caches free questions: every ask reaches the server, nothing is served from the cache offline', async () => {
+    const answer = { answer: 'Le ciel est bleu à cause de la lumière.', example: null, suggestions: ['Et la mer ?'] };
+    const { calls } = mockFetch(() => json({ status: 'ok', data: answer, meta: meta() }));
+    const body: FreeQuestionRequest = {
+      childId: 'child-1', documentId: null, documentHash: null, question: 'Pourquoi le ciel est bleu ?', previous: null, mode: 'normal',
+    };
+    expect(isLocallyCached('free_question')).toBe(false);
+    expect(isLocallyCached('explain_word')).toBe(true);
+    expect(await requestAI('free_question', body)).toMatchObject({ status: 'ok', data: answer, meta: { cached: false } });
+    expect(await requestAI('free_question', body)).toMatchObject({ status: 'ok', meta: { cached: false } });
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toMatchObject({ method: 'POST', url: '/api/ai/free_question', body });
+    expect(await db.aiCache.count()).toBe(0);
+
+    setOnline(false);
+    expect(await requestAI('free_question', body)).toMatchObject({ status: 'unavailable', reason: 'offline' });
+    expect(calls).toHaveLength(2);
+  });
+
+  it('free questions: blocked results without message get the free-question wording; 202 jobs are polled', async () => {
+    const body: FreeQuestionRequest = {
+      childId: 'child-1', documentId: null, documentHash: null, question: 'Une question', previous: { question: 'Avant ?', answer: 'Oui.' }, mode: 'simpler',
+    };
+    mockFetch(() => json({ status: 'blocked', reason: 'adult_redirect', message: '', meta: meta() }));
+    expect(await requestAI('free_question', body)).toMatchObject({ status: 'blocked', message: KID_MESSAGES.questionAdultRedirect });
+    mockFetch(() => json({ status: 'blocked', reason: 'safety_input', message: ' ', meta: meta() }));
+    expect(await requestAI('free_question', body)).toMatchObject({ status: 'blocked', message: KID_MESSAGES.questionBlocked });
+
+    const { calls } = mockFetch((call) => (call.method === 'POST'
+      ? json({ status: 'pending', jobId: 'job-fq', pollAfterMs: 1, waitMs: 60_000 }, 202)
+      : json({ status: 'ok', data: { answer: 'Plus simple.', example: 'Un exemple.', suggestions: [] }, meta: meta() })));
+    expect(await requestAI('free_question', body)).toMatchObject({ status: 'ok', data: { answer: 'Plus simple.' } });
+    expect(calls.map((c) => c.url.replace(/\?waitMs=\d+$/, ''))).toEqual(['/api/ai/free_question', '/api/ai/jobs/job-fq']);
+    expect(await db.aiCache.count()).toBe(0);
   });
 
   it('never caches handwriting recognition', async () => {
@@ -210,65 +239,4 @@ describe('cache key', () => {
   });
 });
 
-describe('lookupDefinition', () => {
-  beforeEach(async () => {
-    setOnline(true);
-    await resetDb();
-  });
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
-  });
-
-  it('uses the parent glossary first, without network', async () => {
-    const { fn } = mockFetch(() => json({ status: 'not_found' }));
-    await db.glossary.put({ headword: 'volcan', partOfSpeech: 'nom', kidDefinition: 'Une montagne qui crache du feu.', example: 'Le volcan fume.' });
-    const result = await lookupDefinition(' Volcan, ');
-    expect(result).toEqual({
-      status: 'found',
-      entry: {
-        headword: 'volcan', lemma: 'volcan', partOfSpeech: 'nom', definition: 'Une montagne qui crache du feu.', example: 'Le volcan fume.',
-        source: 'glossaire_parent', attribution: null, kidFriendly: true,
-      },
-    });
-    expect(fn).not.toHaveBeenCalled();
-    expect(await lookupLocalExplanation('volcan')).toMatchObject({ definition: 'Une montagne qui crache du feu.' });
-  });
-
-  it('asks the server, caches the answer and reuses it offline', async () => {
-    const found = {
-      status: 'found',
-      entry: {
-        headword: 'zzmot', lemma: 'zzmot', partOfSpeech: 'nom', definition: 'Un mot de test.', example: null, source: 'wiktionnaire',
-        attribution: 'Wiktionnaire (CC BY-SA)', kidFriendly: true,
-      },
-    };
-    const { calls } = mockFetch(() => json(found));
-    expect(await lookupDefinition('Zzmot')).toEqual(found);
-    expect(calls[0]?.url).toBe('/api/dictionary?word=Zzmot');
-    setOnline(false);
-    expect(await lookupDefinition('zzmot')).toEqual(found);
-    expect(calls).toHaveLength(1);
-    expect(await lookupLocalExplanation('zzmot')).toMatchObject({ definition: 'Un mot de test.' });
-  });
-
-  it('offline without cache → unavailable; stale not_found is fetched again', async () => {
-    setOnline(false);
-    const { calls } = mockFetch(() => json({ status: 'found', entry: { headword: 'zzvieux', lemma: 'zzvieux', partOfSpeech: null, definition: 'Vieux.', example: null, source: 'wiktionnaire', attribution: null, kidFriendly: false } }));
-    expect(await lookupDefinition('zzabsent')).toEqual({ status: 'unavailable' });
-
-    await db.dictionaryCache.put({ word: 'zzvieux', result: { status: 'not_found' }, fetchedAt: Date.now() - 8 * 24 * 60 * 60_000 });
-    expect(await lookupDefinition('zzvieux')).toEqual({ status: 'not_found' });
-    setOnline(true);
-    expect(await lookupDefinition('zzvieux')).toMatchObject({ status: 'found' });
-    expect(calls).toHaveLength(1);
-    // Not kid-friendly: not usable as a local explanation.
-    expect(await lookupLocalExplanation('zzvieux')).toBeNull();
-  });
-
-  it('server errors → unavailable, never throws', async () => {
-    mockFetch(() => json({ error: { code: 'internal', message: 'x' } }, 500));
-    expect(await lookupDefinition('zzerreur')).toEqual({ status: 'unavailable' });
-  });
-});

@@ -45,6 +45,21 @@ describe('voices', () => {
     expect(pickFrenchVoice([voice('en', 'en-US')], null)).toBeNull();
   });
 
+  it('never picks another accent automatically: a natural Canadian voice comes after a standard French one (2026-09-19)', () => {
+    const list = [
+      voice('google-ca', 'fr-CA', false, 'Google français du Canada'),
+      voice('amelie', 'fr-CA', true, 'Amélie'),
+      voice('thomas', 'fr-FR', true, 'Thomas'),
+      voice('fr', 'fr', true, 'Français'),
+    ];
+    expect(pickFrenchVoice(list, null)?.voiceURI).toBe('fr');
+    expect(sortFrenchVoices(list).map((v) => v.voiceURI)).toEqual(['fr', 'thomas', 'google-ca', 'amelie']);
+    // Chosen by hand: kept.
+    expect(pickFrenchVoice(list, 'google-ca')?.voiceURI).toBe('google-ca');
+    // A device with Canadian voices only still reads.
+    expect(pickFrenchVoice([list[1]!], null)?.voiceURI).toBe('amelie');
+  });
+
   it('rates Apple, desktop and novelty voices by quality', () => {
     const q = (voiceURI: string, name: string, localService = true): string => voiceQuality({ voiceURI, name, localService });
     expect(q('com.apple.voice.premium.fr-FR.Audrey', 'Audrey (Premium)')).toBe('premium');

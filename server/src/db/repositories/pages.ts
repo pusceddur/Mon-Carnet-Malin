@@ -24,6 +24,12 @@ export async function findPage(db: Db, documentId: string, pageIndex: number): P
   return row ? { parentId: toStr(row.parent_id), page: pageFromRow(row) } : null;
 }
 
+/** Pages of a document of this account, in order. */
+export async function listDocumentPages(db: Db, parentId: string, documentId: string): Promise<PageContent[]> {
+  const rows = (await db('document_pages').where({ document_id: documentId, parent_id: parentId }).orderBy('page_index')) as Row[];
+  return rows.map(pageFromRow);
+}
+
 export async function savePage(db: Db, parentId: string, page: PageContent, serverSeq: number): Promise<void> {
   await db('document_pages')
     .insert({

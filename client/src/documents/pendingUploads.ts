@@ -58,6 +58,12 @@ export async function forgetUploads(documentId: Id): Promise<void> {
   await mutate((list) => list.filter((e) => e.documentId !== documentId));
 }
 
+/**
+ * The document is not on the server yet (just imported): tried again right after one of the next syncs, which come every
+ * few seconds while a page waits for the home computer (§25), instead of a minute later.
+ */
+export const WAIT_SYNC_RETRY_MS = 3_000;
+
 export function backoffMs(attempts: number): number {
   return Math.min(60 * 60_000, 30_000 * 2 ** Math.max(0, attempts - 1));
 }
@@ -69,7 +75,9 @@ async function uploadOne(entry: PendingUpload, settings: ParentSettings): Promis
   if (!doc || doc.deletedAt !== null) return 'drop';
   if (entry.kind === 'pageImage') {
     if (!settings.privacy.uploadPageImages) return 'drop';
-    const image = await getPageImage(entry.documentId, entry.index, 'ocr');
+    // The color copy when there is one (§19.1: Original view on the other devices, lecture intelligente).
+    const color = await getPageImage(entry.documentId, entry.index, 'color');
+    const image = color && color.blob.size <= LIMITS.pageImageMaxBytes ? color : await getPageImage(entry.documentId, entry.index, 'ocr');
     if (!image || image.blob.size > LIMITS.pageImageMaxBytes) return 'drop';
     await uploadPageImage(entry.documentId, entry.index, image.blob);
     return 'done';
@@ -78,8 +86,9 @@ async function uploadOne(entry: PendingUpload, settings: ParentSettings): Promis
   const file = await getDocumentFile(entry.documentId, entry.index);
   if (!file) return 'drop';
   let blob: Blob = file.blob;
-  let name = `${entry.index}.pdf`;
-  if (detectFileKind({ type: file.mime, name: file.name }) === 'image') {
+  const kind = detectFileKind({ type: file.mime, name: file.name });
+  let name = `${entry.index}.${kind === 'epub' ? 'epub' : 'pdf'}`;
+  if (kind === 'image') {
     // Re-encode: no EXIF / GPS leaves the device.
     blob = await encodeRgbaJpeg(await decodeToRgba(file.blob, ORIGINAL_IMAGE_MAX_SIDE), 0.9);
     name = `${entry.index}.jpg`;
@@ -121,7 +130,7 @@ export function flushPendingUploads(now: () => number = Date.now): Promise<void>
             if (result === 'done' || result === 'drop') return [];
             const attempts = e.attempts + 1;
             if (result === 'retry' && attempts >= MAX_ATTEMPTS) return [];
-            const delay = result === 'wait_sync' ? 60_000 : backoffMs(attempts);
+            const delay = result === 'wait_sync' ? WAIT_SYNC_RETRY_MS : backoffMs(attempts);
             return [{ ...e, attempts: result === 'wait_sync' ? e.attempts : attempts, nextAttemptAt: now() + delay }];
           }),
         );

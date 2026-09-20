@@ -25,4 +25,14 @@ export interface TextHighlight {
   blockTextHash: string; text: string;
   createdAt: Millis; updatedAt: Millis; deletedAt: Millis | null;
 }
-export type Annotation = InkAnnotation | TextHighlight;
+/**
+ * §19.2 « Zone de texte » on the original page of a document, written with a keyboard (physical or on screen), by
+ * dictation or with Scribble. x, y (top-left corner) and width: fractions of the page image width / height;
+ * fontSize: fraction of the page width.
+ */
+export interface TextBoxAnnotation {
+  id: Id; type: 'textbox'; childId: Id; documentId: Id; pageIndex: number;
+  x: number; y: number; width: number; fontSize: number; color: string /*#rrggbb*/; text: string;
+  createdAt: Millis; updatedAt: Millis; deletedAt: Millis | null;
+}
+export type Annotation = InkAnnotation | TextHighlight | TextBoxAnnotation;

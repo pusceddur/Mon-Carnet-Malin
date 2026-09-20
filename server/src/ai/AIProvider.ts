@@ -1,11 +1,13 @@
 // Provider contract (§8.1 amended by §15.1/§15.4): providers never receive the child's name or id, only an AILearner.
 import type {
-  AILearner, AIOperation, ChunkSummaryData, CorrectAnswerRequest, ExplainTextRequest, ExplainWordRequest, GenerateQuestionsRequest,
-  QuestionOnTextRequest, RecognizeHandwritingRequest, SimplifyTextRequest, SummaryLevel, TextChunk,
+  AILearner, AIOperation, ChunkSummaryData, CorrectAnswerRequest, ExplainTextRequest, ExplainWordRequest, FreeQuestionRequest,
+  GenerateQuestionsRequest, QuestionOnTextRequest, RecognizeHandwritingRequest, SimplifyTextRequest, SummaryLevel, TextChunk,
+  CorrectWritingRequest,
 } from '@aide/shared';
 import type { AITier } from './plugin';
 import type {
-  ModelAnswer, ModelChunkSummary, ModelCorrection, ModelExplanation, ModelHandwriting, ModelQuestions, ModelSimplification, ModelSummary,
+  ModelAnswer, ModelChunkSummary, ModelCorrection, ModelExplanation, ModelFreeAnswer, ModelHandwriting, ModelQuestions, ModelSimplification,
+  ModelSummary, ModelWriting,
 } from './schemas';
 
 export type ProviderId = 'plugin' | 'local' | 'mock' | 'worker';
@@ -59,4 +61,8 @@ export interface AIProvider {
   correctAnswer(req: CorrectAnswerRequest, ctx: ProviderCallContext): Promise<ProviderResponse<ModelCorrection>>;
   answerQuestion(req: QuestionOnTextRequest, ctx: ProviderCallContext): Promise<ProviderResponse<ModelAnswer>>;
   recognizeHandwriting(req: RecognizeHandwritingRequest, ctx: ProviderCallContext): Promise<ProviderResponse<ModelHandwriting>>;
+  /** §18 « Pose ta question »: free question of the child, not tied to a document. */
+  answerFreeQuestion(req: FreeQuestionRequest, ctx: ProviderCallContext): Promise<ProviderResponse<ModelFreeAnswer>>;
+  /** §24 « Corriger »: the child's text of a text box, corrected line by line. */
+  correctWriting(req: CorrectWritingRequest, ctx: ProviderCallContext): Promise<ProviderResponse<ModelWriting>>;
 }

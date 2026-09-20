@@ -1,0 +1,60 @@
+/* §26 couleurs de lecture: colours and lines only, every letter keeps its place. Loaded with ReaderBlock, so that the
+   samples of the parent area show them too. */
+
+.rp-aid-syl .rp-y0 {
+  color: var(--aid-syl-a);
+}
+
+.rp-aid-syl .rp-y1 {
+  color: var(--aid-syl-b);
+}
+
+.rp-aid-mute .rp-mu {
+  color: var(--aid-mute);
+}
+
+.rp-aid-sound .rp-so {
+  background-color: var(--aid-sound);
+  border-radius: 0.18em;
+}
+
+.rp-aid-sound .rp-so2 {
+  background-color: var(--aid-sound-2);
+}
+
+.rp-aid-changed .rp-cg {
+  text-decoration: underline dotted var(--aid-changed);
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.24em;
+}
+
+.rp-aid-liaison .rp-li {
+  position: relative;
+  /* The two words of a liaison stay on the same line. */
+  white-space: nowrap;
+}
+
+.rp-aid-liaison .rp-li::after {
+  content: '';
+  position: absolute;
+  left: -0.3em;
+  right: -0.3em;
+  bottom: -0.1em;
+  height: 0.38em;
+  border: 0.1em solid var(--aid-liaison);
+  border-top: 0;
+  border-radius: 0 0 50% 50%;
+  pointer-events: none;
+}
+
+/* A highlighted word keeps the ink of the highlight readable. */
+.rp-w[data-hl] .rp-y0,
+.rp-w[data-hl] .rp-y1 {
+  color: inherit;
+}
+
+/* Samples (reader settings, child profile): a single block, no space under it. */
+.rd-settings__preview .rp-block,
+.reading-preview .rp-block {
+  margin: 0;
+}

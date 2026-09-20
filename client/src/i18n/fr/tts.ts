@@ -16,6 +16,21 @@ export const tts = {
   startFailed: 'La voix ne démarre pas. Réessaie dans un instant.',
   nothingToRead: 'Il n’y a encore rien à lire ici.',
 
+  // §22 « Préparer la lecture »: the home computer punctuates the page for the voice, the text on screen does not change.
+  prepare: {
+    button: 'Préparer la lecture',
+    hint: 'La voix fera mieux les pauses, par exemple après « 1 : ». Le texte ne change pas.',
+    busy: 'Préparation…',
+    done: 'Lecture préparée',
+    queued: 'La lecture de cette page se prépare. La voix l’utilisera dès qu’elle sera prête.',
+    already: 'La lecture de cette page est déjà en préparation.',
+    ready: 'La lecture est prête : la voix fera mieux les pauses.',
+    later: 'Pas encore prête : l’ordinateur de la maison la préparera dès que possible.',
+    unavailable: 'Cette aide n’est pas disponible pour le moment.',
+    offline: 'Il faut Internet pour préparer la lecture.',
+    failed: 'La préparation n’a pas pu démarrer. Réessaie dans un instant.',
+  },
+
   voices: {
     automatic: 'Voix automatique',
     none: 'Aucune voix française sur cet appareil.',
@@ -50,6 +65,16 @@ export const tts = {
       'Quand le téléchargement est terminé, fermez l’app et rouvrez-la.',
     ],
     betterVoiceDesktop: 'Sur ordinateur, les navigateurs Microsoft Edge et Google Chrome proposent aussi des voix naturelles.',
+    betterVoiceAndroidIntro: 'Sur Android, les voix viennent du moteur de synthèse vocale de la tablette. Celui de Google, en français de France, est le plus naturel :',
+    betterVoiceAndroidSteps: [
+      'Dans le Play Store, installez ou mettez à jour « Services de synthèse vocale de Google » (Speech Services by Google).',
+      'Paramètres de la tablette → Accessibilité → « Synthèse vocale » (ou « Sortie de la synthèse vocale »).',
+      'Moteur préféré : « Services de synthèse vocale de Google » (sur Samsung, à la place du moteur Samsung).',
+      'Touchez ⚙️ → Installer les données vocales → Français (France), puis choisissez la voix qui vous plaît.',
+      'Fermez l’app, rouvrez-la et choisissez la voix dans la liste ci-dessus.',
+    ],
+    betterVoiceAndroidNote: 'Les noms des menus changent un peu selon la marque de la tablette.',
+    otherAccent: 'Cet appareil n’a pas de voix de France : la voix automatique a l’accent d’un autre pays ({region}). Vous pouvez en installer une (voir ci-dessous).',
   },
   pauses: {
     sentence: 'Pause entre les phrases',

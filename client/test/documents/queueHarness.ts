@@ -1,5 +1,5 @@
 // Test harness for the processing queue: Dexie (fake-indexeddb) seeding and mocked OCR / preprocessing dependencies.
-import { DEFAULT_PARENT_SETTINGS, createWordList, type DocumentMeta, type ParentSettings, type WordList } from '@aide/shared';
+import { DEFAULT_PARENT_SETTINGS, createWordList, type DocumentMeta, type DocumentTextMode, type ParentSettings, type WordList } from '@aide/shared';
 import { vi } from 'vitest';
 import { db } from '../../src/db/localDb';
 import { newJob, type QueueJob } from '../../src/documents/DocumentCache';
@@ -10,7 +10,6 @@ import type { OcrLine, OcrResult } from '../../src/ocr/ocrLines';
 import type { PreparedPage } from '../../src/ocr/preprocess/client';
 import type { GrayImage, RgbaImage } from '../../src/ocr/preprocess/image';
 import type { PreprocessOptions } from '../../src/ocr/preprocess/pipeline';
-import type { ServerOcrOutcome } from '../../src/ocr/ServerOCR';
 
 export const GOOD_SENTENCE = 'La petite fille lit un livre dans le jardin avec son chat';
 export const BAD_SENTENCE = 'Lz pqtite f1lle ||t vn l1vre d@ns xe jqrdin';
@@ -36,6 +35,7 @@ export interface SeedOptions {
   id?: string;
   pages: number;
   kind?: 'images' | 'pdf';
+  textMode?: DocumentTextMode;
   /** Initial job state for every page. */
   jobState?: QueueJob['state'];
   attempts?: number;
@@ -51,6 +51,9 @@ export async function seedDocument(options: SeedOptions): Promise<string> {
     childIds: ['child-1'],
     title: 'Sciences',
     kind: options.kind ?? 'images',
+    textMode: options.textMode ?? 'faithful',
+    purpose: 'reading',
+    homeworkDoneAt: null,
     sourceHash: 'hash',
     pageCount: options.pages,
     status: 'processing',
@@ -86,18 +89,19 @@ export interface Harness {
   ocr: OcrEngine & { recognize: ReturnType<typeof vi.fn> };
   preparePage: ReturnType<typeof vi.fn>;
   prepareFallback: ReturnType<typeof vi.fn>;
-  recognizeOnServer: ReturnType<typeof vi.fn>;
+  watchAiReading: ReturnType<typeof vi.fn>;
   reanchor: ReturnType<typeof vi.fn>;
   enqueueUpload: ReturnType<typeof vi.fn>;
   clock: { now: number };
   online: { value: boolean };
   settings: { value: ParentSettings };
+  /** §25: the server has a home computer that reads the pages (default: no). */
+  aiReading: { value: boolean };
 }
 
-/** Neither the on-device engine nor the server can read anything (the case handed over to the « lecture intelligente »). */
+/** The device cannot read anything (the case handed over to the « lecture intelligente » when there is one). */
 export function readingFailsEverywhere(h: Harness): void {
   h.ocr.recognize.mockRejectedValue(new OcrUnavailableError());
-  h.recognizeOnServer.mockResolvedValue({ status: 'unavailable', reason: 'error' });
 }
 
 export function fakeImage(width: number, height = 100, fill = 200): GrayImage {
@@ -118,6 +122,7 @@ export function createHarness(): Harness {
     regions: [],
     jpeg: new Blob(['jpeg'], { type: 'image/jpeg' }),
     thumb: new Blob(['thumb'], { type: 'image/jpeg' }),
+    color: { jpeg: new Blob(['color'], { type: 'image/jpeg' }), width: 1000 + (options.rotateDegrees ?? 0), height: 100 },
   }));
   const prepareFallback = vi.fn(async (): Promise<PreparedPage> => ({
     image: fakeImage(800),
@@ -125,15 +130,18 @@ export function createHarness(): Harness {
     regions: [],
     jpeg: new Blob(['small-jpeg'], { type: 'image/jpeg' }),
     thumb: new Blob(['thumb'], { type: 'image/jpeg' }),
+    color: null,
   }));
   const recognize = vi.fn(async (): Promise<OcrResult> => ocrResult(GOOD_SENTENCE, 95));
   const ocr = { recognize, notePageDone: vi.fn(), terminate: vi.fn(async () => undefined) };
-  const recognizeOnServer = vi.fn(async (): Promise<ServerOcrOutcome> => ({ status: 'unavailable', reason: 'error' }));
+  const aiReading = { value: false };
+  const watchAiReading = vi.fn();
   const reanchor = vi.fn(async () => undefined);
   const enqueueUpload = vi.fn(async () => undefined);
   const deps: QueueDeps = {
     ocr,
-    recognizeOnServer,
+    aiReading: () => aiReading.value,
+    watchAiReading,
     openPdf: vi.fn(async () => {
       throw new Error('no pdf in this test');
     }),
@@ -152,5 +160,5 @@ export function createHarness(): Harness {
     terminateHelpers: () => undefined,
     now: () => clock.now,
   };
-  return { deps, ocr, preparePage, prepareFallback, recognizeOnServer, reanchor, enqueueUpload, clock, online, settings: currentSettings };
+  return { deps, ocr, preparePage, prepareFallback, watchAiReading, reanchor, enqueueUpload, clock, online, settings: currentSettings, aiReading };
 }

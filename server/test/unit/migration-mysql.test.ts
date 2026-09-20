@@ -4,6 +4,11 @@ import { buildInitialSchema, INITIAL_TABLES, SYNC_SEQ_TABLES } from '../../src/d
 import { buildInvitationsSchema } from '../../src/db/migrations/002_invitations';
 import { buildClientDiagnosticsSchema } from '../../src/db/migrations/003_client_diagnostics';
 import { buildWorkerJobsSchema } from '../../src/db/migrations/004_worker_jobs';
+import { buildFreeQuestionsSchema } from '../../src/db/migrations/005_free_questions';
+import { buildDocumentTextModeSchema } from '../../src/db/migrations/006_document_text_mode';
+import { buildHomeworkSchema } from '../../src/db/migrations/007_homework';
+import { buildWorkerUsageSchema } from '../../src/db/migrations/009_worker_usage';
+import { buildWritingCorrectionsSchema } from '../../src/db/migrations/010_writing_corrections';
 
 describe('migration 001 renders valid MySQL DDL', () => {
   const mysql = knexFactory({ client: 'mysql2' });
@@ -145,5 +150,70 @@ describe('migration 004 (worker jobs) renders valid MySQL DDL', () => {
     expect(state).toMatch(/`limited_until` bigint null/);
     expect(state).toMatch(/`info_json` text not null/);
     expect(state).toContain('default character set utf8mb4 collate utf8mb4_bin engine = InnoDB');
+  });
+});
+
+describe('migration 005 (free questions) renders valid MySQL DDL', () => {
+  const mysql = knexFactory({ client: 'mysql2' });
+  const statements = buildFreeQuestionsSchema(mysql.schema, 'mysql').toSQL().map((s) => s.sql);
+  const create = statements.find((s) => s.startsWith('create table `free_questions`'));
+  const ddl = statements.join(';\n');
+
+  it('creates free_questions with the §18.3 columns, utf8mb4 binary collation and a cascading parent', () => {
+    expect(create).toBeDefined();
+    for (const pattern of [
+      /`id` varchar\(36\)/, /`parent_id` varchar\(36\) not null/, /`child_id` varchar\(36\) not null/, /`question` varchar\(300\) not null/,
+      /`outcome` varchar\(16\) not null/, /`answer_text` text null/, /`created_at` bigint not null/,
+    ]) expect(create).toMatch(pattern);
+    expect(create).toContain('primary key (`id`)');
+    expect(create).toContain('default character set utf8mb4 collate utf8mb4_bin engine = InnoDB');
+    expect(ddl).toMatch(/foreign key \(`parent_id`\) references `users` \(`id`\) on delete CASCADE/);
+  });
+
+  it('indexes (parent_id, child_id, created_at) and (created_at), never the TEXT answer', () => {
+    expect(ddl).toMatch(/index `\w+`\(`parent_id`, `child_id`, `created_at`\)/);
+    expect(ddl).toMatch(/index `\w+`\(`created_at`\)/);
+    expect(ddl).not.toMatch(/index `\w+`\([^)]*`answer_text`/);
+  });
+});
+
+describe('migration 006 (document text mode) renders valid MySQL DDL', () => {
+  it('adds documents.text_mode, not null, faithful by default (§17.10)', () => {
+    const mysql = knexFactory({ client: 'mysql2' });
+    const ddl = buildDocumentTextModeSchema(mysql.schema).toSQL().map((s) => s.sql).join(';\n');
+    expect(ddl).toBe("alter table `documents` add `text_mode` varchar(16) not null default 'faithful'");
+  });
+});
+
+describe('migration 007 (homework) renders valid MySQL DDL', () => {
+  it('adds documents.purpose (reading by default) and documents.homework_done_at (§19.3)', () => {
+    const mysql = knexFactory({ client: 'mysql2' });
+    const ddl = buildHomeworkSchema(mysql.schema).toSQL().map((s) => s.sql).join(';\n');
+    expect(ddl).toContain("add `purpose` varchar(16) not null default 'reading'");
+    expect(ddl).toContain('add `homework_done_at` bigint null');
+  });
+});
+
+describe('migration 009 (worker usage) renders valid MySQL DDL', () => {
+  it('creates worker_usage in utf8mb4, cascading with the account (§21)', () => {
+    const mysql = knexFactory({ client: 'mysql2' });
+    const ddl = buildWorkerUsageSchema(mysql.schema, 'mysql').toSQL().map((s) => s.sql).join(';\n');
+    expect(ddl).toContain('create table `worker_usage`');
+    expect(ddl).toContain('`cost_micros` bigint null');
+    expect(ddl).toContain('default character set utf8mb4 collate utf8mb4_bin engine = InnoDB');
+    expect(ddl).toContain('references `users` (`id`) on delete CASCADE');
+    expect(ddl).toContain('index `worker_usage_parent_created_idx`(`parent_id`, `created_at`)');
+  });
+});
+
+describe('migration 010 (writing corrections) renders valid MySQL DDL', () => {
+  it('creates writing_corrections in utf8mb4, cascading with the account (§24)', () => {
+    const mysql = knexFactory({ client: 'mysql2' });
+    const ddl = buildWritingCorrectionsSchema(mysql.schema, 'mysql').toSQL().map((s) => s.sql).join(';\n');
+    expect(ddl).toContain('create table `writing_corrections`');
+    expect(ddl).toContain('`changes_json` mediumtext not null');
+    expect(ddl).toContain('default character set utf8mb4 collate utf8mb4_bin engine = InnoDB');
+    expect(ddl).toContain('references `users` (`id`) on delete CASCADE');
+    expect(ddl).toContain('index `writing_corrections_child_idx`(`parent_id`, `child_id`, `created_at`)');
   });
 });

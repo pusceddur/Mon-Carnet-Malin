@@ -1,5 +1,6 @@
 // Text given to the speech synthesizer: French abbreviations and roman numerals said in words, OCR noise removed,
 // with a map back to the displayed text so that word highlighting stays on the right word.
+import { alignSpokenText } from '@aide/shared';
 
 export interface SpokenText {
   /** What the voice reads. */
@@ -78,6 +79,9 @@ interface Rule {
 const UPPER_NEXT = String.raw`(?=[\s  -]+\p{Lu})`;
 
 const RULES: Rule[] = [
+  // §22 list marker opening what is read (« 1: », « 2) », « a) »): « 1. », the voice pauses before the item. « 1. » is
+  // already right, and « M. » must stay free for « Monsieur ».
+  { pattern: /^(\d{1,3}|[A-Za-z])[^\S\n]?[):](?=[^\S\n]*\S)/gu, replace: (m) => `${m[1]}.` },
   // Era markers first (they contain dots).
   { pattern: /\bav\.\s*J\.-C\./gu, replace: () => 'avant Jésus-Christ' },
   { pattern: /\bapr\.\s*J\.-C\./gu, replace: () => 'après Jésus-Christ' },
@@ -200,6 +204,38 @@ export function prepareSpokenText(source: string): SpokenText {
       if (finalMap.length === 0) return 0;
       const i = Math.min(Math.max(0, spokenIndex), finalMap.length - 1);
       return finalMap[i]!;
+    },
+  };
+}
+
+/**
+ * §22 « Préparer la lecture »: the voice reads `prepared` (the words of `display`, punctuated for reading aloud) and the
+ * positions map back onto `display`, so that the highlighted word stays right. null when the words differ.
+ */
+export function preparedSpokenText(display: string, prepared: string): SpokenText | null {
+  const alignment = alignSpokenText(display, prepared);
+  if (!alignment) return null;
+  const { shown, said } = alignment;
+  // Position in `display` of each character of `prepared`: inside a word, the same letter; punctuation, the end of the
+  // word before it.
+  const map: number[] = [];
+  let w = 0;
+  for (let i = 0; i < prepared.length; i++) {
+    while (w < said.length && i >= said[w]!.end) w++;
+    const word = said[w];
+    if (word && i >= word.start) {
+      const target = shown[w]!;
+      map.push(target.start + Math.min(i - word.start, target.end - target.start - 1));
+    } else {
+      map.push(w === 0 ? shown[0]!.start : shown[w - 1]!.end);
+    }
+  }
+  const inner = prepareSpokenText(prepared);
+  return {
+    text: inner.text,
+    toSource(spokenIndex: number): number {
+      if (map.length === 0) return 0;
+      return map[Math.min(Math.max(0, inner.toSource(spokenIndex)), map.length - 1)]!;
     },
   };
 }

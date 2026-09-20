@@ -3,13 +3,16 @@ import { decodeToRgba, encodeGrayJpeg } from './canvas';
 import type { GrayImage, Rect, RgbaImage } from './image';
 import { MAX_PAGE_SIDE, ROTATION_PROBE_SIDE, THUMB_SIDE, thumbnail, type PreprocessOptions } from './pipeline';
 import {
+  encodeColorPage,
   fromTransfer,
+  fromTransferRgba,
   JPEG_QUALITY,
   runBinarize,
   runPrepare,
   runProbes,
   toTransfer,
   workerCanUseCanvas,
+  type ColorPage,
   type ProbeTurn,
   type WorkerRequest,
   type WorkerResponse,
@@ -21,10 +24,12 @@ export interface PreparedPage {
   skewDegrees: number;
   /** Text regions in reading order for pages with columns (empty otherwise). */
   regions: Rect[];
-  /** Grayscale JPEG 0.85 (Original view, server OCR, page image upload). */
+  /** Grayscale JPEG 0.85 (server OCR, reprocessing; Original view when there is no color copy). */
   jpeg: Blob;
-  /** 240 px thumbnail JPEG. */
+  /** 240 px thumbnail JPEG (in color when the color copy exists). */
   thumb: Blob;
+  /** Color copy with the same frame (§19.1): Original view and page image upload. Null when it could not be made. */
+  color: ColorPage | null;
 }
 
 export class PreprocessAbortedError extends Error {
@@ -105,7 +110,9 @@ class PreprocessClient {
         const canvasInWorker = workerCanUseCanvas();
         let response: OkResponse;
         if (source instanceof Blob && canvasInWorker) {
-          response = await this.call(worker, { op: 'prepare', source: { kind: 'blob', blob: source, maxDecodeSide: MAX_PAGE_SIDE }, options, encode: true }, []);
+          response = await this.call(
+            worker, { op: 'prepare', source: { kind: 'blob', blob: source, maxDecodeSide: MAX_PAGE_SIDE }, options, encode: true, color: true }, [],
+          );
         } else {
           // No OffscreenCanvas in the worker: decode here and transfer the pixel buffer.
           const rgba = source instanceof Blob ? await decodeToRgba(source, MAX_PAGE_SIDE) : source;
@@ -115,22 +122,30 @@ class PreprocessClient {
           transferred = source instanceof Blob ? false : buffer === rgba.data.buffer;
           response = await this.call(
             worker,
-            { op: 'prepare', source: { kind: 'rgba', buffer, width: rgba.width, height: rgba.height }, options, encode: canvasInWorker },
+            { op: 'prepare', source: { kind: 'rgba', buffer, width: rgba.width, height: rgba.height }, options, encode: canvasInWorker, color: true },
             [buffer],
           );
         }
         if (response.op !== 'prepare') throw new Error('unexpected_response');
         const image = fromTransfer(response.image);
         const jpeg = response.jpeg ?? (await encodeGrayJpeg(image, JPEG_QUALITY));
-        const thumb = response.thumb ?? (await encodeGrayJpeg(thumbnail(image, THUMB_SIDE), 0.8));
-        return { image, skewDegrees: response.skewDegrees, regions: response.regions, jpeg, thumb };
+        let color = response.color;
+        let thumb = response.thumb;
+        if (!color && response.colorPixels) {
+          // The worker could not encode: the framed color pixels are encoded here.
+          const encoded = await encodeColorPage(fromTransferRgba(response.colorPixels)).catch(() => null);
+          color = encoded?.color ?? null;
+          thumb ??= encoded?.thumb ?? null;
+        }
+        thumb ??= await encodeGrayJpeg(thumbnail(image, THUMB_SIDE), 0.8);
+        return { image, skewDegrees: response.skewDegrees, regions: response.regions, jpeg, thumb, color };
       } catch (error) {
         // The caller's pixel buffer was moved to the dead worker: nothing left to run inline.
         if (!(error instanceof WorkerUnavailableError) || transferred) throw error;
       }
     }
     const inline = await runPrepare(source, options, true);
-    return { image: inline.image, skewDegrees: inline.skewDegrees, regions: inline.regions, jpeg: inline.jpeg!, thumb: inline.thumb! };
+    return { image: inline.image, skewDegrees: inline.skewDegrees, regions: inline.regions, jpeg: inline.jpeg!, thumb: inline.thumb!, color: inline.color };
   }
 
   async binarize(image: GrayImage): Promise<GrayImage> {
@@ -167,7 +182,7 @@ export const FALLBACK_PAGE_SIDE = 1600;
 
 /**
  * Last resort when the normal preprocessing failed (typically memory on iPad): smaller image, main thread,
- * no deskew / denoise / lighting correction / column detection. Still good enough for the server reading.
+ * no deskew / denoise / lighting correction / column detection / color copy. Still good enough for the server reading.
  */
 export async function prepareFallbackPage(source: Blob | RgbaImage, options: PreprocessOptions): Promise<PreparedPage> {
   const inline = await runPrepare(
@@ -175,8 +190,9 @@ export async function prepareFallbackPage(source: Blob | RgbaImage, options: Pre
     { ...options, maxSide: FALLBACK_PAGE_SIDE, deskew: false, denoise: false, flatten: false, regions: false },
     true,
     FALLBACK_PAGE_SIDE,
+    false,
   );
-  return { image: inline.image, skewDegrees: 0, regions: [], jpeg: inline.jpeg!, thumb: inline.thumb! };
+  return { image: inline.image, skewDegrees: 0, regions: [], jpeg: inline.jpeg!, thumb: inline.thumb!, color: null };
 }
 
 const client = new PreprocessClient();

@@ -1,4 +1,4 @@
-import { extractiveSummary, type AIPageInput, type Id, type SummaryData, type SummaryLevel } from '@aide/shared';
+import { KID_MESSAGES, type AIPageInput, type Id, type SummaryData, type SummaryLevel } from '@aide/shared';
 import { summarizeProgressively } from '../../../ai/aiClient';
 import { kidMessage } from './aiResults';
 
@@ -24,10 +24,7 @@ function hasContent(data: SummaryData): boolean {
   return data.summary.trim().length > 0 || data.keyPoints.some((k) => k.trim().length > 0);
 }
 
-/**
- * Online progressive summary first; when the help is unavailable (offline, disabled, quota…) the deterministic
- * extractive summary made of original sentences. A blocked passage is never summarized locally.
- */
+/** Progressive summary by the AI; nothing is summarized on the device any more (decision 2026-09-19). */
 export async function buildSummary(input: SummaryInput): Promise<SummaryOutcome> {
   const lowConfidence = input.pages.some((p) => p.ocrLowConfidence);
   if (input.pages.length === 0) return { kind: 'unavailable', message: null };
@@ -52,8 +49,6 @@ export async function buildSummary(input: SummaryInput): Promise<SummaryOutcome>
     if (result.status !== 'ok') unavailableMessage = kidMessage(result);
   }
 
-  const local = extractiveSummary(input.pages, input.level);
   input.onProgress(1, 1);
-  if (!hasContent(local)) return { kind: 'unavailable', message: unavailableMessage };
-  return { kind: 'ok', data: local, origin: 'local', sourceWarning: lowConfidence };
+  return { kind: 'unavailable', message: unavailableMessage ?? KID_MESSAGES.unavailable };
 }

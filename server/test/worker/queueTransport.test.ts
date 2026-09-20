@@ -1,18 +1,23 @@
-import { newId, type AIJobAccepted } from '@aide/shared';
+import { newId, TIMINGS, type AIJobAccepted } from '@aide/shared';
 import type { Express } from 'express';
 import request from 'supertest';
 import { afterEach, describe, expect, it } from 'vitest';
 import { AITransportError, type AITransportRequest } from '../../src/ai/plugin';
 import { createQueueTransport } from '../../src/ai/services';
 import { createApp } from '../../src/app';
-import { setWorkerLimitedUntil } from '../../src/db/repositories/workerJobs';
+import { WORKER_DEFAULT_DEADLINES } from '../../src/config';
+import { insertWorkerJob, setWorkerLimitedUntil } from '../../src/db/repositories/workerJobs';
 import { silentLogger } from '../../src/logger';
 import type { AppDeps } from '../../src/types';
-import { QueueTransport } from '../../src/worker/QueueTransport';
+import { MAX_ACTIVE_AI_JOBS_PER_PARENT, QueueTransport } from '../../src/worker/QueueTransport';
+import { WORKER_PROTOCOL } from '../../src/worker/protocol';
 import { getWorkerRuntime, presenceOf, WorkerRuntime } from '../../src/worker/runtime';
 import { createHarness, explainTextBody, PARENT_ID, SCIENCE_TEXT } from '../ai/helpers';
 import { createTestContext, newChild, newParent, type TestContext, XRW } from '../platform/helpers';
 import { bearer, createWorkerContext, doneBody, errorBody, heartbeat, jobRow, WORKER, WORKER_TOKEN_SHA256 } from './helpers';
+
+/** §17.4 light tier through the real configuration: one run on the worker + the queue allowance + the stale margin. */
+const LIGHT_JOB_WAIT_MS = WORKER_DEFAULT_DEADLINES.light + WORKER_PROTOCOL.queueGraceMs + TIMINGS.aiJobStaleMarginMs;
 
 let ctx: TestContext | null = null;
 
@@ -198,6 +203,22 @@ describe('QueueTransport (§17.4)', () => {
     await expect(h.transport.complete(transportRequest(h.parentId, { images: [{ mediaType: 'image/png', base64: huge }] }))).rejects.toMatchObject({ kind: 'bad_request' });
   });
 
+  it('§20: a family cannot fill the queue of the home computer (12 requests waiting at most)', async () => {
+    const h = await setup();
+    await heartbeat(h.ctx);
+    await getWorkerRuntime(h.deps).presence.refresh(true);
+    const now = h.ctx.clock.now;
+    for (let i = 0; i < MAX_ACTIVE_AI_JOBS_PER_PARENT; i++) {
+      await insertWorkerJob(h.ctx.db, {
+        id: newId(), parentId: h.parentId, kind: 'ai', tier: 'light', operation: 'explain_text',
+        request: { system: 's', documentText: null, userText: 'u', jsonSchema: {}, maxOutputTokens: 10, images: [] },
+        priority: 10, createdAt: now, expiresAt: now + 60_000,
+      });
+    }
+    await expect(h.transport.complete(transportRequest(h.parentId))).rejects.toMatchObject({ kind: 'rate_limited' });
+    expect(await h.ctx.db('worker_jobs').count({ n: '*' }).first()).toMatchObject({ n: MAX_ACTIVE_AI_JOBS_PER_PARENT });
+  });
+
   it('graceful shutdown: pending waits give up and long polls answer at once', async () => {
     const h = await setup();
     await heartbeat(h.ctx);
@@ -219,7 +240,7 @@ describe('AIRouter with the worker provider (§17.4)', () => {
   it('every AI request becomes a job with waitMs = route deadline + 30 s', async () => {
     const h = createHarness({ asyncRoutes: 'all', deadlines: { light: 90_000, complex: 240_000 } });
     const outcome = await h.router.handle('explain_text', PARENT_ID, explainTextBody(SCIENCE_TEXT));
-    expect(outcome).toMatchObject({ kind: 'job', httpStatus: 202, body: { status: 'pending', pollAfterMs: 3000, waitMs: 120_000 } });
+    expect(outcome).toMatchObject({ kind: 'job', httpStatus: 202, body: { status: 'pending', pollAfterMs: 300, waitMs: 120_000 } });
     await h.router.idle();
     const jobId = outcome.kind === 'job' ? outcome.body.jobId : '';
     expect(await h.router.pollJob(PARENT_ID, jobId)).toMatchObject({ status: 'ok', meta: { route: 'light' } });
@@ -255,7 +276,7 @@ describe('AIRouter with the worker provider (§17.4)', () => {
     expect((await agent.get('/api/health')).body.ai).toEqual({ light: true, complex: true });
     const accepted = await agent.post('/api/ai/explain_text').set(XRW).send(body);
     expect(accepted.status).toBe(202);
-    expect(accepted.body).toMatchObject({ status: 'pending', waitMs: 120_000 });
+    expect(accepted.body).toMatchObject({ status: 'pending', waitMs: LIGHT_JOB_WAIT_MS });
 
     const leased = await request(c.app).post('/api/worker/lease').set(bearer()).send({ worker: WORKER, version: '1', kinds: ['ai'], waitMs: 3_000 });
     const job = leased.body.job;
@@ -282,5 +303,37 @@ describe('AIRouter with the worker provider (§17.4)', () => {
     await request(c.app).post(`/api/worker/jobs/${failing.id}/result`).set(bearer()).send({ worker: WORKER, ...errorBody('auth') });
     const failed = await waitFor(async () => (await agent.get(`/api/ai/jobs/${second.body.jobId}`)).body, (b) => b.status !== 'pending');
     expect(failed).toMatchObject({ status: 'unavailable', reason: 'provider_error' });
+  });
+
+  it('free questions (§18) go through a worker job too, without the child name, and land in the history', async () => {
+    ctx = await createTestContext({ env: { WORKER_TOKEN_SHA256 } });
+    const c = ctx;
+    const { agent } = await newParent(c, 'question-poste@example.fr');
+    const child = await newChild(agent, 'Zoé');
+    await heartbeat(c);
+    const accepted = await agent.post('/api/ai/free_question').set(XRW).send({
+      childId: child.id, documentId: null, documentHash: null, question: 'Pourquoi les volcans explosent ?',
+    });
+    expect(accepted.status).toBe(202);
+    expect(accepted.body).toMatchObject({ status: 'pending', waitMs: LIGHT_JOB_WAIT_MS });
+
+    const job = (await request(c.app).post('/api/worker/lease').set(bearer()).send({ worker: WORKER, version: '1', kinds: ['ai'], waitMs: 3_000 })).body.job;
+    expect(job).toMatchObject({ kind: 'ai', tier: 'light', operation: 'free_question', documentText: null, deadlineMs: 90_000 });
+    expect(job.userText).toContain('<question_de_l_enfant>\nPourquoi les volcans explosent ?\n</question_de_l_enfant>');
+    expect(job.system).toContain('question libre');
+    expect(job.jsonSchema).toMatchObject({ required: expect.arrayContaining(['status', 'answer', 'example', 'suggestions']) });
+    const serialized = JSON.stringify(job);
+    expect(serialized).not.toContain('Zoé');
+    expect(serialized).not.toContain(child.id);
+
+    const answer = { status: 'ok', answer: 'La roche fondue pousse très fort sous la montagne. Un jour, elle sort par le haut.', example: null, suggestions: ['Où sont les volcans ?'] };
+    expect((await request(c.app).post(`/api/worker/jobs/${job.id}/result`).set(bearer()).send({ worker: WORKER, ...doneBody(answer) })).body).toEqual({ ok: true, applied: true });
+    const done = await waitFor(async () => (await agent.get(`/api/ai/jobs/${accepted.body.jobId}`)).body, (b) => b.status !== 'pending');
+    expect(done).toMatchObject({ status: 'ok', data: { answer: answer.answer, suggestions: ['Où sont les volcans ?'] }, meta: { route: 'light' } });
+
+    const rows = await c.db('free_questions').select('question', 'outcome', 'answer_text', 'child_id');
+    expect(rows).toEqual([{ question: 'Pourquoi les volcans explosent ?', outcome: 'answered', answer_text: answer.answer, child_id: child.id }]);
+    // Worker calls count for the daily limit of the child.
+    expect(await c.db('ai_requests').where({ provider: 'worker', child_id: child.id }).count({ n: '*' }).first()).toMatchObject({ n: 1 });
   });
 });

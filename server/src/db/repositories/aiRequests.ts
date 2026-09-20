@@ -4,8 +4,11 @@ import { type Db, toNum } from './common';
 
 export type AIRequestStatus = 'ok' | 'not_in_text' | 'blocked' | 'unavailable' | 'aborted' | 'pending';
 
-/** Providers that made a real external/mock call (quota and budget count only these, never cache hits). */
-export const BILLABLE_PROVIDERS: readonly string[] = ['plugin', 'mock'];
+/**
+ * Providers that made a real external/mock call (quota and budget count only these, never cache hits). The home worker
+ * counts too: the daily limit per child is about the child's use (§15.4, §18.2.5), its cost stays null.
+ */
+export const BILLABLE_PROVIDERS: readonly string[] = ['plugin', 'mock', 'worker'];
 
 export interface AIRequestRecord {
   id: string;
@@ -14,7 +17,7 @@ export interface AIRequestRecord {
   documentId: string | null;
   operation: AIOperation;
   route: AIRoute;
-  /** 'plugin' | 'mock' | 'local' | 'none'. */
+  /** 'plugin' | 'mock' | 'worker' | 'local' | 'none'. */
   provider: string;
   model: string;
   promptVersion: string;

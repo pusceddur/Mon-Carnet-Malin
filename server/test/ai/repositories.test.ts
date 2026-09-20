@@ -53,6 +53,9 @@ describe('ai_requests repository', () => {
     await repo.insert(record({ childId: 'c2', costMicros: 5000 }));
     await repo.insert(record({ createdAt: T0 - 86_400_000, costMicros: 100_000 }));
     expect(await repo.countBillableCalls('c1', T0 - 1000)).toBe(1);
+    // The home worker is a real call too (daily limit per child), without a cost.
+    await repo.insert(record({ provider: 'worker', costMicros: null, operation: 'free_question' }));
+    expect(await repo.countBillableCalls('c1', T0 - 1000)).toBe(2);
     expect(await repo.sumCostMicros('p1', T0 - 1000)).toBe(7000);
     expect(await repo.sumCostMicros('p2', 0)).toBe(0);
     const row = await db('ai_requests').where('child_id', 'c2').first();

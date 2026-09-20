@@ -84,10 +84,11 @@ describe('worker API — lease (§17.3)', () => {
     expect(first).toEqual({
       id: older, kind: 'ai', tier: 'complex', operation: 'generate_questions', system: 'Consigne',
       documentText: '<texte_du_document>Le chat dort.</texte_du_document>', userText: 'Explique', jsonSchema: { type: 'object' },
-      maxOutputTokens: 700, images: [], imageUrl: null, deadlineMs: 90_000, leaseMs: WORKER_PROTOCOL.leaseMs,
+      maxOutputTokens: 700, images: [], imageUrl: null, deadlineMs: 90_000, leaseMs: WORKER_PROTOCOL.leaseMs, reasoning: 'low',
     });
     expect(JSON.stringify(first)).not.toContain(parentId);
-    expect((await lease(c, { worker: 'w2' }))?.id).toBe(newer);
+    // Short requests are answered without a long reflection (§17.4, 2026-09-19).
+    expect(await lease(c, { worker: 'w2' })).toMatchObject({ id: newer, tier: 'light', reasoning: 'off' });
     expect((await lease(c, { worker: 'w3' }))?.id).toBe(low);
     expect(await lease(c, { worker: 'w4' })).toBeNull();
     expect(await jobRow(c, older)).toMatchObject({ status: 'leased', leased_by: 'w1', attempts: 1, lease_until: c.clock.now + WORKER_PROTOCOL.leaseMs });
@@ -204,13 +205,13 @@ describe('worker API — page_text leasing rules', () => {
     expect(job?.system).toContain('Tu transcris fidèlement');
     expect(job?.jsonSchema).toMatchObject({ required: ['status', 'blocks'] });
 
-    // A job of a deleted document stays queued (it expires later).
+    // A job of a deleted document is never given to the worker: closed with the document (2026-09-19).
     await postResult(c, missing, errorBody('bad_job'));
     const again = await pageJob(c, parentId, documentId, 0, 'f'.repeat(64));
     await unlock(agent);
     expect((await agent.delete(`/api/documents/${documentId}`).set(XRW).send()).status).toBe(200);
     expect(await lease(c)).toBeNull();
-    expect(await jobRow(c, again)).toMatchObject({ status: 'queued' });
+    expect(await jobRow(c, again)).toMatchObject({ status: 'skipped', error: 'document_deleted' });
   });
 
   it('serves the page image only to the worker holding the lease, and only the image of the job', async () => {

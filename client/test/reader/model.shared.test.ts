@@ -38,3 +38,18 @@ describe('reader model with shared text functions', () => {
     expect(findQuote([model], 'je vais a l’ecole')).not.toBeNull();
   });
 });
+
+describe('§22 text prepared for the voice (real segmentation)', () => {
+  it('gives each sentence its part of the prepared block, while the words match', () => {
+    const text = "Consignes 1: lis l'article 2: souligne les verbes";
+    const spoken = "Consignes. 1. Lis l'article. 2. Souligne les verbes.";
+    const block = buildBlockModel(0, 0, { kind: 'paragraph', text, spoken }, 'h');
+    expect(block.sentences.map((s) => [s.text, s.spoken])).toEqual([
+      ['Consignes', 'Consignes.'],
+      ["1: lis l'article", "1. Lis l'article."],
+      ['2: souligne les verbes', '2. Souligne les verbes.'],
+    ]);
+    const stale = buildBlockModel(0, 0, { kind: 'paragraph', text: 'Autre texte.', spoken }, 'h');
+    expect(stale.sentences.map((s) => s.spoken)).toEqual([null]);
+  });
+});

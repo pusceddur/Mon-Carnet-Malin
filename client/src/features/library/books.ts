@@ -5,8 +5,9 @@ import { db } from '../../db/localDb';
 
 export interface BookItem { document: DocumentMeta; progress: ReadingProgress | null }
 
+/** Documents to read (homework sheets are in « Mes devoirs », §19.3). */
 export function isBookOfChild(document: DocumentMeta, childId: Id): boolean {
-  return document.deletedAt === null && document.childIds.includes(childId);
+  return document.deletedAt === null && document.childIds.includes(childId) && document.purpose !== 'homework';
 }
 
 /** Books assigned to the child: last read first, then newest. */

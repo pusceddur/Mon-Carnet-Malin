@@ -28,7 +28,7 @@ const ChildSelectPage = (await import('../../src/features/auth/ChildSelectPage')
 function status(patch: Partial<AuthStatus> = {}): AuthStatus {
   return {
     setupRequired: false, authenticated: true, parent: { id: 'p1', email: 'parent@example.org', displayName: 'Parent', createdAt: 1, isOwner: true },
-    parentUnlockedUntil: null, pinSet: true, pinLockedUntil: null, registrationOpen: false, ...patch,
+    parentUnlockedUntil: null, pinSet: true, pinLockedUntil: null, registrationOpen: false, pinRequired: true, passwordResetAvailable: false, aiReading: false, ...patch,
   };
 }
 
@@ -163,7 +163,7 @@ describe('child screens', () => {
     const lea = child('c1', 'Léa');
     setSession({ authStatus: status(), children: [lea, child('c2', 'Tom', '🐼')], selectedChildId: 'c1' });
     await db.documents.put({
-      id: 'd1', ownerParentId: 'p1', childIds: ['c1'], title: 'Le Petit Prince', kind: 'pdf', sourceHash: 'x', pageCount: 30,
+      id: 'd1', ownerParentId: 'p1', childIds: ['c1'], title: 'Le Petit Prince', kind: 'pdf', textMode: 'faithful', purpose: 'reading', homeworkDoneAt: null, sourceHash: 'x', pageCount: 30,
       status: 'ready', createdAt: 1, updatedAt: 1, deletedAt: null,
     });
     await db.progress.put({ childId: 'c1', documentId: 'd1', pageIndex: 11, blockIndex: 0, sentenceIndex: 0, updatedAt: 5 });

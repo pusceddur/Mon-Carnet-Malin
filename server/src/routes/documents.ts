@@ -2,12 +2,15 @@ import { randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
-import { IdSchema, LIMITS, type OkResponse, PageIndexSchema } from '@aide/shared';
+import {
+  DocumentTextModeRequestSchema, type DocumentTextModeResponse, IdSchema, LIMITS, type OkResponse, PageIndexSchema,
+  ReadingPreparationRequestSchema, type ReadingPreparationResponse,
+} from '@aide/shared';
 import { type Request, type RequestHandler, type Response, Router } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
-import { parentIdOf, requireAuth, requireParentUnlock } from '../auth/middleware';
-import { getDocument, softDeleteDocument } from '../db/repositories/documents';
+import { parentIdOf, rateLimiter, requireAuth, requireParentUnlock } from '../auth/middleware';
+import { getDocument, setDocumentTextMode, softDeleteDocument } from '../db/repositories/documents';
 import { type FileKind, findStoredFile, saveStoredFile, type StoredFile, storageUsage } from '../db/repositories/files';
 import { getParentSettings } from '../db/repositories/settings';
 import { withSeq } from '../db/repositories/syncCounters';
@@ -15,10 +18,18 @@ import {
   attachmentDisposition, DOCUMENT_FILE_MIMES, detectMime, fileSize, moveIntoStorage, newStoragePath, PAGE_IMAGE_MIMES, readHead,
   removeQuietly, removeStored, resolveStoragePath, sanitizeFileName, sha256File, stripJpegFile, tempUploadDir, type UploadMime,
 } from '../db/storage/uploads';
-import { appError, parseOrThrow } from '../errors';
+import { appError, ERROR_MESSAGES_FR, parseOrThrow, sendError } from '../errors';
 import { uploadsDir } from '../paths';
 import type { AppDeps } from '../types';
-import { enqueuePageTranscription } from '../worker/pageTranscription';
+import { enqueueDocumentTranscriptions, enqueuePageTranscription } from '../worker/pageTranscription';
+import {
+  enqueueReadingPreparation, READING_PREPARATION_CHILD_MAX_PAGES, readingPreparationUnavailable,
+} from '../worker/readingPreparation';
+
+/** §20 bound on uploads per account (a 500-page import spreads over its retries). */
+export const UPLOADS_PER_15_MIN = 600;
+/** §22 « Préparer la lecture » requests per account. */
+export const READING_PREPARATIONS_PER_15_MIN = 60;
 
 const FileIndexSchema = z.string().regex(/^\d{1,3}$/).transform(Number).pipe(z.number().max(LIMITS.documentFileIndexMax));
 const PageIndexParamSchema = z.string().regex(/^\d{1,5}$/).transform(Number).pipe(PageIndexSchema);
@@ -53,6 +64,8 @@ export function createDocumentsRouter(deps: AppDeps): Router {
   const auth = requireAuth(deps);
   const unlocked = requireParentUnlock(deps);
   const root = uploadsDir(deps.config);
+  // §20: uploads work without the code (background queue, homework added by the child), per account and bounded.
+  const uploadLimiter = rateLimiter(deps, { windowMs: 15 * 60_000, limit: UPLOADS_PER_15_MIN, key: (req) => `uploads:${parentIdOf(req)}` });
 
   const multerFor = (spec: UploadSpec): RequestHandler =>
     multer({
@@ -158,7 +171,50 @@ export function createDocumentsRouter(deps: AppDeps): Router {
     res.json(ok);
   });
 
-  router.post('/:id/files', auth, preflight(ORIGINAL), multerFor(ORIGINAL), async (req, res) => {
+  // §22 « Préparer la lecture »: the page on screen from the reader, the whole document (or more pages) from the Réglages.
+  const preparationLimiter = rateLimiter(deps, {
+    windowMs: 15 * 60_000, limit: READING_PREPARATIONS_PER_15_MIN, key: (req) => `reading-preparation:${parentIdOf(req)}`,
+  });
+  router.post('/:id/reading-preparation', auth, preparationLimiter, async (req, res) => {
+    const parentId = parentIdOf(req);
+    const id = parseOrThrow(IdSchema, req.params.id);
+    const body = parseOrThrow(ReadingPreparationRequestSchema, req.body);
+    const wide = body.pageIndexes === undefined || body.pageIndexes.length > READING_PREPARATION_CHILD_MAX_PAGES;
+    const until = req.auth?.parentUnlockedUntil ?? null;
+    if (wide && !(until !== null && until > deps.now())) {
+      sendError(req, res, 403, 'parent_locked', ERROR_MESSAGES_FR.parent_locked);
+      return;
+    }
+    if (!(await getDocument(deps.db, parentId, id))) throw appError(404, 'not_found');
+    const unavailable = await readingPreparationUnavailable(deps, parentId);
+    const queued = unavailable === null ? await enqueueReadingPreparation(deps, parentId, id, { pageIndexes: body.pageIndexes, force: body.force }) : 0;
+    const response: ReadingPreparationResponse = { queued, unavailable };
+    res.set('Cache-Control', 'no-store').json(response);
+  });
+
+  // §17.10: « Texte écrit par un enfant » on/off. The pages whose image is on the server are read again in the new mode.
+  router.put('/:id/text-mode', auth, unlocked, async (req, res) => {
+    const parentId = parentIdOf(req);
+    const id = parseOrThrow(IdSchema, req.params.id);
+    const { textMode } = parseOrThrow(DocumentTextModeRequestSchema, req.body);
+    const existing = await getDocument(deps.db, parentId, id);
+    if (!existing) throw appError(404, 'not_found');
+    // An EPUB has no page images to read again.
+    if (existing.kind === 'epub' && textMode === 'punctuated') throw appError(400, 'invalid_request');
+    const document = await withSeq(deps.db, parentId, (trx, seq) => setDocumentTextMode(trx, parentId, id, textMode, deps.now(), seq));
+    if (!document) throw appError(404, 'not_found');
+    // Only when the mode really changed: the pages are then read again even if they were already read in the other mode.
+    let queued = 0;
+    try {
+      if (existing.textMode !== textMode) queued = await enqueueDocumentTranscriptions(deps, parentId, id, undefined, { reread: true });
+    } catch (err) {
+      deps.logger.error('worker_transcription_enqueue_failed', { error: err });
+    }
+    const response: DocumentTextModeResponse = { document, queued };
+    res.set('Cache-Control', 'no-store').json(response);
+  });
+
+  router.post('/:id/files', auth, uploadLimiter, preflight(ORIGINAL), multerFor(ORIGINAL), async (req, res) => {
     const body = req.body as { index?: unknown } | undefined;
     const parsedIndex = FileIndexSchema.safeParse(body?.index);
     if (!parsedIndex.success) {
@@ -174,7 +230,7 @@ export function createDocumentsRouter(deps: AppDeps): Router {
     await sendStored(req, res, 'original', parseOrThrow(FileIndexSchema, req.params.index));
   });
 
-  router.put('/:id/pages/:pageIndex/image', auth, preflight(PAGE_IMAGE), multerFor(PAGE_IMAGE), async (req, res) => {
+  router.put('/:id/pages/:pageIndex/image', auth, uploadLimiter, preflight(PAGE_IMAGE), multerFor(PAGE_IMAGE), async (req, res) => {
     const parsedIndex = PageIndexParamSchema.safeParse(req.params.pageIndex);
     if (!parsedIndex.success) {
       for (const f of (req.files ?? []) as Express.Multer.File[]) await removeQuietly(f.path);

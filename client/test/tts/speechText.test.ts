@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { frenchCardinal, frenchOrdinal, prepareSpokenText, romanToInt } from '../../src/tts/speechText';
+import { frenchCardinal, frenchOrdinal, prepareSpokenText, preparedSpokenText, romanToInt } from '../../src/tts/speechText';
 
 describe('French numbers in words', () => {
   it('says cardinals with French rules', () => {
@@ -79,5 +79,41 @@ describe('prepareSpokenText', () => {
   it('leaves normal text unchanged', () => {
     const text = 'La plante puise l’eau du sol grâce à ses racines.';
     expect(spoken(text)).toBe(text);
+  });
+});
+
+describe('§22 lists and « Préparer la lecture »', () => {
+  it('reads a list marker with a pause', () => {
+    expect(prepareSpokenText("1: lis l'article").text).toBe("1. lis l'article");
+    expect(prepareSpokenText('2) souligne les verbes').text).toBe('2. souligne les verbes');
+    expect(prepareSpokenText('b) le chien').text).toBe('b. le chien');
+    // Already right, and titles keep their words.
+    expect(prepareSpokenText('3. Relis ton texte.').text).toBe('3. Relis ton texte.');
+    expect(prepareSpokenText('M. Dupont arrive.').text).toBe('Monsieur Dupont arrive.');
+    // Not at the start of what is read: left alone.
+    expect(prepareSpokenText('Il est 10: 30.').text).toBe('Il est 10: 30.');
+  });
+
+  it('reads the prepared text and maps every word back onto the displayed one', () => {
+    const display = "1: lis l'article 2: souligne les verbes";
+    const prepared = "1. Lis l’article. 2. Souligne les verbes.";
+    const spoken = preparedSpokenText(display, prepared);
+    expect(spoken?.text).toBe(prepared);
+    for (const word of ['Lis', 'l’article', 'Souligne', 'verbes']) {
+      const source = spoken!.toSource(prepared.indexOf(word));
+      expect(display.slice(source).toLowerCase().replace('’', "'")).toMatch(new RegExp(`^${word.toLowerCase().replace('’', "'")}`));
+    }
+    // Punctuation added by the preparation maps to the end of the word before it.
+    expect(spoken!.toSource(prepared.indexOf('.', 5))).toBe(display.indexOf(' 2:'));
+  });
+
+  it('still applies the usual rules to the prepared text', () => {
+    expect(preparedSpokenText('M. Dupont lit au XIXe siècle', 'M. Dupont lit, au XIXe siècle.')?.text).toBe('Monsieur Dupont lit, au dix-neuvième siècle.');
+  });
+
+  it('refuses a preparation whose words differ', () => {
+    expect(preparedSpokenText('Le chat dort', 'Le chat dort bien.')).toBeNull();
+    expect(preparedSpokenText('Le chat dort', 'Le chien dort.')).toBeNull();
+    expect(preparedSpokenText('', '')).toBeNull();
   });
 });

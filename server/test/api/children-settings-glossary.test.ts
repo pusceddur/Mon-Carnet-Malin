@@ -47,6 +47,14 @@ describe('children routes', () => {
     expect(patch.body.tts.rate).toBe(1.2);
     expect(patch.body.age).toBe(9);
     expect((await agent.patch(`/api/children/${child.id}/preferences`).set(XRW).send({ reading: { fontSizePx: 100 } })).status).toBe(400);
+    // §26 couleurs de lecture: saved, and kept when another preference changes.
+    const aids = { syllables: true, silentLetters: true, sounds: false, changedLetters: false, liaisons: true };
+    expect((await agent.patch(`/api/children/${child.id}/preferences`).set(XRW).send({ reading: { aids } })).body.reading.aids).toEqual(aids);
+    const later = await agent.patch(`/api/children/${child.id}/preferences`).set(XRW).send({ reading: { fontSizePx: 30 } });
+    expect(later.body.reading).toMatchObject({ fontSizePx: 30, aids });
+    // The pauses of the voice (§22) are kept too.
+    await agent.patch(`/api/children/${child.id}/preferences`).set(XRW).send({ tts: { sentencePauseMs: 900 } });
+    expect((await agent.patch(`/api/children/${child.id}/preferences`).set(XRW).send({ tts: { rate: 1 } })).body.tts).toMatchObject({ rate: 1, sentencePauseMs: 900 });
 
     // Profile edits reach devices through sync.
     const pulled = await sync(agent);

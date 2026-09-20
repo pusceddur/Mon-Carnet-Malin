@@ -1,8 +1,8 @@
 import { normalizeForMatch, type SafetyLevel } from '@aide/shared';
 import { guardResult, type GuardIssue, type GuardResult } from '../ai/validation/types';
 import {
-  ADULT_REDIRECT, BLOCK_EXPLICIT, CONTACT_PATTERNS, DEPENDENCY_PATTERNS, GENERIC_SELF_REFERENCE, SELF_REFERENCE_TEMPLATES, SENSITIVE_EDUCATIONAL,
-  type LexiconEntry,
+  ADULT_REDIRECT, BLOCK_EXPLICIT, CONTACT_PATTERNS, DEPENDENCY_PATTERNS, FREE_QUESTION_BLOCK, FREE_QUESTION_CONTACT_IDS, FREE_QUESTION_REDIRECT,
+  FREE_QUESTION_STRICT, GENERIC_SELF_REFERENCE, SELF_REFERENCE_TEMPLATES, SENSITIVE_EDUCATIONAL, type LexiconEntry,
 } from './lexicons.fr';
 import { SourceIndex } from './textMatch';
 
@@ -61,6 +61,47 @@ export function checkInputSafety(req: InputSafetyRequest): InputSafetyVerdict {
   return { verdict: 'ok' };
 }
 
+export interface FreeQuestionInputRequest {
+  /** Question typed by the child. */
+  question: string;
+  /** Previous exchange sent back by the app (« Je n'ai pas compris », follow-up): its question is child text too. */
+  previous: { question: string; answer: string } | null;
+  level: SafetyLevel;
+}
+
+/**
+ * §18.2.1: input check of a free question, before any AI call. Distress, self-harm, abuse and strangers come first
+ * (adult_redirect), then checkInputSafety and the FREE_QUESTION_BLOCK categories (block), then the strict level.
+ * The previous answer is checked like document text (block_explicit only, never adult_redirect).
+ */
+export function checkFreeQuestionInput(req: FreeQuestionInputRequest): InputSafetyVerdict {
+  const childRaw = [req.question, ...(req.previous ? [req.previous.question] : [])];
+  const child = childRaw.map(normalizeForMatch).filter((t) => t !== '');
+
+  for (const text of child) {
+    const distress = findAll([...ADULT_REDIRECT, ...FREE_QUESTION_REDIRECT], text);
+    if (distress.length > 0) return { verdict: 'adult_redirect', matches: distress };
+  }
+  const base = checkInputSafety({ childTexts: childRaw, documentTexts: req.previous ? [req.previous.answer] : [], level: req.level });
+  if (base.verdict === 'adult_redirect' || base.verdict === 'block') return base;
+  for (const text of child) {
+    const forbidden = findAll(FREE_QUESTION_BLOCK, text);
+    if (forbidden.length > 0) return { verdict: 'block', matches: forbidden, source: 'child' };
+  }
+  for (const raw of childRaw) {
+    const contacts = CONTACT_PATTERNS.filter((e) => FREE_QUESTION_CONTACT_IDS.includes(e.id) && e.re.test(raw));
+    if (contacts.length > 0) return { verdict: 'block', matches: contacts.map((e) => ({ id: `fq_contact_${e.id}`, match: '' })), source: 'child' };
+  }
+  if (base.verdict === 'strict') return base;
+  if (req.level === 'strict') {
+    for (const text of child) {
+      const sensitive = findAll(FREE_QUESTION_STRICT, text);
+      if (sensitive.length > 0) return { verdict: 'strict', matches: sensitive };
+    }
+  }
+  return { verdict: 'ok' };
+}
+
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -87,13 +128,22 @@ export interface OutputSafetyRequest {
   rawSource: string;
   level: SafetyLevel;
   selfReferenceTerms: readonly string[];
+  /**
+   * Default true: dependency, self-reference and contact phrases quoted from the source are accepted (a story may contain
+   * them). False for free questions (§18): nothing typed by the child can excuse them in an answer.
+   */
+  sourceExemptions?: boolean;
+  /** Wording of the regeneration feedback: about a document (default) or a free question. */
+  subject?: 'document' | 'question';
 }
 
 const FEEDBACK = {
   explicit: "Ta réponse contient un contenu inadapté pour un enfant : reformule sans ce contenu.",
   sensitive: (word: string) => `N'emploie pas « ${word} » : ce thème n'est pas dans le texte. N'ajoute aucun détail sensible.`,
+  sensitiveQuestion: (word: string) => `N'emploie pas « ${word} » : l'enfant n'a pas posé de question sur ce thème. Réponds sans ce thème et sans détail sensible.`,
   dependency: "Ne parle pas de toi, pas d'amitié, pas de secret et ne demande aucune information personnelle.",
   selfReference: "Ne parle pas de toi ni de ce que tu es : réponds seulement sur le texte.",
+  selfReferenceQuestion: "Ne parle pas de toi ni de ce que tu es : réponds seulement à la question.",
   contact: "N'écris ni lien, ni adresse e-mail, ni numéro de téléphone.",
 } as const;
 
@@ -106,7 +156,9 @@ export function checkOutputSafety(req: OutputSafetyRequest): GuardResult {
   const issues: GuardIssue[] = [];
   const texts = req.outputTexts.map(normalizeForMatch).filter((t) => t !== '');
   const joined = texts.join(' | ');
-  const sourceNormalized = req.source.paddedAll;
+  const exempt = req.sourceExemptions ?? true;
+  const sourceNormalized = exempt ? req.source.paddedAll : ' ';
+  const aboutQuestion = req.subject === 'question';
 
   for (const m of findAll(BLOCK_EXPLICIT, joined)) {
     issues.push({ code: 'safety_explicit', detail: m.id, feedback: FEEDBACK.explicit });
@@ -116,7 +168,8 @@ export function checkOutputSafety(req: OutputSafetyRequest): GuardResult {
     const m = entry.re.exec(joined);
     if (!m) continue;
     if (req.level === 'strict' || !sourceMatches(req.source, entry)) {
-      issues.push({ code: 'safety_sensitive', detail: entry.id, feedback: FEEDBACK.sensitive(m[0].trim()) });
+      const word = m[0].trim();
+      issues.push({ code: 'safety_sensitive', detail: entry.id, feedback: aboutQuestion ? FEEDBACK.sensitiveQuestion(word) : FEEDBACK.sensitive(word) });
     }
   }
 
@@ -128,15 +181,15 @@ export function checkOutputSafety(req: OutputSafetyRequest): GuardResult {
 
   for (const m of findAll([...GENERIC_SELF_REFERENCE, ...selfReferenceEntries(req.selfReferenceTerms)], joined)) {
     if (!sourceNormalized.includes(` ${m.match} `)) {
-      issues.push({ code: 'safety_self_reference', detail: m.id, feedback: FEEDBACK.selfReference });
+      issues.push({ code: 'safety_self_reference', detail: m.id, feedback: aboutQuestion ? FEEDBACK.selfReferenceQuestion : FEEDBACK.selfReference });
     }
   }
 
   const rawOutput = req.outputTexts.join('\n');
-  const rawSourceCompact = req.rawSource.replace(/\s+/g, '').toLowerCase();
+  const rawSourceCompact = exempt ? req.rawSource.replace(/\s+/g, '').toLowerCase() : '';
   for (const entry of CONTACT_PATTERNS) {
     const m = entry.re.exec(rawOutput);
-    if (m && !rawSourceCompact.includes(m[0].replace(/\s+/g, '').toLowerCase())) {
+    if (m && (!exempt || !rawSourceCompact.includes(m[0].replace(/\s+/g, '').toLowerCase()))) {
       issues.push({ code: 'safety_contact', detail: entry.id, feedback: FEEDBACK.contact });
     }
   }

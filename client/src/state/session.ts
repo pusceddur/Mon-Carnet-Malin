@@ -47,6 +47,8 @@ export interface SessionState {
   markParentLocked(): Promise<void>;
   /** Server answered `not_authenticated`: the guards send the parent back to the login page. */
   markSignedOut(): Promise<void>;
+  /** §20 sign-out that also removes the books, pages and notes of the family from this device. */
+  forgetThisDevice(): Promise<void>;
 }
 
 export interface SessionApi {
@@ -68,8 +70,11 @@ export interface SessionDeps {
   onSignedIn?: () => void;
 }
 
+/** §20: an account that does not ask for the code has its Réglages always open. */
 export function isParentUnlocked(status: AuthStatus | null, now: Millis): boolean {
-  return Boolean(status?.authenticated && status.parentUnlockedUntil !== null && status.parentUnlockedUntil > now);
+  if (!status?.authenticated) return false;
+  if (status.pinRequired === false) return true;
+  return status.parentUnlockedUntil !== null && status.parentUnlockedUntil > now;
 }
 
 function sortChildren(children: ChildProfile[]): ChildProfile[] {
@@ -104,7 +109,7 @@ export function createSessionStore(deps: SessionDeps): UseBoundStore<StoreApi<Se
       if (unlockTimer !== null) clearTimeout(unlockTimer);
       unlockTimer = null;
       const until = status?.parentUnlockedUntil ?? null;
-      if (until === null) return;
+      if (until === null || status?.pinRequired === false) return;
       const delay = until - deps.now();
       if (delay <= 0) return;
       unlockTimer = setTimeout(() => {
@@ -265,8 +270,15 @@ export function createSessionStore(deps: SessionDeps): UseBoundStore<StoreApi<Se
 
       markParentLocked: async () => {
         const status = get().authStatus;
-        if (!status || status.parentUnlockedUntil === null) return;
+        // §20: without the code the adult area never locks.
+        if (!status || status.parentUnlockedUntil === null || !status.pinRequired) return;
         await get().setAuthStatus({ ...status, parentUnlockedUntil: null });
+      },
+
+      forgetThisDevice: async () => {
+        await wipeAccountData();
+        await db.kv.delete(SESSION_KV_KEYS.accountParentId);
+        await get().markSignedOut();
       },
 
       markSignedOut: async () => {
@@ -276,6 +288,9 @@ export function createSessionStore(deps: SessionDeps): UseBoundStore<StoreApi<Se
           pinSet: status?.pinSet ?? true,
           pinLockedUntil: status?.pinLockedUntil ?? null,
           registrationOpen: status?.registrationOpen ?? false,
+          pinRequired: status?.pinRequired ?? true,
+          passwordResetAvailable: status?.passwordResetAvailable ?? false,
+          aiReading: status?.aiReading ?? false,
           ...status,
           authenticated: false,
           parent: null,

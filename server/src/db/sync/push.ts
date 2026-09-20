@@ -175,6 +175,8 @@ class PushSession {
   }
 
   // Documents: creation and title/status/pageCount edits are free; deletion and childIds changes need the PIN.
+  // The text mode is set at creation, then only by PUT /api/documents/:id/text-mode (§17.10): a push never changes it.
+  // The purpose is set at creation; « J'ai terminé » of a homework (§19.3) is free, like the title.
   private async applyDocument(raw: unknown): Promise<SyncRejectionReason | null> {
     const incoming = this.parse(DocumentMetaSchema, raw);
     if (!incoming) return 'invalid';
@@ -205,6 +207,7 @@ class PushSession {
       status: incoming.status,
       pageCount: incoming.pageCount,
       childIds: incoming.childIds,
+      homeworkDoneAt: existing.purpose === 'homework' ? incoming.homeworkDoneAt : null,
       deletedAt: incoming.deletedAt,
       updatedAt,
     };

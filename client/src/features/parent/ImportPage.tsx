@@ -1,9 +1,10 @@
-import { newId, type Id } from '@aide/shared';
+import { newId, type DocumentTextMode, type Id } from '@aide/shared';
 import { useEffect, useRef, useState, type ChangeEvent, type JSX } from 'react';
 import { useNavigate } from 'react-router';
-import { Button, Field, IconButton, TextInput, Toggle, useToast } from '../../design/components';
+import { Button, Field, IconButton, Segmented, TextInput, Toggle, useToast } from '../../design/components';
 import { detectFileKind, isHeic, titleFromFileName } from '../../documents/DocumentParser';
 import { analyzeFile, ImportError, importFiles } from '../../documents/ImportService';
+import { usePagesReadByAi } from '../../documents/ProcessingQueue';
 import { draftProblem, isMixedEpub, moveItem, removeItem, totalPages, updateItem, type DraftItem } from '../../documents/ui/importDraft';
 import '../../documents/ui/parentDocuments.css';
 import { format } from '../../i18n/fr';
@@ -14,6 +15,7 @@ import { useSessionStore } from '../../state/session';
 import { ParentPage, ParentSection } from './ParentPage';
 
 const t = documents.importPage;
+const tm = documents.textMode;
 const ACCEPT_FILES = 'application/pdf,.pdf,.epub,application/epub+zip,image/*,.heic,.heif';
 const KIND_ICONS: Record<DraftItem['kind'], string> = { pdf: '📄', epub: '📘', image: '🖼️' };
 
@@ -47,6 +49,7 @@ export default function ImportPage(): JSX.Element {
   const navigate = useNavigate();
   const toast = useToast();
   const allChildren = useSessionStore((s) => s.children);
+  const readByAi = usePagesReadByAi();
   const children = allChildren.filter((c) => c.deletedAt === null);
   const [installGuideDismissed, setInstallGuideDismissed] = useState(false);
   const needsInstall = isIPad() && !isStandalonePwa();
@@ -54,6 +57,8 @@ export default function ImportPage(): JSX.Element {
   const [title, setTitle] = useState('');
   const titleTouched = useRef(false);
   const [childIds, setChildIds] = useState<Set<Id> | null>(null);
+  const [textMode, setTextMode] = useState<DocumentTextMode>('faithful');
+  const [isHomework, setIsHomework] = useState(false);
   const [items, setItems] = useState<DraftItem[]>([]);
   const [busy, setBusy] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -151,6 +156,12 @@ export default function ImportPage(): JSX.Element {
             : problem === 'analyzing' ? t.waitAnalysis
               : null;
 
+  // An EPUB keeps the text of the book: the document type only matters for PDF and images.
+  const epubOnly = items.length > 0 && items.every((i) => i.kind === 'epub');
+  const aiReading = readByAi;
+  // §19.3: an EPUB is a book to read, never a homework sheet.
+  const homework = isHomework && !epubOnly;
+
   const onSubmit = async (): Promise<void> => {
     setSubmitted(true);
     if (problem !== null || busy) return;
@@ -158,7 +169,13 @@ export default function ImportPage(): JSX.Element {
     try {
       await importFiles(
         items.map((i) => i.file),
-        { title: title.trim(), childIds: children.filter((c) => selected.has(c.id)).map((c) => c.id) },
+        {
+          title: title.trim(),
+          childIds: children.filter((c) => selected.has(c.id)).map((c) => c.id),
+          // A homework sheet is printed: its text is kept as it is (§19.3).
+          textMode: epubOnly || homework ? 'faithful' : textMode,
+          purpose: homework ? 'homework' : 'reading',
+        },
       );
       toast.success(items.length === 1 && items[0]!.kind === 'epub' ? t.successEpub : t.success);
       void navigate('/parent/documents');
@@ -219,6 +236,33 @@ export default function ImportPage(): JSX.Element {
             </div>
           )}
         </fieldset>
+        {!epubOnly && (
+          <Toggle size="parent" label={t.homeworkLabel} description={t.homeworkHint} checked={isHomework} onChange={setIsHomework} />
+        )}
+        {!epubOnly && !homework && (
+          <div className="docs-text-mode">
+            <Segmented<DocumentTextMode>
+              size="parent"
+              label={tm.label}
+              value={textMode}
+              onChange={setTextMode}
+              options={[
+                { value: 'faithful', label: tm.faithful },
+                { value: 'punctuated', label: tm.punctuated },
+              ]}
+            />
+            {textMode === 'faithful' ? (
+              <p className="docs-muted">{tm.faithfulHint}</p>
+            ) : (
+              <>
+                <p className="docs-muted">{tm.punctuatedHint}</p>
+                <p className={aiReading ? 'docs-muted' : 'docs-warning'} role={aiReading ? undefined : 'status'}>
+                  {aiReading ? tm.punctuatedWaits : tm.needsAi}
+                </p>
+              </>
+            )}
+          </div>
+        )}
       </ParentSection>
 
       <ParentSection title={t.pagesTitle} hint={t.filesHint}>

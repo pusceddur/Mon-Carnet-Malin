@@ -1,7 +1,7 @@
 import { DEFAULT_EXERCISE_PREFERENCES, DEFAULT_PARENT_SETTINGS, DEFAULT_READING_PREFERENCES, DEFAULT_TTS_PREFERENCES, TIMINGS } from '@aide/shared';
 import { describe, expect, it } from 'vitest';
 import { parseCreateParentArgs } from '../../src/auth/createParent';
-import { isLocked, LOCKOUT, lockUntilAfterFailure } from '../../src/auth/lockout';
+import { isLocked, LOGIN_LOCKOUT, LOCKOUT, lockUntilAfterFailure } from '../../src/auth/lockout';
 import { timingSafeEqualString } from '../../src/auth/passwords';
 import { hashSessionToken, newSessionToken } from '../../src/auth/sessions';
 import { loadConfig } from '../../src/config';
@@ -15,6 +15,12 @@ import {
 } from '../../src/db/storage/uploads';
 
 describe('lockout', () => {
+  it('the password lock stops at 15 minutes (§20)', () => {
+    const now = 1_000_000;
+    expect(lockUntilAfterFailure(5, now, LOGIN_LOCKOUT)).toBe(now + 60_000);
+    expect(lockUntilAfterFailure(30, now, LOGIN_LOCKOUT)).toBe(now + 15 * 60_000);
+  });
+
   it('no lock before 5 failures, then 1 min doubling, capped at 24 h', () => {
     const now = 1_000_000;
     expect(lockUntilAfterFailure(4, now)).toBeNull();
@@ -155,6 +161,16 @@ describe('upload storage helpers', () => {
     expect(detectMime(Buffer.from('RIFF\u0000\u0000\u0000\u0000WEBPVP8 ', 'latin1'))).toBe('image/webp');
     expect(detectMime(Buffer.from('\u0000\u0000\u0000\u0018ftypheic\u0000\u0000', 'latin1'))).toBe('image/heic');
     expect(detectMime(Buffer.from('\u0000\u0000\u0000\u0018ftypisom\u0000\u0000', 'latin1'))).toBeNull();
+    // §20 EPUB: zip whose first entry is « mimetype » = application/epub+zip (not any zip).
+    const zipHeader = (name: string, content: string): Buffer => {
+      const header = Buffer.alloc(30);
+      header.writeUInt32LE(0x04034b50, 0);
+      header.writeUInt16LE(name.length, 26);
+      return Buffer.concat([header, Buffer.from(name + content, 'latin1')]);
+    };
+    expect(detectMime(zipHeader('mimetype', 'application/epub+zip'))).toBe('application/epub+zip');
+    expect(detectMime(zipHeader('mimetype', 'application/zip-xxxxx'))).toBeNull();
+    expect(detectMime(zipHeader('document', 'application/epub+zip'))).toBeNull();
     expect(detectMime(Buffer.from('GIF89a'))).toBeNull();
     expect(detectMime(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg">'))).toBeNull();
     expect(detectMime(Buffer.alloc(0))).toBeNull();

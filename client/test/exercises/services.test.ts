@@ -78,18 +78,18 @@ describe('buildSummary', () => {
     expect(outcome).toMatchObject({ kind: 'ok', origin: 'local' });
   });
 
-  it('falls back to the local extractive summary when the help is unavailable', async () => {
+  it('never summarizes on the device when the help is unavailable (decision 2026-09-19)', async () => {
     mocks.summarizeProgressively.mockResolvedValue(unavailable());
-    const lowPages = PAGES.map((p, i) => ({ ...p, ocrLowConfidence: i === 1 }));
-    const outcome = await buildSummary({ ...base, pages: lowPages, aiAllowed: true, onProgress: () => {} });
-    expect(outcome).toEqual({ kind: 'ok', data: LOCAL_SUMMARY, origin: 'local', sourceWarning: true });
-    expect(mocks.extractiveSummary).toHaveBeenCalledWith(lowPages, 'normal');
+    const outcome = await buildSummary({ ...base, aiAllowed: true, onProgress: () => {} });
+    expect(outcome).toEqual({ kind: 'unavailable', message: 'Pas de connexion pour le moment.' });
+    expect(mocks.extractiveSummary).not.toHaveBeenCalled();
   });
 
   it('does not call the network when the parent turned the summary off', async () => {
     const outcome = await buildSummary({ ...base, aiAllowed: false, onProgress: () => {} });
-    expect(outcome).toMatchObject({ kind: 'ok', origin: 'local' });
+    expect(outcome).toMatchObject({ kind: 'unavailable' });
     expect(mocks.summarizeProgressively).not.toHaveBeenCalled();
+    expect(mocks.extractiveSummary).not.toHaveBeenCalled();
   });
 
   it('never summarizes a blocked passage locally', async () => {
@@ -99,10 +99,7 @@ describe('buildSummary', () => {
     expect(mocks.extractiveSummary).not.toHaveBeenCalled();
   });
 
-  it('reports unavailable when even the local summary is empty, and aborted when stopped', async () => {
-    mocks.summarizeProgressively.mockResolvedValue(unavailable());
-    mocks.extractiveSummary.mockReturnValue({ summary: '', keyPoints: [], sourceRefs: [] });
-    expect(await buildSummary({ ...base, aiAllowed: true, onProgress: () => {} })).toEqual({ kind: 'unavailable', message: 'Pas de connexion pour le moment.' });
+  it('reports unavailable without text, and aborted when stopped', async () => {
     expect(await buildSummary({ ...base, pages: [], aiAllowed: true, onProgress: () => {} })).toEqual({ kind: 'unavailable', message: null });
 
     const controller = new AbortController();
@@ -134,32 +131,31 @@ describe('createExercise', () => {
     expect(await db.exercises.get(outcome.exercise.id)).toEqual(outcome.exercise);
   });
 
-  it('builds local questions when the help is unavailable', async () => {
+  it('makes no questions on the device when the help is unavailable (decision 2026-09-19)', async () => {
     mocks.requestAI.mockResolvedValue(unavailable());
     const outcome = await createExercise({ ...base, types: ['qcm', 'reponse_libre', 'ordre'], aiAllowed: true });
-    expect(outcome).toMatchObject({ kind: 'ok', exercise: { origin: 'local' } });
-    expect(mocks.generateLocalQuestions).toHaveBeenCalledWith(PAGES, 5, ['qcm', 'ordre'], 1234);
+    expect(outcome).toEqual({ kind: 'unavailable', message: 'Pas de connexion pour le moment.' });
+    expect(mocks.generateLocalQuestions).not.toHaveBeenCalled();
+    expect(mocks.saveEntity).not.toHaveBeenCalled();
   });
 
-  it('uses the local types when the profile only allows types the local generator cannot build', async () => {
-    mocks.generateLocalQuestions.mockImplementation((_p, _c, types: string[]) => (types.includes('qcm') ? [QCM] : []));
+  it('does not call the network when the parent turned the questions off', async () => {
     const outcome = await createExercise({ ...base, types: ['reponse_libre', 'association'], aiAllowed: false });
-    expect(outcome).toMatchObject({ kind: 'ok', exercise: { origin: 'local', questions: [QCM] } });
+    expect(outcome).toMatchObject({ kind: 'unavailable' });
     expect(mocks.requestAI).not.toHaveBeenCalled();
   });
 
-  it('shows the blocked message, but retries locally after a validation failure', async () => {
+  it('shows the blocked message; a validation failure gives no questions', async () => {
     mocks.requestAI.mockResolvedValueOnce({ status: 'blocked', reason: 'safety_input', message: 'Parles-en avec un adulte.', meta: META });
     expect(await createExercise({ ...base, types: ['qcm'], aiAllowed: true })).toEqual({ kind: 'blocked', message: 'Parles-en avec un adulte.' });
     expect(mocks.saveEntity).not.toHaveBeenCalled();
 
     mocks.requestAI.mockResolvedValueOnce({ status: 'blocked', reason: 'validation', message: 'x', meta: META });
-    expect(await createExercise({ ...base, types: ['qcm'], aiAllowed: true })).toMatchObject({ kind: 'ok', exercise: { origin: 'local' } });
+    expect(await createExercise({ ...base, types: ['qcm'], aiAllowed: true })).toEqual({ kind: 'empty' });
   });
 
   it('reports empty when nothing can be built, and aborted when stopped', async () => {
     mocks.requestAI.mockResolvedValue({ status: 'ok', data: { questions: [] }, meta: META });
-    mocks.generateLocalQuestions.mockReturnValue([]);
     expect(await createExercise({ ...base, types: ['qcm'], aiAllowed: true })).toEqual({ kind: 'empty' });
     expect(await createExercise({ ...base, pages: [], types: ['qcm'], aiAllowed: true })).toEqual({ kind: 'empty' });
 

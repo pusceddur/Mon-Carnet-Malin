@@ -60,6 +60,24 @@ describe('ReaderSettingsPanel · voice', () => {
     expect(document.body.textContent).not.toContain('Contenu énoncé');
   });
 
+  it('chooses a voice of France automatically, even when a Canadian voice is « natural » (2026-09-19)', async () => {
+    await openPanel([v('google-ca', 'Google français du Canada', 'fr-CA', false), v('com.apple.voice.compact.fr-FR.Thomas', 'Thomas')]);
+    const options = Array.from(document.querySelectorAll('option')).map((o) => o.textContent);
+    expect(options[0]).toBe('Automatique (la meilleure voix : Thomas)');
+    // The other accent stays a choice of its own (the order of the list: sortFrenchVoices, tested in voices.test).
+    expect(options).toContain('Google français du Canada · Canada · Naturelle (Internet)');
+    expect(document.body.textContent).not.toContain('accent d’un autre pays');
+  });
+
+  it('says when the device has no voice of France, and on Android explains how to install the Google one', async () => {
+    const support = await import('../../src/platform/support');
+    vi.spyOn(support, 'isAndroid').mockReturnValue(true);
+    await openPanel([v('amelie', 'Amélie', 'fr-CA')]);
+    expect(document.body.textContent).toContain('l’accent d’un autre pays (Canada)');
+    expect(document.body.textContent).toContain(tts.voices.betterVoiceAndroidIntro);
+    for (const step of tts.voices.betterVoiceAndroidSteps) expect(document.body.textContent).toContain(step);
+  });
+
   it('offers the sentence and paragraph pauses', async () => {
     await openPanel([v('com.apple.voice.premium.fr-FR.Audrey', 'Audrey')]);
     expect(document.body.textContent).toContain(tts.pauses.sentence);

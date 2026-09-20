@@ -555,11 +555,11 @@ export function reanchor(anchor: ReanchorSource, page: PageContent): ReanchorRes
 }
 
 function isTextAnchored(a: Annotation): a is TextHighlight | (InkAnnotation & { space: TextInkSpace }) {
-  return a.type === 'highlight' || a.space.kind === 'text';
+  return a.type === 'highlight' || (a.type === 'ink' && a.space.kind === 'text');
 }
 
 export function annotationPageIndex(a: Annotation): number | null {
-  if (a.type === 'highlight') return a.pageIndex;
+  if (a.type === 'highlight' || a.type === 'textbox') return a.pageIndex;
   return a.space.kind === 'answer' ? null : a.space.pageIndex;
 }
 

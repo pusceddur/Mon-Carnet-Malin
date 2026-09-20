@@ -10,6 +10,10 @@ const SetupPage = lazy(() => import('./features/auth/SetupPage'));
 const LoginPage = lazy(() => import('./features/auth/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/RegisterPage'));
 const ChildSelectPage = lazy(() => import('./features/auth/ChildSelectPage'));
+// §20 « Mot de passe oublié » and the link of the e-mail sent every 180 days.
+const ForgotPasswordPage = lazy(() => import('./features/auth/PasswordResetPages').then((m) => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import('./features/auth/PasswordResetPages').then((m) => ({ default: m.ResetPasswordPage })));
+const ContinuityPage = lazy(() => import('./features/auth/PasswordResetPages').then((m) => ({ default: m.ContinuityPage })));
 const ChildHome = lazy(() => import('./features/home/ChildHome'));
 const MyBooksPage = lazy(() => import('./features/library/MyBooksPage'));
 const ReaderPage = lazy(() => import('./features/reader/ReaderPage'));
@@ -18,6 +22,9 @@ const SummaryPage = lazy(() => import('./features/exercises/SummaryPage'));
 const QuizSetupPage = lazy(() => import('./features/exercises/QuizSetupPage'));
 const QuizPlayerPage = lazy(() => import('./features/exercises/QuizPlayerPage'));
 const MyNotesPage = lazy(() => import('./features/notes/MyNotesPage'));
+const QuestionPage = lazy(() => import('./features/question/QuestionPage'));
+const HomeworkListPage = lazy(() => import('./features/homework/HomeworkListPage'));
+const HomeworkPage = lazy(() => import('./features/homework/HomeworkPage'));
 const ParentLayout = lazy(() => import('./features/parent/ParentLayout'));
 const DocumentsAdminPage = lazy(() => import('./features/parent/DocumentsAdminPage'));
 const ImportPage = lazy(() => import('./features/parent/ImportPage'));
@@ -66,6 +73,9 @@ export const routes: RouteObject[] = [
   { path: '/installation', element: page(SetupPage, 'setup') },
   { path: '/connexion', element: page(LoginPage, 'guest') },
   { path: '/inscription', element: page(RegisterPage, 'guest') },
+  { path: '/mot-de-passe-oublie', element: page(ForgotPasswordPage, 'guest') },
+  { path: '/nouveau-mot-de-passe', element: page(ResetPasswordPage) },
+  { path: '/confirmer', element: page(ContinuityPage) },
   { path: '/enfant', element: page(ChildSelectPage, 'auth') },
   { path: '/accueil', element: page(ChildHome, 'child') },
   { path: '/livres', element: page(MyBooksPage, 'child') },
@@ -75,6 +85,9 @@ export const routes: RouteObject[] = [
   { path: '/exercices/:documentId/questions', element: page(QuizSetupPage, 'child') },
   { path: '/exercices/quiz/:exerciseId', element: page(QuizPlayerPage, 'child') },
   { path: '/notes', element: page(MyNotesPage, 'child') },
+  { path: '/question', element: page(QuestionPage, 'child') },
+  { path: '/devoirs', element: page(HomeworkListPage, 'child') },
+  { path: '/devoirs/:documentId', element: page(HomeworkPage, 'child') },
   {
     path: '/parent',
     // The PIN gate itself lives in ParentLayout (server-side unlock, C8).

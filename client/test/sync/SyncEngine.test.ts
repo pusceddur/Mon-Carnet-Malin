@@ -14,7 +14,7 @@ const PARENT = 'parent-1';
 
 function doc(id: string, updatedAt: number, patch: Partial<DocumentMeta> = {}): DocumentMeta {
   return {
-    id, ownerParentId: PARENT, childIds: ['child-1'], title: `Livre ${id}`, kind: 'pdf', sourceHash: 'a'.repeat(64), pageCount: 2,
+    id, ownerParentId: PARENT, childIds: ['child-1'], title: `Livre ${id}`, kind: 'pdf', textMode: 'faithful', purpose: 'reading', homeworkDoneAt: null, sourceHash: 'a'.repeat(64), pageCount: 2,
     status: 'ready', createdAt: 1, updatedAt, deletedAt: null, ...patch,
   };
 }

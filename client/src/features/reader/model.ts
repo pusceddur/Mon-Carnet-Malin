@@ -1,5 +1,6 @@
 // Pure reader model: blocks → sentences → words (§11.3), speech items, selections, quotes and highlights.
 import {
+  alignSpokenText,
   normalizeForMatch,
   segmentSentences,
   sha256Hex,
@@ -14,7 +15,11 @@ import type { SpeechItem } from '../../tts/SpeechEngine';
 
 export interface WordModel { offset: number; end: number; text: string }
 export type SentencePart = { kind: 'text'; text: string } | { kind: 'word'; word: WordModel };
-export interface SentenceModel { index: number; start: number; end: number; text: string; parts: SentencePart[]; words: WordModel[] }
+export interface SentenceModel {
+  index: number; start: number; end: number; text: string; parts: SentencePart[]; words: WordModel[];
+  /** §22 part of the block prepared for the voice with the words of this sentence (null: block not prepared). */
+  spoken: string | null;
+}
 export type BlockSegment = { kind: 'gap'; text: string } | { kind: 'sentence'; sentence: SentenceModel };
 export interface BlockModel {
   pageIndex: number;
@@ -87,9 +92,17 @@ function coveringSentences(text: string): { start: number; end: number }[] {
   return spans;
 }
 
+/** §22 text of the prepared version from the first word of a sentence to the first word of the next one. */
+function spokenSlice(prepared: string, said: readonly { start: number }[], first: number, next: number): string {
+  const end = said[next]?.start ?? prepared.length;
+  return prepared.slice(said[first]?.start ?? 0, end).replace(/[\s«“"(\[—–-]+$/u, '');
+}
+
 export function buildBlockModel(pageIndex: number, blockIndex: number, block: TextBlock, hash: string): BlockModel {
   const text = block.text;
   const words: WordModel[] = tokenizeWords(text).map((t) => ({ offset: t.start, end: t.end, text: text.slice(t.start, t.end) }));
+  // §22 version prepared for the voice, only while it has the words of the text.
+  const prepared = block.spoken ? alignSpokenText(text, block.spoken) : null;
   const segments: BlockSegment[] = [];
   const sentences: SentenceModel[] = [];
   let cursor = 0;
@@ -113,7 +126,10 @@ export function buildBlockModel(pageIndex: number, blockIndex: number, block: Te
       wordIndex += 1;
     }
     if (end > partCursor) parts.push({ kind: 'text', text: text.slice(partCursor, end) });
-    const sentence: SentenceModel = { index, start: span.start, end, text: text.slice(span.start, end), parts, words: sentenceWords };
+    const spoken = prepared && block.spoken && sentenceWords.length > 0
+      ? spokenSlice(block.spoken, prepared.said, wordIndex - sentenceWords.length, wordIndex)
+      : null;
+    const sentence: SentenceModel = { index, start: span.start, end, text: text.slice(span.start, end), parts, words: sentenceWords, spoken };
     sentences.push(sentence);
     segments.push({ kind: 'sentence', sentence });
     cursor = end;
@@ -151,7 +167,8 @@ export function buildSpeechItems(pages: readonly PageModel[]): SpeechItem[] {
     for (const block of page.blocks) {
       for (const sentence of block.sentences) {
         if (sentence.words.length === 0) continue;
-        items.push({ id: speechItemId(page.pageIndex, block.blockIndex, sentence.index), text: sentence.text });
+        const id = speechItemId(page.pageIndex, block.blockIndex, sentence.index);
+        items.push(sentence.spoken ? { id, text: sentence.text, spoken: sentence.spoken } : { id, text: sentence.text });
       }
     }
   }
@@ -375,7 +392,13 @@ export function readerPath(documentId: string, opts: { pageIndex?: number; quote
   return `/lire/${encodeURIComponent(documentId)}${query ? `?${query}` : ''}`;
 }
 
-/** Signature of the reading layout (InkLayer `layoutKey`, §15.7). */
-export function layoutKeyOf(prefs: { font: string; fontSizePx: number; lineHeight: number; letterSpacingEm: number; wordSpacingEm: number; columnWidthEm: number; layoutMode: string }, viewportWidth: number): string {
-  return [prefs.font, prefs.fontSizePx, prefs.lineHeight, prefs.letterSpacingEm, prefs.wordSpacingEm, prefs.columnWidthEm, prefs.layoutMode, Math.round(viewportWidth)].join('|');
+/** Signature of the reading layout (InkLayer `layoutKey`, §15.7); §26 the words of a liaison stay on the same line. */
+export function layoutKeyOf(
+  prefs: { font: string; fontSizePx: number; lineHeight: number; letterSpacingEm: number; wordSpacingEm: number; columnWidthEm: number; layoutMode: string; aids?: { liaisons: boolean } },
+  viewportWidth: number,
+): string {
+  return [
+    prefs.font, prefs.fontSizePx, prefs.lineHeight, prefs.letterSpacingEm, prefs.wordSpacingEm, prefs.columnWidthEm, prefs.layoutMode, Math.round(viewportWidth),
+    prefs.aids?.liaisons ? 'li' : '',
+  ].join('|');
 }

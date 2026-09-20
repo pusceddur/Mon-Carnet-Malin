@@ -5,6 +5,16 @@ const BLANK_LINE_RE = /\n[^\S\n]*\n/g;
 const DIALOGUE_LINE_RE = /\n[^\S\n]*(?:[\u2014\u2013]|-(?=\s))/g;
 const ADJACENT_CLOSERS = new Set(['\u201D', '"', '\u2019', ')', ']']);
 
+// \u00A722 lists. A marker at the start of a line (\u00AB 1. \u00BB, \u00AB 2 : \u00BB, \u00AB 3) \u00BB, \u00AB a) \u00BB, \u00AB IV. \u00BB, \u00AB \u2022 \u00BB) always starts a sentence.
+const LIST_LINE_RE = /\n[^\S\n]*(?=(?:\d{1,3}|[A-Za-z]|[IVXLCDM]{1,6})[^\S\n]?[.):][^\S\n]*\S|[\u2022\u25AA\u25A0\u25BA\u2023\u25E6\u25CF*+][^\S\n])/g;
+// Inside a line, markers numbered in sequence (1, 2, 3\u2026 or a, b, c\u2026) start sentences too: \u00AB 1: lis l'article 2: souligne \u00BB.
+const INLINE_MARKER_RE = /(?<=^|\s)(?:(\d{1,2})[^\S\n]?[.):]|([a-h])[^\S\n]?[.)])(?=[^\S\n]+\S)/g;
+// \u00AB Exercice 1 : \u00BB, \u00AB Page 2 : \u00BB\u2026 number a label, they are not list items.
+const MARKER_LABELS = new Set([
+  'exercice', 'question', '\u00E9tape', 'page', 'chapitre', 'partie', 'le\u00E7on', 'consigne', 'activit\u00E9', 'num\u00E9ro', 'n\u00B0', 'point', 'niveau',
+  'tome', 'livre', 'acte', 'sc\u00E8ne', 's\u00E9ance', 'jour', 'semaine', 'document', 'texte', 'probl\u00E8me', 'figure', 'fig', 'ex', 'lot', 'groupe',
+]);
+
 // Never end a sentence after these (case-sensitive titles).
 const TITLE_ABBREVIATIONS = new Set(['M', 'MM', 'Mme', 'Mmes', 'Mlle', 'Mlles', 'Mgr', 'Me', 'Dr', 'Pr', 'St', 'Ste', 'Sts', 'Stes']);
 // Never end a sentence after these (compared lowercased).
@@ -57,10 +67,37 @@ function dotEndsSentence(text: string, word: string, wordStart: number, sentence
   return true;
 }
 
+/** Start of the inline list markers numbered 1, 2, 3… (or a, b, c…) in sequence, in chains of at least two. */
+function inlineListCuts(text: string): number[] {
+  const cuts: number[] = [];
+  let chain: { index: number; value: number }[] = [];
+  const close = (): void => {
+    if (chain.length >= 2) for (const marker of chain) cuts.push(marker.index);
+    chain = [];
+  };
+  for (const m of text.matchAll(INLINE_MARKER_RE)) {
+    const index = m.index ?? 0;
+    const previous = /(\S+)\s*$/u.exec(text.slice(Math.max(0, index - 40), index))?.[1]?.toLowerCase() ?? '';
+    if (MARKER_LABELS.has(previous)) continue;
+    const value = m[1] !== undefined ? Number(m[1]) : (m[2] ?? 'a').charCodeAt(0) - 96;
+    const last = chain.at(-1);
+    if (last && value === last.value + 1) {
+      chain.push({ index, value });
+    } else if (value === 1) {
+      close();
+      chain = [{ index, value }];
+    }
+  }
+  close();
+  return cuts.filter((i) => i > 0);
+}
+
 function collectCuts(text: string): number[] {
   const hardCuts: number[] = [];
   for (const m of text.matchAll(BLANK_LINE_RE)) hardCuts.push(m.index ?? 0);
   for (const m of text.matchAll(DIALOGUE_LINE_RE)) hardCuts.push(m.index ?? 0);
+  for (const m of text.matchAll(LIST_LINE_RE)) hardCuts.push(m.index ?? 0);
+  hardCuts.push(...inlineListCuts(text));
   hardCuts.sort((a, b) => a - b);
 
   const cuts = [...hardCuts];
@@ -93,7 +130,7 @@ function collectCuts(text: string): number[] {
 /**
  * French sentence segmentation. A sentence ends after . ! ? … (and closing quotes) followed by a space and
  * a capital, a digit, an opening quote or a dialogue dash; never after common abbreviations, initials or
- * list numbers. Blank lines and dialogue lines always start a new sentence.
+ * list numbers. Blank lines, dialogue lines and list items (§22) always start a new sentence.
  */
 export function segmentSentences(text: string): SentenceSpan[] {
   const spans: SentenceSpan[] = [];

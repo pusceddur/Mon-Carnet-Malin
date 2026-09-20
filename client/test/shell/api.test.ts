@@ -91,7 +91,10 @@ describe('lecture intelligente wrappers', () => {
 
   it('getWorkerStatus reads GET /api/settings/worker and validates the answer', async () => {
     const calls = respond(workerStatus);
-    expect(await getWorkerStatus()).toEqual(workerStatus);
+    // A server from before §21/§22: the new fields get their defaults.
+    expect(await getWorkerStatus()).toEqual({
+      ...workerStatus, queued: { ...workerStatus.queued, pageSpeech: 0 }, usage: null, estimate: { monthToDateEur: 0, allAccountsEur: null },
+    });
     expect(calls[0]?.url).toBe('/api/settings/worker');
     expect(calls[0]?.init.method).toBe('GET');
     expect(calls[0]?.init.credentials).toBe('include');

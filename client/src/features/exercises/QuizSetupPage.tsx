@@ -16,7 +16,7 @@ import { exercisesHomeLink, quizLink } from './lib/links';
 
 const TITLE = `${t.setup.emoji} ${t.setup.title}`;
 
-type Phase = { kind: 'setup' } | { kind: 'waiting' } | { kind: 'blocked'; message: string } | { kind: 'empty' };
+type Phase = { kind: 'setup' } | { kind: 'waiting' } | { kind: 'blocked'; message: string } | { kind: 'unavailable'; message: string } | { kind: 'empty' };
 
 export default function QuizSetupPage(): JSX.Element {
   const { documentId } = useParams();
@@ -78,6 +78,7 @@ function QuizSetupScreen({ child, doc, pages }: { child: ChildProfile; doc: Docu
       if (signal.aborted || outcome.kind === 'aborted') return;
       if (outcome.kind === 'ok') navigate(quizLink(outcome.exercise.id), { replace: true });
       else if (outcome.kind === 'blocked') setPhase({ kind: 'blocked', message: outcome.message });
+      else if (outcome.kind === 'unavailable') setPhase({ kind: 'unavailable', message: outcome.message });
       else setPhase({ kind: 'empty' });
     } catch {
       if (signal.aborted) return;
@@ -153,6 +154,15 @@ function QuizSetupScreen({ child, doc, pages }: { child: ChildProfile; doc: Docu
           title={t.setup.blockedTitle}
           message={phase.message}
           action={<Button onClick={() => navigate(exercisesHomeLink(doc.id))}>{t.summary.backToBook}</Button>}
+        />
+      )}
+
+      {phase.kind === 'unavailable' && (
+        <EmptyState
+          emoji="⏳"
+          title={t.setup.unavailableTitle}
+          message={phase.message}
+          action={<Button onClick={() => setPhase({ kind: 'setup' })}>{t.setup.retry}</Button>}
         />
       )}
 

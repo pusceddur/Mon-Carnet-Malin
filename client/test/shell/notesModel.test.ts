@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildNotes, pagesNeededForNotes } from '../../src/features/notes/notesModel';
 
 const doc = (id: string, patch: Partial<DocumentMeta> = {}): DocumentMeta => ({
-  id, ownerParentId: 'p1', childIds: ['c1'], title: `Livre ${id}`, kind: 'pdf', sourceHash: 'x', pageCount: 5, status: 'ready',
+  id, ownerParentId: 'p1', childIds: ['c1'], title: `Livre ${id}`, kind: 'pdf', textMode: 'faithful', purpose: 'reading', homeworkDoneAt: null, sourceHash: 'x', pageCount: 5, status: 'ready',
   createdAt: 1, updatedAt: 1, deletedAt: null, ...patch,
 });
 

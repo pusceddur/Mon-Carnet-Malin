@@ -18,6 +18,7 @@ import { format } from '../../i18n/fr';
 import { reader } from '../../i18n/fr/reader';
 import { tts as ttsStrings } from '../../i18n/fr/tts';
 import { addTextHighlight, PencilToolbar, reanchor, removeAnnotation, useAnnotations, usePencilStore, type ReaderMode } from '../../pencil';
+import { useOnlineStatus } from '../../platform/online';
 import { useSelectedChild, useSessionStore } from '../../state/session';
 import { speechEngine } from '../../tts/SpeechEngine';
 import { getStoredVoiceURI, setStoredVoiceURI } from '../../tts/voices';
@@ -54,6 +55,7 @@ import { ReaderSettingsPanel } from './ReaderSettingsPanel';
 import { ReaderText, scrollIntoComfortZone, type WordTap } from './ReaderText';
 import { ReadingGuide, type GuideAnchor } from './ReadingGuide';
 import { SelectionToolbar } from './SelectionToolbar';
+import { useReadingPreparation } from './readingPreparation';
 import { TTSBar } from './TTSBar';
 import './reader.css';
 
@@ -102,6 +104,9 @@ function ReaderScreen({ documentId }: { documentId: string }): JSX.Element {
   const [view, setView] = useState<'text' | 'original'>('text');
   const [panel, setPanel] = useState<'settings' | 'menu' | null>(null);
   const [ttsOpen, setTtsOpen] = useState(false);
+  // §22 « Préparer la lecture » of the page on screen.
+  const online = useOnlineStatus();
+  const preparation = useReadingPreparation(documentId, currentPage, currentPage === null ? undefined : modelByIndex.get(currentPage), toast);
   const [selection, setSelection] = useState<TextRange | null>(null);
   const [quoteRequest, setQuoteRequest] = useState<SourceRef | null>(null);
   const [quote, setQuote] = useState<TextRange | null>(null);
@@ -658,6 +663,7 @@ function ReaderScreen({ documentId }: { documentId: string }): JSX.Element {
               onNext={() => speechEngine.next()}
               onRateChange={(rate) => prefs.update({ tts: { rate } })}
               onClose={toggleTts}
+              preparation={online ? { status: preparation.status, onPrepare: preparation.prepare } : undefined}
             />
           )}
         </div>

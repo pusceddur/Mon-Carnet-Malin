@@ -4,15 +4,17 @@ import { errors } from './errors';
 import { exercises } from './exercises';
 import { help } from './help';
 import { home } from './home';
+import { homework } from './homework';
 import { library } from './library';
 import { notes } from './notes';
 import { parent } from './parent';
 import { pencil } from './pencil';
+import { question } from './question';
 import { reader } from './reader';
 import { tts } from './tts';
 
 /** All French UI strings, one `as const` object per area (each area file is owned by its module). */
-export const fr = { common, home, library, reader, tts, pencil, documents, parent, exercises, notes, help, errors } as const;
+export const fr = { common, home, homework, library, reader, tts, pencil, documents, parent, exercises, notes, help, question, errors } as const;
 
 export type Fr = typeof fr;
 export type I18nArea = keyof Fr;

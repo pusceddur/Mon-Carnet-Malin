@@ -5,7 +5,8 @@ import type {
 } from '@aide/shared';
 
 export interface DocumentFileRecord { documentId: Id; index: number; name: string; mime: string; size: number; blob: Blob }
-export interface PageImageRecord { documentId: Id; pageIndex: number; variant: 'ocr' | 'thumb'; blob: Blob; width: number; height: number }
+// 'ocr': processed grayscale page (OCR, reprocessing); 'color': same frame in color (§19.1, Original view); 'thumb': 240 px.
+export interface PageImageRecord { documentId: Id; pageIndex: number; variant: 'ocr' | 'color' | 'thumb'; blob: Blob; width: number; height: number }
 export type JobState = 'queued' | 'running' | 'done' | 'error';
 export interface JobRecord { documentId: Id; pageIndex: number; state: JobState; stage: string; attempts: number; error: string | null; updatedAt: Millis }
 export interface AiCacheRecord { key: string; operation: AIOperation; result: AIResult<unknown>; createdAt: Millis }

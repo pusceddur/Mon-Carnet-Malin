@@ -1,5 +1,5 @@
 // Dedicated worker: page preprocessing off the main thread (contract §15.6).
-import { fromTransfer, runBinarize, runPrepare, runProbes, toTransfer, type WorkerRequest, type WorkerResponse } from './protocol';
+import { fromTransfer, runBinarize, runPrepare, runProbes, toTransfer, toTransferRgba, type WorkerRequest, type WorkerResponse } from './protocol';
 
 interface WorkerScope {
   addEventListener(type: 'message', listener: (event: MessageEvent<WorkerRequest>) => void): void;
@@ -16,11 +16,15 @@ async function handle(request: WorkerRequest): Promise<{ response: WorkerRespons
           ? request.source.blob
           : { data: new Uint8ClampedArray(request.source.buffer), width: request.source.width, height: request.source.height };
       const maxDecodeSide = request.source.kind === 'blob' ? request.source.maxDecodeSide : undefined;
-      const prepared = await runPrepare(source, request.options, request.encode, maxDecodeSide);
+      const prepared = await runPrepare(source, request.options, request.encode, maxDecodeSide, request.color);
       const image = toTransfer(prepared.image);
+      const colorPixels = prepared.colorPixels ? toTransferRgba(prepared.colorPixels) : null;
       return {
-        response: { id: request.id, ok: true, op: 'prepare', image, skewDegrees: prepared.skewDegrees, regions: prepared.regions, jpeg: prepared.jpeg, thumb: prepared.thumb },
-        transfer: [image.buffer],
+        response: {
+          id: request.id, ok: true, op: 'prepare', image, skewDegrees: prepared.skewDegrees, regions: prepared.regions, jpeg: prepared.jpeg,
+          thumb: prepared.thumb, color: prepared.color, colorPixels,
+        },
+        transfer: colorPixels ? [image.buffer, colorPixels.buffer] : [image.buffer],
       };
     }
     case 'binarize': {

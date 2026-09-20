@@ -268,6 +268,8 @@ describe('manual relaunch and worker status', () => {
     ctx = await createWorkerContext();
     const c = ctx;
     const { agent, documentId } = await parentWithDocument(c, 'relancer@example.fr', [AWAITING, { ...AWAITING, pageIndex: 1 }, { ...AWAITING, pageIndex: 2 }]);
+    // §25: the app knows that the pages are read by the home computer.
+    expect((await agent.get('/api/auth/status')).body.aiReading).toBe(true);
     await setSettings(agent, { ocr: { aiTranscription: false } });
     for (const index of [0, 1, 2]) expect((await uploadPageImage(agent, documentId, index, index === 1 ? JPEG_2 : JPEG)).status).toBe(200);
     expect(await c.db('worker_jobs').count({ n: '*' }).first()).toMatchObject({ n: 0 });
@@ -283,6 +285,11 @@ describe('manual relaunch and worker status', () => {
     expect(all.body).toEqual({ queued: 2 });
     expect((await agent.post('/api/worker/transcriptions').set(XRW).send({ documentId })).body).toEqual({ queued: 0 });
 
+    // « Relancer la lecture intelligente » (§25): a page already read from the same image is read again on request only.
+    await c.db('worker_jobs').where({ page_index: 0 }).update({ status: 'done' });
+    expect((await agent.post('/api/worker/transcriptions').set(XRW).send({ documentId, pageIndexes: [0] })).body).toEqual({ queued: 0 });
+    expect((await agent.post('/api/worker/transcriptions').set(XRW).send({ documentId, pageIndexes: [0], reread: true })).body).toEqual({ queued: 1 });
+
     const other = await newParent(c, 'voisin@example.fr');
     await unlock(other.agent);
     expect((await other.agent.post('/api/worker/transcriptions').set(XRW).send({ documentId })).status).toBe(404);
@@ -291,8 +298,10 @@ describe('manual relaunch and worker status', () => {
   it('GET /api/settings/worker reports configuration, connection, limit and the jobs of the parent', async () => {
     ctx = await createTestContext();
     const lonely = await newParent(ctx, 'seul@example.fr');
+    expect((await lonely.agent.get('/api/auth/status')).body.aiReading).toBe(false);
     expect((await lonely.agent.get('/api/settings/worker')).body).toEqual({
-      configured: false, connected: false, lastSeenAt: null, limited: false, limitResetsAt: null, queued: { ai: 0, pageText: 0 },
+      configured: false, connected: false, lastSeenAt: null, limited: false, limitResetsAt: null, queued: { ai: 0, pageText: 0, pageSpeech: 0 },
+      usage: null, estimate: { monthToDateEur: 0, allAccountsEur: 0 },
     });
     expect((await request(ctx.app).get('/api/settings/worker')).status).toBe(401);
     await ctx.close();
@@ -307,7 +316,10 @@ describe('manual relaunch and worker status', () => {
     const before = await agent.get('/api/settings/worker');
     expect(before.status).toBe(200);
     expect(before.headers['cache-control']).toBe('no-store');
-    expect(before.body).toEqual({ configured: true, connected: false, lastSeenAt: null, limited: false, limitResetsAt: null, queued: { ai: 0, pageText: 1 } });
+    expect(before.body).toEqual({
+      configured: true, connected: false, lastSeenAt: null, limited: false, limitResetsAt: null, queued: { ai: 0, pageText: 1, pageSpeech: 0 },
+      usage: null, estimate: { monthToDateEur: 0, allAccountsEur: 0 },
+    });
 
     const seenAt = c.clock.now;
     await heartbeat(c);

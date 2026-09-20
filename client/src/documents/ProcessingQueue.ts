@@ -1,10 +1,15 @@
 // Progressive page processing (contract §7, §11.2, §15.6): one page at a time, persisted jobs, crash-loop guard,
-// resume after reload, local OCR with quality checks, server fallback, reprocessing from the parent editor, hand-over of
-// unreadable pages to the « lecture intelligente » (§17.7).
-import type { Id, PageContent, PageStatus, PageTextSource, PageWarning, ParentSettings, TextBlock, WordList } from '@aide/shared';
+// resume after reload, reprocessing from the parent editor. §25 (2026-09-19): when the home computer reads the pages
+// (« lecture intelligente »), every photo / scanned page is handed over to it and the device does no reading; the reading
+// on the device (local OCR with quality checks) is only used without the home computer or on explicit request. PDF text
+// layers and EPUB text are always taken as they are. No reading on the server any more.
+import {
+  DEFAULT_PARENT_SETTINGS, type Id, type PageContent, type PageStatus, type PageTextSource, type PageWarning, type ParentSettings, type TextBlock,
+  type WordList,
+} from '@aide/shared';
 import { liveQuery } from 'dexie';
 import { useEffect, useState } from 'react';
-import { db } from '../db/localDb';
+import { db, type PageImageRecord } from '../db/localDb';
 import { browserOcr, OcrUnavailableError, type OcrEngine } from '../ocr/BrowserOCR';
 import { canDecodeImage } from '../ocr/preprocess/canvas';
 import {
@@ -21,13 +26,14 @@ import type { QuarterTurn } from '../ocr/preprocess/geometry';
 import type { GrayImage, Rect, RgbaImage } from '../ocr/preprocess/image';
 import { MAX_PAGE_SIDE, THUMB_SIDE, type PreprocessOptions } from '../ocr/preprocess/pipeline';
 import type { ProbeTurn } from '../ocr/preprocess/protocol';
-import { qualityFromBlocks, qualityFromOcrLines } from '../ocr/quality';
+import { qualityFromOcrLines } from '../ocr/quality';
 import { recognizePage } from '../ocr/readPage';
-import { recognizeOnServer, type ServerOcrOutcome } from '../ocr/ServerOCR';
 import { loadFrenchWordList } from '../ocr/wordList';
 import { reportProblem } from '../platform/diagnostics';
 import { isOnline } from '../platform/online';
 import { requestWakeLock } from '../platform/support';
+import { useSessionStore } from '../state/session';
+import { watchAiReading } from './aiReadingWatch';
 import {
   getDocument,
   getDocumentFile,
@@ -59,14 +65,12 @@ import { enqueueUpload, startPendingUploads } from './pendingUploads';
 
 export interface DocumentProgress { documentId: Id; total: number; ready: number; lowConfidence: number; failed: number; processingPageIndex: number | null; percent: number }
 
-export interface ReprocessOptions { useServer?: boolean; rotateDegrees?: 0 | 90 | 180 | 270; quad?: [number, number][] }
+/** `onDevice`: « Lire sur cet appareil », the device reads the page even when the home computer could. */
+export interface ReprocessOptions { onDevice?: boolean; rotateDegrees?: 0 | 90 | 180 | 270; quad?: [number, number][] }
 
 export type ProcessingErrorCode =
   | 'source_missing'
   | 'ocr_unavailable'
-  | 'offline'
-  | 'server_busy'
-  | 'server_unavailable'
   | 'image_decode_failed'
   | 'unsupported_file'
   | 'crash_loop'
@@ -77,7 +81,7 @@ export class ProcessingError extends Error {
   readonly code: ProcessingErrorCode;
   /** No automatic retry. */
   readonly permanent: boolean;
-  /** The request failed but the page keeps its current content (explicit server reading). */
+  /** The request failed but the page keeps its current content. */
   readonly keepPage: boolean;
 
   constructor(code: ProcessingErrorCode, options: { permanent?: boolean; keepPage?: boolean } = {}) {
@@ -90,13 +94,14 @@ export class ProcessingError extends Error {
 }
 
 export const MAX_JOB_ATTEMPTS = 2;
-export const MAX_SERVER_RETRIES = 3;
 const REPROCESS_PRIORITY = 10;
-const OFFLINE_SERVER_RETRY_MS = 5 * 60_000;
 
 export interface QueueDeps {
   ocr: OcrEngine;
-  recognizeOnServer(jpeg: Blob): Promise<ServerOcrOutcome>;
+  /** §25: the server has a home computer that reads the page images (AuthStatus.aiReading). */
+  aiReading(): boolean;
+  /** §25: the page waits for its text from the home computer (the app asks for news more often meanwhile). */
+  watchAiReading(documentId: Id, pageIndex: number): void;
   openPdf(blob: Blob): Promise<PdfHandle>;
   preparePage(source: Blob | RgbaImage, options: PreprocessOptions): Promise<PreparedPage>;
   /** Smaller, main-thread preparation used when preparePage failed. */
@@ -120,7 +125,8 @@ export interface QueueDeps {
 function defaultDeps(): QueueDeps {
   return {
     ocr: browserOcr,
-    recognizeOnServer: (jpeg) => recognizeOnServer(jpeg),
+    aiReading: () => useSessionStore.getState().authStatus?.aiReading === true,
+    watchAiReading,
     openPdf: (blob) => openPdf(blob),
     preparePage,
     prepareFallback: prepareFallbackPage,
@@ -145,10 +151,10 @@ function defaultDeps(): QueueDeps {
 interface Candidate {
   blocks: TextBlock[];
   score: number;
-  source: Extract<PageTextSource, 'ocr-local' | 'ocr-server'>;
+  source: Extract<PageTextSource, 'ocr-local'>;
 }
 
-type JobOutcome = { kind: 'done' } | { kind: 'removed' } | { kind: 'deferred'; notBefore: number };
+type JobOutcome = { kind: 'done' } | { kind: 'removed' };
 
 type ResolvedSource =
   | { kind: 'pdf'; blob: Blob; pdfPageIndex: number; fileKey: string }
@@ -256,7 +262,7 @@ export class ProcessingQueue {
     const job = existing ?? newJob(documentId, pageIndex, null, now);
     if (opts.rotateDegrees !== undefined) job.rotateDegrees = opts.rotateDegrees;
     if (opts.quad !== undefined) job.quad = validQuad(opts.quad);
-    job.mode = opts.useServer ? 'server' : 'auto';
+    job.mode = opts.onDevice ? 'local' : 'auto';
     return this.enqueueExplicit(job, now);
   }
 
@@ -514,22 +520,10 @@ export class ProcessingQueue {
         this.settleWaiters(job, null);
         return;
       }
-      if (outcome.kind === 'deferred') {
-        // The local result is saved; a better server reading is attempted later.
-        this.settleWaiters(job, null);
-        job.stage = 'server_retry';
-        job.state = 'queued';
-        job.mode = 'auto';
-        job.priority = 0;
-        job.serverRetries += 1;
-        job.notBefore = outcome.notBefore;
-        job.enqueuedAt = Math.max(this.deps.now(), generation + 1);
-      } else {
-        job.state = 'done';
-        job.priority = 0;
-        job.mode = 'auto';
-        this.settleWaiters(job, null);
-      }
+      job.state = 'done';
+      job.priority = 0;
+      job.mode = 'auto';
+      this.settleWaiters(job, null);
       job.attempts = 0;
       job.error = null;
       job.updatedAt = this.deps.now();
@@ -616,7 +610,8 @@ export class ProcessingQueue {
 
     // Already readable (processed on another device and synced): nothing to do.
     if (job.stage === 'initial' && AVAILABLE_STATUSES.has(prev.status) && prev.textSource !== null) return { kind: 'done' };
-    if (job.stage === 'server_retry') return this.serverRetry(job, prev, settings, signal);
+    // Later reading by the server, queued by an older version of the app: there is no reading on the server any more.
+    if (job.stage === 'server_retry') return { kind: 'done' };
 
     this.currentStage = 'resolve_source';
     const source = await this.resolveSource(job);
@@ -674,66 +669,48 @@ export class ProcessingQueue {
           : source.blob;
       prepared = await withAbort(deps.prepareFallback(small, baseOptions), signal);
     }
+    // §25: the home computer reads the page (photos, scans, a child's handwriting and punctuation §17.10): no reading here.
+    if (job.mode === 'auto' && this.aiReads(settings)) {
+      await this.handOverToAi(job, prev, prepared, source);
+      return { kind: 'done' };
+    }
     this.currentStage = 'word_list';
     const wordList = await deps.loadWordList();
 
+    // 3. Reading on the device (no home computer, or « Lire sur cet appareil »).
     let best: Candidate | null = null;
     let localUnavailable = false;
-    if (job.mode === 'auto') {
-      this.currentStage = 'local_ocr';
-      try {
-        best = await this.localCandidate(prepared.image, prepared.regions, wordList, signal);
-        if (best.score < threshold) {
-          const binarized = await withAbort(deps.binarize(prepared.image), signal);
-          const candidate = await this.localCandidate(binarized, prepared.regions, wordList, signal);
-          if (candidate.score > best.score) best = candidate;
-        }
-        if (best.score < threshold && job.rotateDegrees === 0 && !job.quad && source.kind !== 'processed') {
-          const turn = await this.findBetterRotation(prepared.image, best.score, threshold, wordList, signal);
-          if (turn !== null) {
-            const rotated = await withAbort(deps.preparePage(await loadInput(), { ...baseOptions, rotateDegrees: turn }), signal);
-            const candidate = await this.localCandidate(rotated.image, rotated.regions, wordList, signal);
-            if (candidate.score > best.score) {
-              best = candidate;
-              prepared = rotated;
-              job.rotateDegrees = turn;
-            }
+    this.currentStage = 'local_ocr';
+    try {
+      best = await this.localCandidate(prepared.image, prepared.regions, wordList, signal);
+      if (best.score < threshold) {
+        const binarized = await withAbort(deps.binarize(prepared.image), signal);
+        const candidate = await this.localCandidate(binarized, prepared.regions, wordList, signal);
+        if (candidate.score > best.score) best = candidate;
+      }
+      if (best.score < threshold && job.rotateDegrees === 0 && !job.quad && source.kind !== 'processed') {
+        const turn = await this.findBetterRotation(prepared.image, best.score, threshold, wordList, signal);
+        if (turn !== null) {
+          const rotated = await withAbort(deps.preparePage(await loadInput(), { ...baseOptions, rotateDegrees: turn }), signal);
+          const candidate = await this.localCandidate(rotated.image, rotated.regions, wordList, signal);
+          if (candidate.score > best.score) {
+            best = candidate;
+            prepared = rotated;
+            job.rotateDegrees = turn;
           }
         }
-      } catch (error) {
-        if (signal.aborted || error instanceof AbortedError || error instanceof PreprocessAbortedError) throw error;
-        // Any on-device reading problem (engine missing, crash, timeout) leaves the page to the server reading.
-        if (!(error instanceof OcrUnavailableError)) reportProblem('ocr_engine', error, 'local_ocr', { pageIndex: job.pageIndex });
-        localUnavailable = true;
-      } finally {
-        deps.ocr.notePageDone();
       }
-    }
-
-    // 3. Server fallback (automatic when doubtful, or explicit « Lecture serveur »).
-    let deferredUntil: number | null = null;
-    const explicitServer = job.mode === 'server';
-    const wantServer = explicitServer || ((best === null || best.score < threshold) && settings.ocr.autoServerFallback);
-    if (wantServer) {
-      this.currentStage = 'server_ocr';
-      if (!deps.isOnline()) {
-        if (explicitServer) throw new ProcessingError('offline', { permanent: true, keepPage: true });
-      } else {
-        const outcome = await withAbort(deps.recognizeOnServer(prepared.jpeg), signal);
-        if (outcome.status === 'ok') {
-          const candidate = this.serverCandidate(outcome.blocks, outcome.confidence, wordList);
-          if (explicitServer || best === null || candidate.score > best.score) best = candidate;
-        } else if (outcome.status === 'busy') {
-          if (explicitServer) throw new ProcessingError('server_busy', { permanent: true, keepPage: true });
-          if (job.serverRetries < MAX_SERVER_RETRIES) deferredUntil = deps.now() + outcome.retryAfterMs;
-        } else if (explicitServer) {
-          throw new ProcessingError(outcome.reason === 'offline' ? 'offline' : 'server_unavailable', { permanent: true, keepPage: true });
-        }
-      }
+    } catch (error) {
+      if (signal.aborted || error instanceof AbortedError || error instanceof PreprocessAbortedError) throw error;
+      if (!(error instanceof OcrUnavailableError)) reportProblem('ocr_engine', error, 'local_ocr', { pageIndex: job.pageIndex });
+      localUnavailable = true;
+    } finally {
+      deps.ocr.notePageDone();
     }
     if (!best) {
       const code: ProcessingErrorCode = localUnavailable ? 'ocr_unavailable' : 'failed';
-      if (awaitsAiTranscription(settings) && !AVAILABLE_STATUSES.has(prev.status)) {
+      // The device cannot read at all: the home computer reads the page when there is one (§17.7).
+      if (this.aiReads(settings) && !AVAILABLE_STATUSES.has(prev.status)) {
         await this.awaitAiTranscription(job, prev, prepared, source, code);
         return { kind: 'done' };
       }
@@ -750,14 +727,17 @@ export class ProcessingQueue {
     const page = await this.buildPage(prev, this.pageFieldsFor(best, threshold, prepared));
     await this.commitPage(prev, page);
     if (settings.privacy.uploadPageImages) await deps.enqueueUpload('pageImage', job.documentId, job.pageIndex).catch(() => undefined);
-    if (deferredUntil !== null && page.status === 'low_confidence') return { kind: 'deferred', notBefore: deferredUntil };
     return { kind: 'done' };
   }
 
+  /** §25: pages go to the home computer (« lecture intelligente » on, images and text synced, worker on the server). */
+  private aiReads(settings: ParentSettings): boolean {
+    return awaitsAiTranscription(settings) && this.deps.aiReading();
+  }
+
   /**
-   * Neither the device nor the server could read the page (§17.7): the processed image is kept and sent to the server,
-   * where the home computer transcribes it; the text then arrives with the sync. The page stays « failed » with the
-   * warning awaiting_ai and the job ends here (no more local attempts, not resumed on the next start).
+   * Neither the device nor the server could read the page (§17.7): the page is handed over to the « lecture intelligente »
+   * and the job ends here (no more local attempts, not resumed on the next start).
    */
   private async awaitAiTranscription(job: QueueJob, prev: PageContent, prepared: PreparedPage, source: ResolvedSource, code: ProcessingErrorCode): Promise<void> {
     reportProblem('processing_failed', new ProcessingError(code), this.currentStage, {
@@ -768,23 +748,38 @@ export class ProcessingQueue {
       mode: job.mode,
       awaitingAi: true,
     });
+    await this.handOverToAi(job, prev, prepared, source);
+  }
+
+  /**
+   * The processed image is kept and sent to the server, where the home computer transcribes it; the text then arrives with
+   * the sync (§17.7). A page without text stays « failed » with the warning awaiting_ai (shown as waiting); a page that
+   * already has text keeps it until then (§17.10, reprocessing of a child's text).
+   */
+  private async handOverToAi(job: QueueJob, prev: PageContent, prepared: PreparedPage, source: ResolvedSource): Promise<void> {
     this.currentStage = 'store';
     await this.storeImages(job.documentId, job.pageIndex, prepared);
     if (source.kind === 'processed') {
       job.rotateDegrees = 0;
       job.quad = null;
     }
-    const page = await this.buildPage(prev, {
-      status: 'failed',
-      textSource: null,
-      blocks: [],
-      confidence: null,
-      width: prepared.image.width,
-      height: prepared.image.height,
-      warnings: ['awaiting_ai'],
-    });
-    await this.commitPage(prev, page);
+    const { width, height } = prepared.image;
+    if (AVAILABLE_STATUSES.has(prev.status) && prev.textSource !== null) {
+      await savePage({ ...prev, width, height, updatedAt: Math.max(this.deps.now(), prev.updatedAt + 1) });
+    } else {
+      const page = await this.buildPage(prev, {
+        status: 'failed',
+        textSource: null,
+        blocks: [],
+        confidence: null,
+        width,
+        height,
+        warnings: ['awaiting_ai'],
+      });
+      await this.commitPage(prev, page);
+    }
     await this.deps.enqueueUpload('pageImage', job.documentId, job.pageIndex).catch(() => undefined);
+    this.deps.watchAiReading(job.documentId, job.pageIndex);
   }
 
   private pageFieldsFor(best: Candidate, threshold: number, prepared: PreparedPage): PageFields {
@@ -792,7 +787,6 @@ export class ProcessingQueue {
     const low = !noText && best.score < threshold;
     const warnings: PageWarning[] = [];
     if (low) warnings.push('low_confidence');
-    if (best.source === 'ocr-server') warnings.push('server_fallback_used');
     if (noText) warnings.push('no_text_found');
     return {
       status: low ? 'low_confidence' : 'ready',
@@ -805,48 +799,10 @@ export class ProcessingQueue {
     };
   }
 
-  private async serverRetry(job: QueueJob, prev: PageContent, settings: ParentSettings, signal: AbortSignal): Promise<JobOutcome> {
-    const { deps } = this;
-    const threshold = settings.ocr.lowConfidenceThreshold;
-    if (prev.textSource === 'manual' || prev.status !== 'low_confidence' || !settings.ocr.autoServerFallback) return { kind: 'done' };
-    if (job.serverRetries > MAX_SERVER_RETRIES) return { kind: 'done' };
-    if (!deps.isOnline()) return { kind: 'deferred', notBefore: deps.now() + OFFLINE_SERVER_RETRY_MS };
-    const jpeg = await withAbort(deps.loadProcessedImage(job.documentId, job.pageIndex), signal);
-    if (!jpeg) return { kind: 'done' };
-    const outcome = await withAbort(deps.recognizeOnServer(jpeg), signal);
-    if (outcome.status === 'busy') return { kind: 'deferred', notBefore: deps.now() + outcome.retryAfterMs };
-    if (outcome.status !== 'ok') return { kind: 'done' };
-    const wordList = await deps.loadWordList();
-    const candidate = this.serverCandidate(outcome.blocks, outcome.confidence, wordList);
-    if (prev.confidence !== null && candidate.score <= prev.confidence) return { kind: 'done' };
-    const noText = candidate.blocks.length === 0;
-    if (noText && prev.blocks.length > 0) return { kind: 'done' };
-    const low = !noText && candidate.score < threshold;
-    const warnings: PageWarning[] = ['server_fallback_used'];
-    if (low) warnings.unshift('low_confidence');
-    if (noText) warnings.push('no_text_found');
-    const page = await this.buildPage(prev, {
-      status: low ? 'low_confidence' : 'ready',
-      textSource: 'ocr-server',
-      blocks: candidate.blocks,
-      confidence: candidate.score,
-      width: prev.width,
-      height: prev.height,
-      warnings,
-    });
-    await this.commitPage(prev, page);
-    return { kind: 'done' };
-  }
-
   private async localCandidate(image: GrayImage, regions: readonly Rect[], wordList: WordList | null, signal: AbortSignal): Promise<Candidate> {
     const result = await withAbort(recognizePage(this.deps.ocr, image, regions), signal);
     const quality = qualityFromOcrLines(result.lines, result.confidence, wordList);
     return { blocks: blocksFromOcrLines(result.lines), score: quality.score, source: 'ocr-local' };
-  }
-
-  private serverCandidate(blocks: TextBlock[], confidence: number, wordList: WordList | null): Candidate {
-    const cleaned = cleanBlocks(blocks);
-    return { blocks: cleaned, score: qualityFromBlocks(cleaned, confidence, wordList).score, source: 'ocr-server' };
   }
 
   /** No orientation detection in the engine: try 180/90/270° on a 1000 px copy (max 3 attempts, §15.6). */
@@ -915,10 +871,17 @@ export class ProcessingQueue {
   private async storeImages(documentId: Id, pageIndex: number, prepared: PreparedPage): Promise<void> {
     const { width, height } = prepared.image;
     const scale = Math.min(1, THUMB_SIDE / Math.max(width, height));
-    await putPageImages([
+    const records: PageImageRecord[] = [
       { documentId, pageIndex, variant: 'ocr', blob: prepared.jpeg, width, height },
       { documentId, pageIndex, variant: 'thumb', blob: prepared.thumb, width: Math.round(width * scale), height: Math.round(height * scale) },
-    ]);
+    ];
+    if (prepared.color) {
+      records.push({ documentId, pageIndex, variant: 'color', blob: prepared.color.jpeg, width: prepared.color.width, height: prepared.color.height });
+    } else {
+      // A color copy of an older frame (before a rotation or a new photo) would no longer match the page.
+      await db.pageImages.delete([documentId, pageIndex, 'color']);
+    }
+    await putPageImages(records);
   }
 
   private async buildPage(prev: PageContent, fields: PageFields): Promise<PageContent> {
@@ -1017,6 +980,13 @@ export const processingQueue: {
   cancelDocument: (documentId) => queue.cancelDocument(documentId),
   kick: () => queue.kick(),
 };
+
+/** §25 React hook: the pages of this account are read by the home computer (settings and worker on the server). */
+export function usePagesReadByAi(): boolean {
+  const settings = useSessionStore((s) => s.parentSettings) ?? DEFAULT_PARENT_SETTINGS;
+  const aiReading = useSessionStore((s) => s.authStatus?.aiReading === true);
+  return awaitsAiTranscription(settings) && aiReading;
+}
 
 /** React hook: live progress of a document, null until known. */
 export function useDocumentProgress(documentId: Id): DocumentProgress | null {

@@ -19,7 +19,12 @@ describe('worker queue: migration and retention (§17.2)', () => {
   afterEach(async () => ctx.close());
 
   it('migration 004 is bundled after 003 and creates the worker tables (idempotent)', async () => {
-    expect(MIGRATION_NAMES).toEqual(['001_initial', '002_invitations', '003_client_diagnostics', '004_worker_jobs']);
+    expect(MIGRATION_NAMES).toEqual([
+      '001_initial', '002_invitations', '003_client_diagnostics', '004_worker_jobs', '005_free_questions', '006_document_text_mode', '007_homework',
+      '008_account_security',
+      '009_worker_usage',
+      '010_writing_corrections',
+    ]);
     for (const table of WORKER_TABLES) expect(await ctx.db.schema.hasTable(table), table).toBe(true);
     expect(await runMigrations(ctx.db)).toEqual([]);
   });
@@ -71,6 +76,38 @@ describe('worker queue: migration and retention (§17.2)', () => {
     const report = await runRetention({ db: ctx.db, now: ctx.clock.now, uploadsRoot: uploadsDir(ctx.config) });
     expect(report).toMatchObject({ purgedDocuments: 1, workerJobs: 1 });
     expect(await jobRow(ctx, job)).toBeUndefined();
+    expect(await jobRow(ctx, kept)).toMatchObject({ status: 'queued' });
+  });
+
+  it('deleting a document closes its page jobs still waiting for the worker at once', async () => {
+    const { parentId, agent, documentId } = await parentWithDocument(ctx, 'efface@example.fr');
+    const page = { pageIndex: 0, documentId, expiresAt: ctx.clock.now + 3 * DAY };
+    const speech = await queueAiJob(ctx, parentId, { ...page, kind: 'page_speech', operation: 'prepare_reading', priority: 1 });
+    const text = await queueAiJob(ctx, parentId, { ...page, kind: 'page_text', operation: 'transcribe_page', priority: 0 });
+    const question = await queueAiJob(ctx, parentId, { documentId });
+    await unlock(agent);
+    expect((await agent.delete(`/api/documents/${documentId}`).set(XRW).send()).status).toBe(200);
+    expect(await jobRow(ctx, speech)).toMatchObject({ status: 'skipped', error: 'document_deleted', request_json: '{}' });
+    expect(await jobRow(ctx, text)).toMatchObject({ status: 'skipped', error: 'document_deleted' });
+    // A help request finishes on its own.
+    expect(await jobRow(ctx, question)).toMatchObject({ status: 'queued' });
+    expect((await agent.get('/api/settings/worker')).body.queued).toEqual({ ai: 1, pageText: 0, pageSpeech: 0 });
+  });
+
+  it('maintenance closes the waiting page jobs of deleted or missing documents (left by older versions)', async () => {
+    const { parentId, documentId } = await parentWithDocument(ctx, 'orphelin@example.fr');
+    const live = await parentWithDocument(ctx, 'vivant@example.fr');
+    const pageJob = { kind: 'page_speech' as const, operation: 'prepare_reading', pageIndex: 0, expiresAt: ctx.clock.now + 3 * DAY };
+    const ofDeleted = await queueAiJob(ctx, parentId, { ...pageJob, documentId });
+    const ofMissing = await queueAiJob(ctx, parentId, { ...pageJob, documentId: 'doc-disparu' });
+    const kept = await queueAiJob(ctx, live.parentId, { ...pageJob, documentId: live.documentId });
+    // Deleted without the cascade, as before 2026-09-19.
+    await ctx.db('documents').where('id', documentId).update({ deleted_at: ctx.clock.now });
+
+    const report = await runRetention({ db: ctx.db, now: ctx.clock.now, uploadsRoot: uploadsDir(ctx.config) });
+    expect(report).toMatchObject({ orphanedWorkerJobs: 2 });
+    expect(await jobRow(ctx, ofDeleted)).toMatchObject({ status: 'skipped', error: 'document_deleted' });
+    expect(await jobRow(ctx, ofMissing)).toMatchObject({ status: 'skipped', error: 'document_deleted' });
     expect(await jobRow(ctx, kept)).toMatchObject({ status: 'queued' });
   });
 

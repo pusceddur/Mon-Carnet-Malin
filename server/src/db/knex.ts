@@ -5,6 +5,12 @@ import * as m001 from './migrations/001_initial';
 import * as m002 from './migrations/002_invitations';
 import * as m003 from './migrations/003_client_diagnostics';
 import * as m004 from './migrations/004_worker_jobs';
+import * as m005 from './migrations/005_free_questions';
+import * as m006 from './migrations/006_document_text_mode';
+import * as m007 from './migrations/007_homework';
+import * as m008 from './migrations/008_account_security';
+import * as m009 from './migrations/009_worker_usage';
+import * as m010 from './migrations/010_writing_corrections';
 
 // Migrations are imported statically (no filesystem loader) so they work inside the esbuild bundle.
 const MIGRATIONS: ReadonlyArray<readonly [string, Knex.Migration]> = [
@@ -12,6 +18,12 @@ const MIGRATIONS: ReadonlyArray<readonly [string, Knex.Migration]> = [
   ['002_invitations', { up: m002.up, down: m002.down }],
   ['003_client_diagnostics', { up: m003.up, down: m003.down }],
   ['004_worker_jobs', { up: m004.up, down: m004.down }],
+  ['005_free_questions', { up: m005.up, down: m005.down }],
+  ['006_document_text_mode', { up: m006.up, down: m006.down }],
+  ['007_homework', { up: m007.up, down: m007.down }],
+  ['008_account_security', { up: m008.up, down: m008.down }],
+  ['009_worker_usage', { up: m009.up, down: m009.down }],
+  ['010_writing_corrections', { up: m010.up, down: m010.down }],
 ];
 
 /** Names of the bundled migrations, in order. */

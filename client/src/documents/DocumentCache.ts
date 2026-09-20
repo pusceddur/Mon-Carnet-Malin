@@ -4,6 +4,8 @@ import {
   ParentSettingsSchema,
   type DocumentMeta,
   type DocumentStatus,
+  type DocumentPurpose,
+  type DocumentTextMode,
   type Id,
   type PageContent,
   type ParentSettings,
@@ -33,11 +35,12 @@ export interface QueueJob extends JobRecord {
   source: PageSourceRef | null;
   rotateDegrees: QuarterTurn;
   quad: [number, number][] | null;
-  mode: 'auto' | 'server';
+  /** 'local': « Lire sur cet appareil » (§25). */
+  mode: 'auto' | 'local';
   /** Higher runs first (explicit reprocessing). */
   priority: number;
   enqueuedAt: number;
-  /** Deferred job (server busy): not before this time. */
+  /** Deferred job: not before this time. */
   notBefore: number;
   serverRetries: number;
 }
@@ -87,7 +90,8 @@ export function toQueueJob(record: JobRecord): QueueJob {
     source,
     rotateDegrees: QUARTER_TURNS.has(r.rotateDegrees ?? 0) ? ((r.rotateDegrees ?? 0) as QuarterTurn) : 0,
     quad,
-    mode: r.mode === 'server' ? 'server' : 'auto',
+    // 'server' (reading on the server, removed on 2026-09-19) becomes a normal reading.
+    mode: r.mode === 'local' ? 'local' : 'auto',
     priority: typeof r.priority === 'number' ? r.priority : 0,
     enqueuedAt: typeof r.enqueuedAt === 'number' ? r.enqueuedAt : r.updatedAt,
     notBefore: typeof r.notBefore === 'number' ? r.notBefore : 0,
@@ -108,6 +112,16 @@ export async function putJob(job: QueueJob): Promise<void> {
 
 export async function getDocument(id: Id): Promise<DocumentMeta | undefined> {
   return db.documents.get(id);
+}
+
+/** §19.3 purpose; copies saved on the device before homework existed have none and are for reading. */
+export function documentPurpose(doc: Pick<DocumentMeta, 'purpose'>): DocumentPurpose {
+  return (doc.purpose as DocumentPurpose | undefined) === 'homework' ? 'homework' : 'reading';
+}
+
+/** §17.10 text mode; copies saved on the device before text modes existed have none and are faithful. */
+export function documentTextMode(doc: Pick<DocumentMeta, 'textMode'>): DocumentTextMode {
+  return (doc.textMode as DocumentTextMode | undefined) === 'punctuated' ? 'punctuated' : 'faithful';
 }
 
 export async function saveDocument(doc: DocumentMeta): Promise<void> {

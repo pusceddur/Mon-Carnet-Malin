@@ -33,7 +33,7 @@ const pageKey = (documentId: Id, pageIndex: number): string => `${documentId}:${
 
 function textAnchorPage(a: Annotation): number | null {
   if (a.type === 'highlight') return a.pageIndex;
-  if (a.space.kind === 'text') return a.space.pageIndex;
+  if (a.type === 'ink' && a.space.kind === 'text') return a.space.pageIndex;
   return null;
 }
 
@@ -86,7 +86,8 @@ export function buildNotes(input: NotesInput): DocumentNotes[] {
   const highlightOrder = new Map<Id, [number, number, number]>();
   for (const a of input.annotations) {
     if (a.deletedAt !== null || a.documentId === null) continue;
-    if (a.type === 'ink' && a.space.kind === 'answer') continue;
+    // Answers and the text boxes of homework pages (§19.2) are not reading notes.
+    if ((a.type === 'ink' && a.space.kind === 'answer') || a.type === 'textbox') continue;
     const g = group(a.documentId);
     if (!g) continue;
     g.lastActivityAt = Math.max(g.lastActivityAt, a.updatedAt);

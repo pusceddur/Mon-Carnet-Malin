@@ -5,10 +5,13 @@ import { getParentSettings } from '../db/repositories/settings';
 import { createAICacheRepository } from '../db/repositories/aiCache';
 import { createAIJobsRepository } from '../db/repositories/aiJobs';
 import { createAIRequestsRepository } from '../db/repositories/aiRequests';
+import { createFreeQuestionsRepository } from '../db/repositories/freeQuestions';
+import { createWritingCorrectionsRepository } from '../db/repositories/writingCorrections';
 import { createSafetyAlertsRepository } from '../db/repositories/safetyAlerts';
 import { createDictionaryService } from '../dictionary/DictionaryService';
 import type { AppDeps } from '../types';
 import { QueueTransport } from '../worker/QueueTransport';
+import { WORKER_PROTOCOL } from '../worker/protocol';
 import { getWorkerRuntime } from '../worker/runtime';
 import type { AIProvider } from './AIProvider';
 import { AIRouter, type AIStore } from './AIRouter';
@@ -83,8 +86,11 @@ async function buildServices(deps: AppDeps): Promise<AIServices> {
   };
   const providers = { light: pick(config.ai.providerLight), complex: pick(config.ai.providerComplex) };
   // §17.4: the worker has its own deadlines, and every request it serves goes through an asynchronous job.
+  // `worker.deadlines[tier]` is the budget of one run on the worker (routes/worker.ts deadlineFor); the end-to-end
+  // deadline of the router adds the queue wait, otherwise a job sent while the worker is busy with another one spends
+  // its own budget queueing and times out before it is ever leased.
   const deadlineOf = (tier: AITier): number => (config.ai[tier === 'light' ? 'providerLight' : 'providerComplex'] === 'worker'
-    ? config.worker.deadlines[tier]
+    ? config.worker.deadlines[tier] + WORKER_PROTOCOL.queueGraceMs
     : AI_DEADLINES[tier]);
 
   const router = new AIRouter({
@@ -95,6 +101,8 @@ async function buildServices(deps: AppDeps): Promise<AIServices> {
     requests: createAIRequestsRepository(deps.db),
     alerts: createSafetyAlertsRepository(deps.db),
     jobs: createAIJobsRepository(deps.db),
+    freeQuestions: createFreeQuestionsRepository(deps.db),
+    writingCorrections: createWritingCorrectionsRepository(deps.db),
     providers,
     local: new LocalProvider(),
     dictionary: createDictionaryService(deps),

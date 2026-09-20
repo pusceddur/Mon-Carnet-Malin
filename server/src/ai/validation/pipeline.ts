@@ -2,20 +2,22 @@
 // Every stage runs so that the single regeneration receives all the feedback at once.
 import {
   GLOSSARY_FR, LIMITS, normalizeForMatch, type AILearner, type ChunkSummaryData, type CorrectAnswerRequest, type CorrectionData,
-  type ExplainTextRequest, type ExplainWordRequest, type ExplanationData, type GenerateQuestionsRequest, type HandwritingData, type Question,
-  type QuestionOnTextData, type QuestionOnTextRequest, type QuestionsData, type SafetyLevel, type SimplifyData, type SimplifyTextRequest,
-  type SourceRef, type SummaryData, type SummaryLevel, type TextChunk,
+  type ExplainTextRequest, type ExplainWordRequest, type ExplanationData, type FreeQuestionData, type FreeQuestionRequest,
+  type GenerateQuestionsRequest, type HandwritingData, type Question, type QuestionOnTextData, type QuestionOnTextRequest, type QuestionsData,
+  type SafetyLevel, type SimplifyData, type SimplifyTextRequest, type SourceRef, type SummaryData, type SummaryLevel, type TextChunk,
+  type CorrectWritingData, type CorrectWritingRequest, TEXT_BOX_MAX_CHARS,
 } from '@aide/shared';
 import { checkAge, exemptWordsOf } from '../../safety/AgeGuard';
 import { checkCharLimit, checkLengthRules, checkSimplifyLength, explainWordMaxWords, summaryMaxWords, type LengthRule } from '../../safety/LengthGuard';
-import { checkOutputInjection } from '../../safety/PromptInjectionGuard';
-import { checkOutputSafety } from '../../safety/SafetyGuard';
+import { checkOutputInjection, scanForInjection } from '../../safety/PromptInjectionGuard';
+import { checkFreeQuestionInput, checkOutputSafety } from '../../safety/SafetyGuard';
 import { checkEntities, checkEntitiesPreserved, checkQuote, EntitySource } from '../../safety/SourceGuard';
-import type { SourceSection } from '../../safety/textMatch';
+import { SourceIndex, type SourceSection } from '../../safety/textMatch';
 import type {
-  ModelAnswer, ModelChunkSummary, ModelCorrection, ModelExplanation, ModelHandwriting, ModelQuestion, ModelQuestions, ModelSimplification,
-  ModelSummary,
+  ModelAnswer, ModelChunkSummary, ModelCorrection, ModelExplanation, ModelFreeAnswer, ModelHandwriting, ModelQuestion, ModelQuestions,
+  ModelSimplification, ModelSummary, ModelWriting,
 } from '../schemas';
+import { checkWritingCorrection, WRITING_RULE_MAX_CHARS, writingChanges, type WritingProblem } from '../writing';
 import type { GuardIssue, GuardResult } from './types';
 
 export type ValidationStage = 'schema' | 'source' | 'age' | 'safety' | 'length' | 'injection';
@@ -381,6 +383,117 @@ export function validateHandwriting(out: ModelHandwriting): ValidationOutcome<Ha
   if (text === '') c.add('schema', [emptyField('text')]);
   c.add('length', checkCharLimit('text', text, LIMITS.answerMaxChars));
   return c.outcome(() => ({ text }), false);
+}
+
+// ---------- correct_writing (§24) ----------
+
+/** Feedback for the single regeneration (to the model: it may quote the child's words). Logs keep only the codes. */
+function writingIssue(problem: WritingProblem): GuardIssue {
+  switch (problem.code) {
+    case 'line_count':
+      return {
+        code: 'writing_line_count', detail: `${problem.got}/${problem.expected}`,
+        feedback: `Tu dois rendre exactement ${problem.expected} lignes dans « lines », une par ligne du texte (tu en as rendu ${problem.got}).`,
+      };
+    case 'blank_line':
+      return {
+        code: 'writing_blank_line', detail: `line:${problem.line}`,
+        feedback: problem.blank
+          ? `La ligne ${problem.line + 1} est vide dans le texte : elle doit rester vide.`
+          : `La ligne ${problem.line + 1} n'est pas vide dans le texte : corrige-la sans l'enlever.`,
+      };
+    case 'group_changed':
+      return {
+        code: 'writing_changed', detail: `line:${problem.line}`,
+        feedback: `Ligne ${problem.line + 1} : « ${problem.from} » est devenu « ${problem.to} ». Garde les mots de l'enfant : corrige seulement leur orthographe, sans les remplacer par d'autres mots ni en ajouter.`,
+      };
+    case 'text_changed':
+      return {
+        code: 'writing_text_changed', detail: 'text',
+        feedback: "Le texte a trop changé : corrige seulement l'orthographe, la grammaire, la ponctuation, les majuscules et les espaces, sans reformuler.",
+      };
+  }
+}
+
+/**
+ * The correction keeps the child's text (same lines, the same words written better); what changed is computed here, the
+ * model notes only give the rule shown to the adult (short, never an instruction-like text).
+ */
+export function validateWritingCorrection(req: CorrectWritingRequest, out: ModelWriting): ValidationOutcome<CorrectWritingData> {
+  const c = new Collector();
+  const check = checkWritingCorrection(req.text, out.lines);
+  c.add('source', check.problems.slice(0, 5).map(writingIssue));
+  const correctedText = check.lines.join('\n');
+  c.add('length', checkCharLimit('lines', correctedText, TEXT_BOX_MAX_CHARS));
+  const notes = out.notes.filter((n) => n.rule.trim().length <= WRITING_RULE_MAX_CHARS * 2 && !scanForInjection([n.rule]).detected);
+  return c.outcome(() => ({ correctedText, changes: writingChanges(req.text.split('\n'), check.lines, notes) }), false);
+}
+
+// ---------- free_question (§18.2.4) ----------
+
+/** §18.2.3: short answers (the prompt asks for 120 words at most). */
+export const FREE_QUESTION_ANSWER_MAX_WORDS = 120;
+export const FREE_QUESTION_SUGGESTIONS_MAX = 3;
+export const FREE_QUESTION_SUGGESTION_MAX_CHARS = 120;
+
+/**
+ * Follow-up suggestions are optional: an unsafe, too long or duplicated one is dropped (never a regeneration).
+ * Each one must pass the free question input filter (the child may tap it) and the output SafetyGuard.
+ */
+function keptSuggestions(req: FreeQuestionRequest, raw: readonly string[], env: ValidationEnv, empty: SourceIndex): string[] {
+  const seen = new Set([normalizeForMatch(req.question)]);
+  const kept: string[] = [];
+  for (const suggestion of nonEmpty(raw)) {
+    if (kept.length >= FREE_QUESTION_SUGGESTIONS_MAX) break;
+    const key = normalizeForMatch(suggestion);
+    if (key === '' || seen.has(key) || suggestion.length > FREE_QUESTION_SUGGESTION_MAX_CHARS) continue;
+    seen.add(key);
+    if (checkFreeQuestionInput({ question: suggestion, previous: null, level: env.safetyLevel }).verdict !== 'ok') continue;
+    if (scanForInjection([suggestion]).detected) continue;
+    const safety = checkOutputSafety({
+      outputTexts: [suggestion], source: empty, rawSource: '', level: env.safetyLevel, selfReferenceTerms: env.selfReferenceTerms,
+      sourceExemptions: false, subject: 'question',
+    });
+    if (!safety.ok) continue;
+    kept.push(suggestion);
+  }
+  return kept;
+}
+
+/**
+ * No SourceGuard (the answer comes from general knowledge). Sensitive educational words are accepted only when the child's
+ * question (or the previous exchange) is about that theme; dependency, self-reference and contact phrases are always refused.
+ */
+export function validateFreeQuestion(req: FreeQuestionRequest, out: ModelFreeAnswer, env: ValidationEnv): ValidationOutcome<FreeQuestionData> {
+  const c = new Collector();
+  const answer = clean(out.answer);
+  const example = clean(out.example) === '' ? null : clean(out.example);
+  if (answer === '') c.add('schema', [emptyField('answer')]);
+
+  const questionTexts = [req.question, ...(req.previous ? [req.previous.question, req.previous.answer] : [])];
+  const themes = new SourceIndex(questionTexts.map((text) => ({ pageIndex: null, text })));
+  const empty = new SourceIndex([]);
+  const visible = nonEmpty([answer, example]);
+
+  const age = checkAge({ texts: visible, difficulty: env.learner.explanationDifficulty, exemptWords: exemptions(questionTexts), attempt: env.attempt });
+  c.add('age', age.issues);
+  c.add('safety', checkOutputSafety({
+    outputTexts: visible, source: themes, rawSource: '', level: env.safetyLevel, selfReferenceTerms: env.selfReferenceTerms,
+    sourceExemptions: false, subject: 'question',
+  }));
+  c.add('length', checkLengthRules([
+    { field: 'answer', text: answer, maxWords: FREE_QUESTION_ANSWER_MAX_WORDS },
+    { field: 'example', text: example ?? '', maxWords: LIMITS.exampleMaxWords },
+  ]));
+  c.add('length', checkCharLimit('answer', answer, LIMITS.answerMaxChars).issues.map((i) => ({
+    ...i, feedback: `Ta réponse est trop longue : ${LIMITS.answerMaxChars} caractères au maximum.`,
+  })));
+  c.add('injection', checkOutputInjection(visible, empty));
+
+  const raw = out.suggestions.map(clean);
+  const suggestions = keptSuggestions(req, raw, env, empty);
+  const dropped = nonEmpty(raw).length - suggestions.length;
+  return c.outcome(() => ({ answer, example, suggestions }), age.readabilityWarning, Math.max(0, dropped));
 }
 
 /** Retry feedback sent to the model (deduplicated, bounded). */

@@ -1,5 +1,6 @@
 import type { Knex } from 'knex';
 import type { AppConfig } from './config';
+import type { Mailer } from './email/mailer';
 import type { Logger } from './logger';
 
 /** Dependencies injected into createApp and every router factory. */
@@ -14,4 +15,6 @@ export interface AppDeps {
    * The progressive lockouts stored in the database stay active.
    */
   disableRateLimits?: boolean;
+  /** §20 e-mails; default: from `config.mail` (tests pass a memory mailer). */
+  mailer?: Mailer;
 }

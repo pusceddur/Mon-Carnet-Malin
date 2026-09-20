@@ -1,14 +1,15 @@
-import type { Id, PageContent } from '@aide/shared';
+import { alignSpokenText, type DocumentMeta, type Id, type PageContent } from '@aide/shared';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useState, type JSX } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { prepareReading, setDocumentTextMode } from '../../api/documents';
 import { ApiError } from '../../api/http';
 import { relaunchTranscription } from '../../api/worker';
 import { db } from '../../db/localDb';
 import { Button, EmptyState, ProgressBar, Segmented, Spinner, useToast } from '../../design/components';
-import { getPages, toQueueJob, usePageImageUrl } from '../../documents/DocumentCache';
+import { documentTextMode, getPages, toQueueJob, usePageImageUrl } from '../../documents/DocumentCache';
 import { isDoubtfulPage } from '../../documents/DocumentParser';
-import { useDocumentProgress } from '../../documents/ProcessingQueue';
+import { useDocumentProgress, usePagesReadByAi } from '../../documents/ProcessingQueue';
 import { jobErrorMessage, pageStatusLabel } from '../../documents/ui/labels';
 import '../../documents/ui/parentDocuments.css';
 import { format } from '../../i18n/fr';
@@ -18,6 +19,7 @@ import { describeError, reportSessionError } from '../../state/errors';
 import { ParentPage } from './ParentPage';
 
 const t = documents.detail;
+const tm = documents.textMode;
 
 type Filter = 'all' | 'doubtful';
 
@@ -95,6 +97,92 @@ function RelaunchAiButton({ documentId }: { documentId: Id }): JSX.Element {
   );
 }
 
+/** §22 at least one block of the page is read from a preparation that still has its words. */
+export function isPagePreparedForVoice(page: PageContent): boolean {
+  return page.blocks.some((b) => b.spoken !== undefined && alignSpokenText(b.text, b.spoken) !== null);
+}
+
+/** §22 « Préparer la lecture à voix haute » of the whole document (the reader does it page by page). */
+function ReadingPreparationSection({ documentId, pages }: { documentId: Id; pages: readonly PageContent[] }): JSX.Element | null {
+  const toast = useToast();
+  const online = useOnlineStatus();
+  const [running, setRunning] = useState(false);
+  const readable = pages.filter((p) => (p.status === 'ready' || p.status === 'low_confidence') && p.blocks.length > 0);
+  if (readable.length === 0) return null;
+  const prepared = readable.filter(isPagePreparedForVoice).length;
+  const all = prepared === readable.length;
+
+  const run = async (): Promise<void> => {
+    setRunning(true);
+    try {
+      const { queued, unavailable } = await prepareReading(documentId, all ? { force: true } : {});
+      if (unavailable !== null) toast.warning(t.prepareUnavailable[unavailable]);
+      else if (queued === 0) toast.info(t.prepareNone);
+      else toast.success(queued === 1 ? t.prepareOne : format(t.prepareMany, { count: queued }));
+    } catch (error) {
+      await reportSessionError(error);
+      toast.error(describeError(error));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="stack">
+      <p className="docs-muted">{t.prepareHint}</p>
+      <p className="docs-muted">{format(t.prepareCount, { prepared, total: readable.length })}</p>
+      <div className="parent-actions">
+        <Button size="parent" variant="secondary" icon="🗣️" loading={running} disabled={!online} onClick={() => void run()}>
+          {all ? t.prepareAgain : t.prepare}
+        </Button>
+      </div>
+      {!online && <p className="docs-muted">{t.prepareOffline}</p>}
+    </div>
+  );
+}
+
+/**
+ * §17.10 document type: « Texte écrit par un enfant » keeps the child's words and restores the punctuation. Changing it saves
+ * the type on the server and sends the page images to the « lecture intelligente » again.
+ */
+function TextModeSection({ doc }: { doc: DocumentMeta }): JSX.Element {
+  const toast = useToast();
+  const online = useOnlineStatus();
+  const readByAi = usePagesReadByAi();
+  const [saving, setSaving] = useState(false);
+  const mode = documentTextMode(doc);
+  const next = mode === 'punctuated' ? 'faithful' : 'punctuated';
+
+  const change = async (): Promise<void> => {
+    setSaving(true);
+    try {
+      const { document, queued } = await setDocumentTextMode(doc.id, next);
+      // Local copy only (the server has the new type, a sync push never changes it).
+      await db.documents.update(doc.id, { textMode: document.textMode });
+      toast.success(queued === 0 ? tm.saved : queued === 1 ? t.relaunchAiOne : format(t.relaunchAiMany, { count: queued }));
+    } catch (error) {
+      await reportSessionError(error);
+      toast.error(describeError(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="docs-text-mode">
+      <p className="docs-lead">{format(tm.current, { mode: mode === 'punctuated' ? tm.punctuated : tm.faithful })}</p>
+      <p className="docs-muted">{mode === 'punctuated' ? tm.punctuatedHint : tm.faithfulHint}</p>
+      {mode === 'punctuated' && !readByAi && <p className="docs-warning">{tm.needsAi}</p>}
+      <div className="parent-actions">
+        <Button size="parent" variant="secondary" icon={next === 'punctuated' ? '✍️' : '📖'} loading={saving} disabled={!online} onClick={() => void change()}>
+          {next === 'punctuated' ? tm.switchToPunctuated : tm.switchToFaithful}
+        </Button>
+      </div>
+      {online ? <p className="docs-muted">{tm.manualKept}</p> : <p className="docs-muted">{tm.offline}</p>}
+    </div>
+  );
+}
+
 /** Pages of a document with status, reliability and warnings; filter on pages to check. */
 export default function DocumentDetailPage(): JSX.Element {
   const { documentId = '' } = useParams();
@@ -140,7 +228,9 @@ export default function DocumentDetailPage(): JSX.Element {
         <ProgressBar value={progress.percent} label={documents.admin.progress} valueText={format(documents.admin.progressValue, { done: progress.ready + progress.lowConfidence + progress.failed, total: progress.total })} />
       )}
       {/* EPUB pages come from the book text: nothing to read from an image. */}
+      {doc.kind !== 'epub' && <TextModeSection doc={doc} />}
       {doc.kind !== 'epub' && <RelaunchAiButton documentId={documentId} />}
+      <ReadingPreparationSection documentId={documentId} pages={pages} />
       <Segmented<Filter>
         size="parent"
         label={t.filterLabel}

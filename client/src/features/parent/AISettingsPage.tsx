@@ -8,6 +8,7 @@ import { documents } from '../../i18n/fr/documents';
 import { parent } from '../../i18n/fr/parent';
 import { describeError, reportSessionError } from '../../state/errors';
 import { useSessionStore } from '../../state/session';
+import { AdvancedSettings } from './AdvancedSettings';
 import { ParentPage, ParentSection } from './ParentPage';
 import { completeSettings, sameSettings } from './settingsModel';
 import { describeWorkerStatus } from './workerStatus';
@@ -25,31 +26,45 @@ const FEATURE_ROWS: { key: keyof Features; label: string; hint?: string }[] = [
   { key: 'questions', label: t.features.questions },
   { key: 'correctAnswers', label: t.features.correctAnswers, hint: t.features.correctAnswersHint },
   { key: 'questionOnText', label: t.features.questionOnText, hint: t.features.questionOnTextHint },
+  { key: 'correctWriting', label: t.features.correctWriting, hint: t.features.correctWritingHint },
 ];
 
 const safetyOptions = (Object.keys(t.safetyLevels) as SafetyLevel[]).map((value) => ({ value, label: t.safetyLevels[value] }));
 
-/** State of the home computer (« lecture intelligente »), fetched when the page opens and on « Actualiser ». */
+/** §21: the use of the subscription is followed while the page is on screen. */
+export const WORKER_STATUS_REFRESH_MS = 30_000;
+
+/**
+ * State of the home computer (« lecture intelligente ») and use of the subscription (§21), fetched when the page opens,
+ * every 30 s while it is visible and on « Actualiser ».
+ */
 function WorkerStatusPanel(): JSX.Element {
   // undefined: first check running; null: unknown (offline, error).
   const [status, setStatus] = useState<{ value: WorkerStatus | null; checkedAt: number } | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const request = useRef<AbortController | null>(null);
 
-  const refresh = useCallback(async (): Promise<void> => {
+  const refresh = useCallback(async (quiet = false): Promise<void> => {
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
-    setLoading(true);
+    if (!quiet) setLoading(true);
     const value = await getWorkerStatus(controller.signal);
     if (controller.signal.aborted) return;
-    setStatus({ value, checkedAt: Date.now() });
+    // A failed background check keeps the last figures on screen.
+    setStatus((previous) => (quiet && value === null && previous?.value ? previous : { value, checkedAt: Date.now() }));
     setLoading(false);
   }, []);
 
   useEffect(() => {
     void refresh();
-    return () => request.current?.abort();
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') void refresh(true);
+    }, WORKER_STATUS_REFRESH_MS);
+    return () => {
+      clearInterval(timer);
+      request.current?.abort();
+    };
   }, [refresh]);
 
   const view = status?.value ? describeWorkerStatus(status.value, status.checkedAt) : null;
@@ -71,6 +86,24 @@ function WorkerStatusPanel(): JSX.Element {
                 {line}
               </p>
             ))}
+            {view.subscription && (
+              <div className="worker-usage">
+                <p className="sync-state sync-state--compact">
+                  <span className={`sync-state__dot sync-state__dot--${view.subscription.tone}`} aria-hidden="true" />
+                  {view.subscription.text}
+                </p>
+                {view.subscription.details.map((line) => (
+                  <p key={line} className="parent-section__hint">
+                    {line}
+                  </p>
+                ))}
+                {view.estimate.map((line) => (
+                  <p key={line} className="worker-usage__estimate">
+                    {line}
+                  </p>
+                ))}
+              </div>
+            )}
           </>
         ) : (
           <p className="parent-section__hint">{t.worker.unavailable}</p>
@@ -85,7 +118,10 @@ function WorkerStatusPanel(): JSX.Element {
   );
 }
 
-/** AI, safety, reader, privacy and OCR settings of the family. */
+/**
+ * Settings of the family: on screen the help on / off, the reading of the photos by the home computer and the safety; the
+ * features one by one, limits, reader and privacy in « Réglages avancés » (§27).
+ */
 export default function AISettingsPage(): JSX.Element {
   const toast = useToast();
   const cached = useSessionStore((s) => s.parentSettings);
@@ -93,6 +129,7 @@ export default function AISettingsPage(): JSX.Element {
   const [base, setBase] = useState<ParentSettings | null>(() => (cached ? completeSettings(cached) : null));
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [advanced, setAdvanced] = useState(false);
   const edited = useRef(false);
 
   const setDraft = (update: (d: ParentSettings | null) => ParentSettings | null): void => {
@@ -160,95 +197,7 @@ export default function AISettingsPage(): JSX.Element {
         <Toggle size="parent" label={t.enabled} description={t.enabledHint} checked={draft.ai.enabled} onChange={(v) => setAi('enabled', v)} />
       </ParentSection>
 
-      <ParentSection title={t.sections.features}>
-        {FEATURE_ROWS.map((row) => (
-          <Toggle
-            key={row.key}
-            size="parent"
-            label={row.label}
-            description={row.hint}
-            checked={draft.ai.features[row.key]}
-            disabled={aiOff}
-            onChange={(v) => setFeature(row.key, v)}
-          />
-        ))}
-        <Toggle size="parent" label={t.handwriting} description={t.handwritingHint} checked={draft.ai.handwritingRecognition} disabled={aiOff} onChange={(v) => setAi('handwritingRecognition', v)} />
-      </ParentSection>
-
-      <ParentSection title={t.sections.limits}>
-        <Slider
-          size="parent"
-          label={t.dailyLimit}
-          min={0}
-          max={200}
-          step={5}
-          value={draft.ai.dailyRequestLimitPerChild}
-          disabled={aiOff}
-          formatValue={(v) => format(t.requestsValue, { value: v })}
-          onChange={(v) => setAi('dailyRequestLimitPerChild', v)}
-        />
-        <Slider
-          size="parent"
-          label={t.monthlyBudget}
-          min={0}
-          max={100}
-          step={1}
-          value={draft.ai.monthlyBudgetEur}
-          disabled={aiOff}
-          formatValue={(v) => format(t.euroValue, { value: v })}
-          onChange={(v) => setAi('monthlyBudgetEur', v)}
-        />
-        <p className="parent-section__hint">{t.monthlyBudgetHint}</p>
-        <Toggle size="parent" label={t.allowComplex} description={t.allowComplexHint} checked={draft.ai.allowComplexModel} disabled={aiOff} onChange={(v) => setAi('allowComplexModel', v)} />
-        <Toggle size="parent" label={t.deepQuestions} description={t.deepQuestionsHint} checked={draft.ai.deepQuestions} disabled={aiOff || !draft.ai.allowComplexModel} onChange={(v) => setAi('deepQuestions', v)} />
-      </ParentSection>
-
-      <ParentSection title={t.sections.safety} hint={t.safetyHint}>
-        <Segmented
-          size="parent"
-          label={t.safetyLevel}
-          options={safetyOptions}
-          value={draft.safety.level}
-          onChange={(level) => setDraft((d) => (d ? { ...d, safety: { level } } : d))}
-        />
-      </ParentSection>
-
-      <ParentSection title={t.sections.reader}>
-        <Toggle
-          size="parent"
-          label={t.freeSelection}
-          description={t.freeSelectionHint}
-          checked={draft.reader.freeSelection}
-          onChange={(v) => setDraft((d) => (d ? { ...d, reader: { freeSelection: v } } : d))}
-        />
-      </ParentSection>
-
-      <ParentSection title={t.sections.privacy}>
-        <Toggle size="parent" label={t.syncAnnotations} description={t.syncAnnotationsHint} checked={draft.privacy.syncAnnotations} onChange={(v) => setPrivacy('syncAnnotations', v)} />
-        <Toggle size="parent" label={t.syncDocumentText} description={t.syncDocumentTextHint} checked={draft.privacy.syncDocumentText} onChange={(v) => setPrivacy('syncDocumentText', v)} />
-        <Toggle size="parent" label={t.uploadPageImages} description={t.uploadPageImagesHint} checked={draft.privacy.uploadPageImages} onChange={(v) => setPrivacy('uploadPageImages', v)} />
-        <Toggle size="parent" label={t.uploadOriginals} description={t.uploadOriginalsHint} checked={draft.privacy.uploadOriginals} onChange={(v) => setPrivacy('uploadOriginals', v)} />
-      </ParentSection>
-
       <ParentSection title={t.sections.ocr}>
-        <Toggle
-          size="parent"
-          label={t.autoServerFallback}
-          description={t.autoServerFallbackHint}
-          checked={draft.ocr.autoServerFallback}
-          onChange={(v) => setDraft((d) => (d ? { ...d, ocr: { ...d.ocr, autoServerFallback: v } } : d))}
-        />
-        <Slider
-          size="parent"
-          label={t.lowConfidenceThreshold}
-          min={40}
-          max={95}
-          step={5}
-          value={draft.ocr.lowConfidenceThreshold}
-          formatValue={(v) => format(parent.childEdit.percentValue, { value: v })}
-          onChange={(v) => setDraft((d) => (d ? { ...d, ocr: { ...d.ocr, lowConfidenceThreshold: v } } : d))}
-        />
-        <p className="parent-section__hint">{t.lowConfidenceThresholdHint}</p>
         <Toggle
           size="parent"
           label={t.aiTranscription}
@@ -266,6 +215,97 @@ export default function AISettingsPage(): JSX.Element {
           <Link to="/parent/diagnostic">{documents.diagnostic.link}</Link> — {documents.diagnostic.linkHint}
         </p>
       </ParentSection>
+
+      <ParentSection title={t.sections.safety} hint={t.safetyHint}>
+        <Segmented
+          size="parent"
+          label={t.safetyLevel}
+          options={safetyOptions}
+          value={draft.safety.level}
+          onChange={(level) => setDraft((d) => (d ? { ...d, safety: { level } } : d))}
+        />
+      </ParentSection>
+
+      <AdvancedSettings label={t.advanced} hint={t.advancedHint} open={advanced} onToggle={() => setAdvanced((open) => !open)}>
+        <ParentSection title={t.sections.features}>
+          {FEATURE_ROWS.map((row) => (
+            <Toggle
+              key={row.key}
+              size="parent"
+              label={row.label}
+              description={row.hint}
+              checked={draft.ai.features[row.key]}
+              disabled={aiOff}
+              onChange={(v) => setFeature(row.key, v)}
+            />
+          ))}
+          <Toggle size="parent" label={t.handwriting} description={t.handwritingHint} checked={draft.ai.handwritingRecognition} disabled={aiOff} onChange={(v) => setAi('handwritingRecognition', v)} />
+          <Toggle
+            size="parent"
+            label={t.features.freeQuestion}
+            description={t.features.freeQuestionHint}
+            checked={draft.ai.features.freeQuestion}
+            disabled={aiOff}
+            onChange={(v) => setFeature('freeQuestion', v)}
+          />
+          <div className="protections-note" role="note" aria-label={t.features.freeQuestionProtectionsTitle}>
+            <p className="protections-note__title">
+              <span aria-hidden="true">🛡️ </span>
+              {t.features.freeQuestionProtectionsTitle}
+            </p>
+            <ul className="protections-note__list">
+              {t.features.freeQuestionProtections.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        </ParentSection>
+
+        <ParentSection title={t.sections.limits}>
+          <Slider
+            size="parent"
+            label={t.dailyLimit}
+            min={0}
+            max={200}
+            step={5}
+            value={draft.ai.dailyRequestLimitPerChild}
+            disabled={aiOff}
+            formatValue={(v) => format(t.requestsValue, { value: v })}
+            onChange={(v) => setAi('dailyRequestLimitPerChild', v)}
+          />
+          <Slider
+            size="parent"
+            label={t.monthlyBudget}
+            min={0}
+            max={100}
+            step={1}
+            value={draft.ai.monthlyBudgetEur}
+            disabled={aiOff}
+            formatValue={(v) => format(t.euroValue, { value: v })}
+            onChange={(v) => setAi('monthlyBudgetEur', v)}
+          />
+          <p className="parent-section__hint">{t.monthlyBudgetHint}</p>
+          <Toggle size="parent" label={t.allowComplex} description={t.allowComplexHint} checked={draft.ai.allowComplexModel} disabled={aiOff} onChange={(v) => setAi('allowComplexModel', v)} />
+          <Toggle size="parent" label={t.deepQuestions} description={t.deepQuestionsHint} checked={draft.ai.deepQuestions} disabled={aiOff || !draft.ai.allowComplexModel} onChange={(v) => setAi('deepQuestions', v)} />
+        </ParentSection>
+
+        <ParentSection title={t.sections.reader}>
+          <Toggle
+            size="parent"
+            label={t.freeSelection}
+            description={t.freeSelectionHint}
+            checked={draft.reader.freeSelection}
+            onChange={(v) => setDraft((d) => (d ? { ...d, reader: { freeSelection: v } } : d))}
+          />
+        </ParentSection>
+
+        <ParentSection title={t.sections.privacy}>
+          <Toggle size="parent" label={t.syncAnnotations} description={t.syncAnnotationsHint} checked={draft.privacy.syncAnnotations} onChange={(v) => setPrivacy('syncAnnotations', v)} />
+          <Toggle size="parent" label={t.syncDocumentText} description={t.syncDocumentTextHint} checked={draft.privacy.syncDocumentText} onChange={(v) => setPrivacy('syncDocumentText', v)} />
+          <Toggle size="parent" label={t.uploadPageImages} description={t.uploadPageImagesHint} checked={draft.privacy.uploadPageImages} onChange={(v) => setPrivacy('uploadPageImages', v)} />
+          <Toggle size="parent" label={t.uploadOriginals} description={t.uploadOriginalsHint} checked={draft.privacy.uploadOriginals} onChange={(v) => setPrivacy('uploadOriginals', v)} />
+        </ParentSection>
+      </AdvancedSettings>
 
       <div className="parent-sticky-actions">
         {dirty && <p className="parent-sticky-actions__status">{t.unsaved}</p>}

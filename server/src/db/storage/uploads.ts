@@ -4,13 +4,16 @@ import { createReadStream } from 'node:fs';
 import { mkdir, open, readFile, rename, rm, rmdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
-export type UploadMime = 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/webp' | 'image/heic';
+export type UploadMime = 'application/pdf' | 'application/epub+zip' | 'image/jpeg' | 'image/png' | 'image/webp' | 'image/heic';
 
-export const DOCUMENT_FILE_MIMES: ReadonlySet<UploadMime> = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic']);
+export const DOCUMENT_FILE_MIMES: ReadonlySet<UploadMime> = new Set([
+  'application/pdf', 'application/epub+zip', 'image/jpeg', 'image/png', 'image/webp', 'image/heic',
+]);
 export const PAGE_IMAGE_MIMES: ReadonlySet<UploadMime> = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 const EXTENSIONS: Record<UploadMime, string> = {
   'application/pdf': 'pdf',
+  'application/epub+zip': 'epub',
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
@@ -27,8 +30,14 @@ export function detectMime(head: Uint8Array): UploadMime | null {
   if (b.length >= 8 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
   if (b.length >= 12 && b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP') return 'image/webp';
   if (b.length >= 12 && b.subarray(4, 8).toString('latin1') === 'ftyp' && HEIC_BRANDS.has(b.subarray(8, 12).toString('latin1'))) return 'image/heic';
+  // EPUB (OCF): zip local header, first entry « mimetype » stored uncompressed with « application/epub+zip ».
+  if (b.length >= EPUB_HEAD_BYTES && b.readUInt32LE(0) === 0x04034b50 && b.subarray(30, 38).toString('latin1') === 'mimetype'
+    && b.subarray(38, 58).toString('latin1') === 'application/epub+zip') return 'application/epub+zip';
   return null;
 }
+
+/** Bytes needed by detectMime to recognise every allowed type (EPUB is the longest). */
+export const EPUB_HEAD_BYTES = 58;
 
 const APP1 = 0xe1;
 const SOS = 0xda;
@@ -85,7 +94,7 @@ export async function stripJpegFile(path: string): Promise<number | null> {
   return stripped.length;
 }
 
-export async function readHead(path: string, bytes = 32): Promise<Uint8Array> {
+export async function readHead(path: string, bytes = EPUB_HEAD_BYTES): Promise<Uint8Array> {
   const handle = await open(path, 'r');
   try {
     const buffer = Buffer.alloc(bytes);

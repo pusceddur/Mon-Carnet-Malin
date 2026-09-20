@@ -62,8 +62,9 @@ describe('/api/ai routes (mock provider, real app)', () => {
     });
     expect(res.status).toBe(202);
     const accepted = res.body as AIJobAccepted;
-    expect(accepted).toMatchObject({ status: 'pending', pollAfterMs: 3000 });
-    const done = await pollUntilDone(agent, accepted.jobId);
+    expect(accepted).toMatchObject({ status: 'pending', pollAfterMs: 300 });
+    // One request that waits on the server until the answer is there.
+    const done = await agent.get(`/api/ai/jobs/${accepted.jobId}?waitMs=10000`);
     expect(done.status).toBe(200);
     expect(done.body).toMatchObject({ status: 'ok', meta: { route: 'complex' } });
   });

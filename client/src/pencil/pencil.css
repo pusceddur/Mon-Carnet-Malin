@@ -342,3 +342,135 @@
     transform: none;
   }
 }
+
+/* §19.2 text boxes on the original page (places and sizes in fractions of the page, font size from the page width). */
+.tb-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.tb-layer--editing {
+  pointer-events: auto;
+  cursor: text;
+}
+
+.tb-keyboard-holder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  font-size: 16px;
+  pointer-events: none;
+}
+
+.tb-box {
+  position: absolute;
+  font-family: var(--read-font, var(--font-ui));
+  line-height: 1.3;
+  pointer-events: none;
+}
+
+.tb-layer--editing .tb-box,
+.tb-box--readable {
+  pointer-events: auto;
+}
+
+.tb-box__input,
+.tb-box__text {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0.1em 0.25em;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.tb-box__input {
+  min-height: 1.6em;
+  overflow: hidden;
+  resize: none;
+  border-style: dashed;
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+  background: rgb(255 255 255 / 0.6);
+}
+
+.tb-box__input::placeholder {
+  color: color-mix(in srgb, currentColor 55%, transparent);
+}
+
+.tb-box--selected .tb-box__input {
+  border-style: solid;
+  background: rgb(255 255 255 / 0.9);
+  outline: none;
+}
+
+.tb-box__text {
+  background: transparent;
+}
+
+button.tb-box__text {
+  cursor: pointer;
+}
+
+.tb-box__tools {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 16px);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-2);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.tb-box__move,
+.tb-box__resize {
+  touch-action: none;
+}
+
+.tb-box__move {
+  cursor: move;
+}
+
+.tb-box__swatch {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--line-strong);
+}
+
+.tb-box__resize {
+  position: absolute;
+  top: 50%;
+  right: -22px;
+  width: 22px;
+  height: 44px;
+  padding: 0;
+  border: 2px solid currentColor;
+  border-radius: 11px;
+  background: var(--surface);
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}

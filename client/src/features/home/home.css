@@ -49,6 +49,37 @@
   height: 100%;
 }
 
+/* « Mes devoirs » (§19.3) and « Pose ta question » (§18.4): wide, lower tiles so the home still fits an iPad in landscape. */
+.child-home__tiles--five {
+  grid-template-rows: repeat(2, minmax(180px, 300px)) minmax(96px, 150px);
+}
+
+.child-home__tiles--six {
+  grid-template-rows: repeat(2, minmax(150px, 260px)) repeat(2, minmax(88px, 130px));
+}
+
+.child-home__tiles--five .ui-tile,
+.child-home__tiles--six .ui-tile {
+  min-height: 150px;
+}
+
+.child-home__tiles .child-home__wide {
+  grid-column: 1 / -1;
+  min-height: 88px;
+}
+
+/* Offline: the tile stays readable (the reason is on it), only the emoji fades. */
+.child-home__tiles .child-home__question:disabled {
+  border-style: dashed;
+  background: var(--surface-sunken);
+  opacity: 1;
+}
+
+.child-home__tiles .child-home__question:disabled .ui-tile__emoji {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+
 .child-home__footer {
   display: flex;
   justify-content: center;
@@ -70,6 +101,15 @@
 
   .child-home__tiles .ui-tile {
     min-height: 120px;
+  }
+
+  .child-home__tiles--five,
+  .child-home__tiles--six {
+    grid-template-rows: none;
+  }
+
+  .child-home__tiles .child-home__wide {
+    min-height: 96px;
   }
 }
 

@@ -1,9 +1,10 @@
 import { PREFERENCE_RANGES } from '@aide/shared';
 import type { JSX } from 'react';
-import { IconButton } from '../../design/components';
+import { Button, IconButton } from '../../design/components';
 import { format } from '../../i18n/fr';
 import { tts as t } from '../../i18n/fr/tts';
 import type { SpeechState } from '../../tts/SpeechEngine';
+import type { PreparationStatus } from './readingPreparation';
 
 export const RATE_STEP = 0.05;
 
@@ -21,10 +22,35 @@ export interface TTSBarProps {
   onNext(): void;
   onRateChange(rate: number): void;
   onClose(): void;
+  /** §22 « Préparer la lecture » of the page on screen (absent: no button). */
+  preparation?: { status: PreparationStatus; onPrepare(): void };
+}
+
+/** §22 one button, three states: « Préparer la lecture », « Préparation… », « Lecture préparée ». */
+function PrepareButton({ status, onPrepare }: { status: PreparationStatus; onPrepare(): void }): JSX.Element {
+  const p = t.prepare;
+  const done = status === 'ready';
+  const busy = status === 'sending' || status === 'waiting';
+  return (
+    <Button
+      variant="secondary"
+      size="child"
+      icon={done ? '✅' : '✨'}
+      className="rd-tts__prepare"
+      title={p.hint}
+      loading={busy}
+      disabled={done || busy}
+      onClick={onPrepare}
+    >
+      {done ? p.done : busy ? p.busy : p.button}
+    </Button>
+  );
 }
 
 /** ▶︎ ⏸ ⏹ ⏮ ⏭ + speed. Playback starts only from these taps (iOS user-gesture rule). */
-export function TTSBar({ state, rate, canPrevious, canNext, onPlay, onPause, onStop, onPrevious, onNext, onRateChange, onClose }: TTSBarProps): JSX.Element {
+export function TTSBar({
+  state, rate, canPrevious, canNext, onPlay, onPause, onStop, onPrevious, onNext, onRateChange, onClose, preparation,
+}: TTSBarProps): JSX.Element {
   const playing = state.status === 'playing';
   const { min, max } = PREFERENCE_RANGES.ttsRate;
   const round = (value: number): number => Math.round(value * 100) / 100;
@@ -56,6 +82,7 @@ export function TTSBar({ state, rate, canPrevious, canNext, onPlay, onPause, onS
         </output>
         <IconButton aria-label={t.faster} icon="🐇" disabled={rate >= max} onClick={() => onRateChange(Math.min(max, round(rate + RATE_STEP)))} />
       </div>
+      {preparation && <PrepareButton status={preparation.status} onPrepare={preparation.onPrepare} />}
       <IconButton aria-label={t.close} icon="✕" onClick={onClose} className="rd-tts__close" />
     </div>
   );

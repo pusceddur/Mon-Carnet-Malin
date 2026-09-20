@@ -24,6 +24,7 @@
     "knex": "^3.3.0",
     "multer": "^2.4.0",
     "mysql2": "^3.24.4",
+    "nodemailer": "^10.0.10",
     "tesseract.js": "^7.0.0",
     "zod": "^4.6.5"
   },
@@ -31,6 +32,7 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/multer": "^2.2.0",
+    "@types/nodemailer": "^8.0.2",
     "@types/supertest": "^7.2.1",
     "better-sqlite3": "^13.0.3",
     "esbuild": "^0.28.2",

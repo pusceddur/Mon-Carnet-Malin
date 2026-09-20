@@ -1,10 +1,12 @@
-// Display model of the home computer that runs the « lecture intelligente » (§17.5 GET /api/settings/worker).
-import type { WorkerStatus } from '@aide/shared';
+// Display model of the home computer that runs the « lecture intelligente » (§17.5 GET /api/settings/worker), with the
+// use of the subscription it last saw and the estimate of the month (§21).
+import type { SubscriptionUsage, WorkerStatus } from '@aide/shared';
 import { format } from '../../i18n/fr';
 import { parent } from '../../i18n/fr/parent';
-import { formatRelativeTime, formatTimeOrDateTime } from './format';
+import { formatEuros, formatRelativeTime, formatTimeOrDateTime } from './format';
 
 const t = parent.ai.worker;
+const tu = t.usage;
 
 export type WorkerTone = 'ok' | 'warn' | 'off';
 
@@ -14,6 +16,10 @@ export interface WorkerStatusView {
   text: string;
   /** Waiting pages / help requests, only the non-zero counts. */
   queued: string[];
+  /** §21: subscription figure (null when no worker is configured). */
+  subscription: { tone: WorkerTone; text: string; details: string[] } | null;
+  /** §21: « Estimation du mois : 3,20 € » (+ all accounts for the owner). */
+  estimate: string[];
 }
 
 function stateOf(status: WorkerStatus, now: number): { tone: WorkerTone; state: string } {
@@ -32,13 +38,40 @@ function stateOf(status: WorkerStatus, now: number): { tone: WorkerTone; state: 
   return { tone: 'ok', state: t.connected };
 }
 
+/** « Abonnement : 82 % utilisés sur la semaine », with the reset time and how recent the figure is. */
+export function describeSubscription(usage: SubscriptionUsage | null, now: number): { tone: WorkerTone; text: string; details: string[] } {
+  if (usage === null) return { tone: 'off', text: tu.none, details: [] };
+  const window = tu.windows[usage.window ?? 'other'];
+  let text: string;
+  if (usage.status === 'rejected') text = format(tu.reached, { window });
+  else if (usage.utilization === null) text = format(tu.comfortable, { window });
+  else text = format(tu.percent, { percent: Math.round(usage.utilization), window });
+  const details: string[] = [];
+  if (usage.resetsAt !== null && usage.resetsAt > now) details.push(format(tu.resets, { time: formatTimeOrDateTime(usage.resetsAt, now) }));
+  // Worker clock: never « dans 5 secondes ».
+  if (usage.observedAt !== null) details.push(format(tu.observed, { when: formatRelativeTime(Math.min(usage.observedAt, now), now) }));
+  return { tone: usage.status === 'allowed' ? 'ok' : 'warn', text, details };
+}
+
 export function describeWorkerStatus(status: WorkerStatus, now: number): WorkerStatusView {
   const { tone, state } = stateOf(status, now);
   const queued: string[] = [];
+  const estimate: string[] = [];
   if (status.configured) {
-    const { pageText, ai } = status.queued;
+    const { pageText, ai, pageSpeech } = status.queued;
     if (pageText > 0) queued.push(pageText === 1 ? t.pagesOne : format(t.pagesMany, { count: pageText }));
     if (ai > 0) queued.push(ai === 1 ? t.aiOne : format(t.aiMany, { count: ai }));
+    if (pageSpeech > 0) queued.push(pageSpeech === 1 ? t.speechOne : format(t.speechMany, { count: pageSpeech }));
+    estimate.push(format(tu.estimate, { amount: formatEuros(status.estimate.monthToDateEur) }));
+    if (status.estimate.allAccountsEur !== null && status.estimate.allAccountsEur > status.estimate.monthToDateEur) {
+      estimate.push(format(tu.estimateAll, { amount: formatEuros(status.estimate.allAccountsEur) }));
+    }
   }
-  return { tone, text: format(t.state, { state }), queued };
+  return {
+    tone,
+    text: format(t.state, { state }),
+    queued,
+    subscription: status.configured ? describeSubscription(status.usage, now) : null,
+    estimate,
+  };
 }

@@ -112,15 +112,15 @@ describe('SummaryPage', () => {
     expect(mocks.speakOnce).toHaveBeenCalledWith(expect.stringContaining('Les nuages donnent la pluie.'));
   });
 
-  it('makes a local summary when the help is off, with its label', async () => {
+  it('makes no summary on the device when the help is off', async () => {
     await seedBook();
     setSession(makeChild(), { ...DEFAULT_PARENT_SETTINGS, ai: { ...DEFAULT_PARENT_SETTINGS.ai, enabled: false } });
     await renderAt(`/exercices/${DOC_ID}/resume?page=1`, ROUTES);
     await waitForText('De la page');
     await clickButton('Faire le résumé');
-    await waitForText('Résumé préparé sans aide en ligne');
+    await waitForText('Pas de résumé pour le moment');
     expect(mocks.summarizeProgressively).not.toHaveBeenCalled();
-    expect(mocks.extractiveSummary).toHaveBeenCalledWith([expect.objectContaining({ pageIndex: 0 })], 'normal');
+    expect(mocks.extractiveSummary).not.toHaveBeenCalled();
   });
 
   it('shows the blocked message', async () => {
@@ -175,7 +175,7 @@ describe('QuizSetupPage', () => {
     expect(mocks.saveEntity).toHaveBeenCalledWith('exercises', expect.objectContaining({ id: exerciseId }));
   });
 
-  it('can stop the wait, and uses local questions when the help is unavailable', async () => {
+  it('can stop the wait, and makes no questions on the device when the help is unavailable', async () => {
     await seedBook();
     mocks.requestAI.mockImplementationOnce((_op: string, _body: unknown, opts: { signal: AbortSignal }) => new Promise((r) => {
       opts.signal.addEventListener('abort', () => r({ status: 'unavailable', reason: 'timeout', message: '', meta: null }));
@@ -189,9 +189,12 @@ describe('QuizSetupPage', () => {
 
     mocks.requestAI.mockResolvedValue({ status: 'unavailable', reason: 'offline', message: KID_MESSAGES.offline, meta: null });
     await clickButton('C’est parti !');
-    await waitFor(() => location().startsWith('/exercices/quiz/'));
-    const [saved] = await db.exercises.toArray();
-    expect(saved).toMatchObject({ origin: 'local', questions: [QCM, VRAI_FAUX] });
+    await waitForText('Les questions ne sont pas disponibles pour le moment');
+    expect(text()).toContain(KID_MESSAGES.offline);
+    expect(await db.exercises.count()).toBe(0);
+    expect(mocks.generateLocalQuestions).not.toHaveBeenCalled();
+    await clickButton('Réessayer');
+    await waitForText('Combien de questions ?');
   });
 });
 

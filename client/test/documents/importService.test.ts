@@ -36,7 +36,7 @@ describe('ImportService', () => {
     mocks.start.mockClear();
     useSessionStore.setState({
       authStatus: {
-        setupRequired: false, authenticated: true, parentUnlockedUntil: null, pinSet: true, pinLockedUntil: null, registrationOpen: false,
+        setupRequired: false, authenticated: true, parentUnlockedUntil: null, pinSet: true, pinLockedUntil: null, registrationOpen: false, pinRequired: true, passwordResetAvailable: false, aiReading: false,
         parent: { id: 'parent-1', email: 'parent', displayName: 'Parent', createdAt: 1, isOwner: true },
       },
       parentSettings: settings(),
@@ -80,7 +80,12 @@ describe('ImportService', () => {
 
   it('marks an image-only import as kind images and uses the file name as a fallback title', async () => {
     const id = await importFiles([file('x', 'Leçon_volcans.jpeg', 'image/jpeg')], { title: ' ', childIds: [] });
-    expect(await db.documents.get(id)).toMatchObject({ kind: 'images', title: 'Leçon volcans', pageCount: 1 });
+    expect(await db.documents.get(id)).toMatchObject({ kind: 'images', title: 'Leçon volcans', pageCount: 1, textMode: 'faithful' });
+  });
+
+  it('keeps the document type chosen at import (§17.10)', async () => {
+    const id = await importFiles([file('x', 'redaction.jpg', 'image/jpeg')], { title: 'Ma rédaction', childIds: [], textMode: 'punctuated' });
+    expect(await db.documents.get(id)).toMatchObject({ kind: 'images', textMode: 'punctuated', status: 'processing' });
   });
 
   it('queues original uploads only when the parent allowed it', async () => {

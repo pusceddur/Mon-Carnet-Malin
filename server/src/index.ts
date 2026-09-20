@@ -3,6 +3,7 @@ import { peekAIServices } from './ai/services';
 import { createApp } from './app';
 import { loadConfig, loadEnvFileIfPresent } from './config';
 import { createDb, runMigrations } from './db/knex';
+import { mailerFor } from './email/mailer';
 import { ERROR_MESSAGES_FR, errorBody } from './errors';
 import { createLogger } from './logger';
 import { startMaintenance } from './maintenance/retention';
@@ -54,7 +55,7 @@ function main(): void {
       .then((applied) => {
         if (applied.length > 0) logger.info('migrations_applied', { migrations: applied });
         ready = true;
-        stopMaintenance = startMaintenance({ db, now, uploadsRoot: uploadsDir(config), logger });
+        stopMaintenance = startMaintenance({ db, now, uploadsRoot: uploadsDir(config), logger, mailer: mailerFor(deps) });
       })
       .catch((err: unknown) => {
         // The database may still be starting: retry with a capped backoff while /api answers 503.

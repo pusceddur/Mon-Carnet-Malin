@@ -11,7 +11,14 @@ export interface ActivityStats {
   ttsSeconds: number;
   ai: { total: number; cacheHits: number; byStatus: { status: string; count: number }[] };
   unseenAlerts: number;
-  budget: { spentEur: number; budgetEur: number; percent: number; level: 'ok' | 'warning' | 'reached' };
+  /**
+   * spentEur: AI paid per use (the level and the pause depend on it only). §21 estimateEur: home computer, estimated at list
+   * prices; totalEur = both, shown against the budget; estimateOver: the total is beyond the budget without any pause.
+   */
+  budget: {
+    spentEur: number; estimateEur: number; totalEur: number; budgetEur: number; percent: number;
+    level: 'ok' | 'warning' | 'reached'; estimateOver: boolean;
+  };
 }
 
 const DAY_MS = 24 * 60 * 60_000;
@@ -52,8 +59,11 @@ export function computeActivityStats(summary: ActivitySummary, childId: Id | nul
     .sort((a, b) => rank(a.status) - rank(b.status) || a.status.localeCompare(b.status));
 
   const spentEur = Math.max(0, summary.budget.monthToDateEur);
+  const estimateEur = Math.max(0, summary.budget.workerEstimateEur);
+  const totalEur = spentEur + estimateEur;
   const budgetEur = Math.max(0, summary.budget.monthlyBudgetEur);
-  const ratio = budgetEur > 0 ? spentEur / budgetEur : spentEur > 0 ? 1 : 0;
+  const ratioOf = (value: number): number => (budgetEur > 0 ? value / budgetEur : value > 0 ? 1 : 0);
+  const ratio = ratioOf(spentEur);
   const level = ratio >= 1 ? 'reached' : ratio >= 0.8 ? 'warning' : 'ok';
 
   return {
@@ -64,7 +74,10 @@ export function computeActivityStats(summary: ActivitySummary, childId: Id | nul
     ttsSeconds,
     ai: { total: requests.length, cacheHits: requests.filter((r) => r.cacheHit).length, byStatus },
     unseenAlerts: summary.alerts.filter((a) => a.seenAt === null && (childId === null || a.childId === childId || a.childId === null)).length,
-    budget: { spentEur, budgetEur, percent: Math.round(Math.min(1, ratio) * 100), level },
+    budget: {
+      spentEur, estimateEur, totalEur, budgetEur, percent: Math.round(Math.min(1, ratioOf(totalEur)) * 100), level,
+      estimateOver: level !== 'reached' && estimateEur > 0 && ratioOf(totalEur) >= 1,
+    },
   };
 }
 

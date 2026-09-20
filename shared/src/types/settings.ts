@@ -7,7 +7,9 @@ export interface ParentSettings {
   ai: {
     enabled: boolean;                                   // default true
     features: { explainWord: boolean; explainText: boolean; simplify: boolean; summarize: boolean;
-                questions: boolean; correctAnswers: boolean; questionOnText: boolean };  // default all true
+                questions: boolean; correctAnswers: boolean; questionOnText: boolean;
+                freeQuestion: boolean /* §18 « Pose ta question », default true */;
+                correctWriting: boolean /* §24 « Corriger » in the text boxes, default true */ };  // default all true
     dailyRequestLimitPerChild: number;                  // default 60
     monthlyBudgetEur: number;                           // default 10
     allowComplexModel: boolean;                         // default true (if false: complex -> LocalProvider)

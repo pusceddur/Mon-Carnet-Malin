@@ -125,6 +125,11 @@ export interface StandaloneEnv {
   matchMedia?: (query: string) => { matches: boolean };
 }
 
+/** True on an Android phone or tablet (the voices come from the Android speech engine). */
+export function isAndroid(nav: NavigatorLike | undefined = currentNavigator()): boolean {
+  return /Android/i.test(nav?.userAgent ?? '');
+}
+
 /** True when the app runs from the home screen (installed PWA) rather than in a Safari tab. */
 export function isStandalonePwa(
   env: StandaloneEnv | undefined = typeof window === 'undefined' ? undefined : (window as StandaloneEnv),

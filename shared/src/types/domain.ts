@@ -12,6 +12,14 @@ export type ReadingFont = 'lexend' | 'andika' | 'atkinson' | 'opendyslexic' | 's
 export type ReadingTheme = 'creme' | 'clair' | 'sombre';
 export type LayoutMode = 'page' | 'continu';
 
+/** §26 « Couleurs de lecture »: marks drawn on the text, each one on or off (codeFrenchText). */
+export interface ReadingAids {
+  syllables: boolean;       // syllables in two alternating colours
+  silentLetters: boolean;   // silent letters in light grey
+  sounds: boolean;          // letters making one sound together, on a coloured background
+  changedLetters: boolean;  // letters that do not make their usual sound, underlined with dots
+  liaisons: boolean;        // arc joining the words of a liaison
+}
 export interface ReadingPreferences {
   font: ReadingFont;            // default 'lexend'
   fontSizePx: number;           // 16..44, default 24
@@ -23,6 +31,7 @@ export interface ReadingPreferences {
   layoutMode: LayoutMode;       // default 'page'
   sentenceHighlight: boolean;   // default true
   readingGuide: boolean;        // reading ruler, default false
+  aids: ReadingAids;            // §26, default: all off
 }
 // §15.7: the voice is chosen per device (Dexie kv key `ttsVoiceURI`), not per profile.
 export interface TTSPreferences {
@@ -47,6 +56,11 @@ export interface ChildProfile {
 }
 
 export type DocumentKind = 'pdf' | 'images' | 'epub';
+// 'faithful': text as printed (books, default). 'punctuated': text written by a child (§17.10): the « lecture intelligente »
+// keeps every word and only restores punctuation and sentence capitals, so that the voice reads it naturally.
+export type DocumentTextMode = 'faithful' | 'punctuated';
+// 'reading': a book or a document to read (default). 'homework': a sheet the child completes in the app (§19.3).
+export type DocumentPurpose = 'reading' | 'homework';
 export type DocumentStatus = 'processing' | 'ready' | 'partial';   // partial = some pages failed/doubtful
 export type PageStatus = 'pending' | 'processing' | 'ready' | 'low_confidence' | 'failed';
 // 'ocr-ai': page transcribed from its image by the external worker (§17).
@@ -57,11 +71,18 @@ export type PageWarning = 'low_confidence' | 'server_fallback_used' | 'manually_
 export interface DocumentMeta {
   id: Id; ownerParentId: Id; childIds: Id[];
   title: string; kind: DocumentKind;
-  sourceHash: string;           // sha256 hex of original files (hash of concatenated hashes, in order)
+  textMode: DocumentTextMode;   // changed only through PUT /api/documents/:id/text-mode (never by a sync push)
+  purpose: DocumentPurpose;     // set when the document is created
+  homeworkDoneAt: Millis | null; // §19.3 « J'ai terminé » (homework only), set and cleared by the child
+  sourceHash: string;          // sha256 hex of original files (hash of concatenated hashes, in order)
   pageCount: number; status: DocumentStatus;
   createdAt: Millis; updatedAt: Millis; deletedAt: Millis | null;
 }
-export interface TextBlock { kind: 'title' | 'paragraph'; text: string }
+/**
+ * `spoken` (§22 « Préparer la lecture »): the same words as `text`, punctuated for the voice (pauses after list numbers,
+ * end of items…). Read aloud instead of `text` while its words match; never displayed.
+ */
+export interface TextBlock { kind: 'title' | 'paragraph'; text: string; spoken?: string }
 export interface PageContent {
   documentId: Id; pageIndex: number;              // 0-based
   status: PageStatus; textSource: PageTextSource | null;

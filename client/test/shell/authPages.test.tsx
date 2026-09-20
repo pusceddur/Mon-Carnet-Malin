@@ -32,15 +32,16 @@ const AccountPage = (await import('../../src/features/parent/AccountPage')).defa
 
 const CLOSED = 'Les inscriptions ne sont pas ouvertes. Demandez un code d’invitation.';
 
-function signedOut(registrationOpen: boolean): AuthStatus {
+function signedOut(registrationOpen: boolean, passwordResetAvailable = false): AuthStatus {
   return {
     setupRequired: false, authenticated: false, parent: null, parentUnlockedUntil: null, pinSet: false, pinLockedUntil: null, registrationOpen,
+    pinRequired: true, passwordResetAvailable, aiReading: false,
   };
 }
 
 function signedIn(): AuthStatus {
   return {
-    setupRequired: false, authenticated: true, parentUnlockedUntil: null, pinSet: true, pinLockedUntil: null, registrationOpen: true,
+    setupRequired: false, authenticated: true, parentUnlockedUntil: null, pinSet: true, pinLockedUntil: null, registrationOpen: true, pinRequired: true, passwordResetAvailable: false, aiReading: false,
     parent: { id: 'p2', email: 'nouveau@example.org', displayName: 'Alex', createdAt: 1, isOwner: false },
   };
 }
@@ -235,8 +236,8 @@ describe('AccountPage: invitations', () => {
     expect(container.textContent).toContain('Aucun code pour le moment.');
     expect(buttonByText('Copier', container)).toBeNull();
 
-    const toggle = container.querySelector<HTMLButtonElement>('[role="switch"]');
-    expect(toggle?.textContent).toContain('Autoriser les inscriptions avec un code');
+    const toggle = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="switch"]')).find((el) => el.textContent?.includes('Autoriser les inscriptions avec un code'));
+    expect(toggle).toBeDefined();
     expect(toggle?.getAttribute('aria-checked')).toBe('false');
     await click(toggle);
     await waitFor(() => expect(container.textContent).toContain(CODE));

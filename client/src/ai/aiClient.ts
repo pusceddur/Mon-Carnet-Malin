@@ -1,24 +1,21 @@
 // Client side of the AI layer (§11.6, §15.4). Every function resolves; nothing throws towards the UI.
-// Order of requestAI: local cache → offline check → server (sync result or 202 job + polling) → local fallbacks.
+// Order of requestAI: local cache → offline check → server (sync result or 202 job + polling). No local answers (2026-09-19).
 import {
   AI_DEADLINES,
   AIDataSchemaByOperation,
   AIResultSchema,
   DEFAULT_PARENT_SETTINGS,
-  DictionaryResultSchema,
   KID_MESSAGES,
   LIMITS,
   PROMPT_VERSION,
   TIMINGS,
-  extractiveSummary,
-  generateLocalQuestions,
-  lookupGlossary,
   newId,
   planChunks,
   planHash,
   profileSignature,
   routeFor,
   sha256Hex,
+  type AIBlockedReason,
   type AIMeta,
   type AIOperation,
   type AIPageInput,
@@ -27,19 +24,14 @@ import {
   type AIUnavailableReason,
   type ChildProfile,
   type DataFor,
-  type DictionaryResult,
-  type ExplanationData,
-  type GlossaryEntry,
-  type QuestionsData,
   type RequestFor,
   type SummarizeRequest,
   type SummaryData,
   type TextChunk,
 } from '@aide/shared';
 import { getAIJob, postAI } from '../api/ai';
-import { getDictionary } from '../api/dictionary';
 import { ApiError } from '../api/http';
-import { db, type DictionaryCacheRecord } from '../db/localDb';
+import { db } from '../db/localDb';
 import { isOnline } from '../platform/online';
 import { useSessionStore } from '../state/session';
 
@@ -49,8 +41,6 @@ interface InternalOptions {
   signal?: AbortSignal;
   /** Skip the local cache read (chunks re-sent after `missing_chunks`). */
   bypassCache?: boolean;
-  /** No local fallback (the caller has its own). */
-  noFallback?: boolean;
 }
 
 export const AI_CACHE_TTL_MS = 30 * 24 * 60 * 60_000;
@@ -61,6 +51,8 @@ const MAX_TRANSIENT_POLL_ERRORS = 3;
 const MAX_MISSING_CHUNK_RETRIES = 2;
 /** Upper bound of a server-provided `AIJobAccepted.waitMs` (external worker deadlines, §17.4). */
 const MAX_JOB_WAIT_MS = 15 * 60_000;
+/** One GET /api/ai/jobs/:id waits on the server at most this long for the answer. */
+const JOB_WAIT_MS = 15_000;
 
 // ---------- results ----------
 
@@ -91,6 +83,12 @@ function buildResultSchema(op: AIOperation) {
   return AIResultSchema(AIDataSchemaByOperation[op]);
 }
 
+/** Standard message of a blocked result without message (free questions have their own wording, §18). */
+function blockedMessage(op: AIOperation, reason: AIBlockedReason): string {
+  if (op === 'free_question') return reason === 'adult_redirect' ? KID_MESSAGES.questionAdultRedirect : KID_MESSAGES.questionBlocked;
+  return reason === 'adult_redirect' ? KID_MESSAGES.adultRedirect : KID_MESSAGES.blocked;
+}
+
 function parseResult<Op extends AIOperation>(op: Op, raw: unknown): Result<Op> | null {
   let schema = resultSchemas.get(op);
   if (!schema) {
@@ -102,9 +100,7 @@ function parseResult<Op extends AIOperation>(op: Op, raw: unknown): Result<Op> |
   const result = parsed.data as unknown as Result<Op>;
   if (result.status === 'unavailable' && result.message.trim() === '') return { ...result, message: kidMessageForUnavailable(result.reason) };
   if (result.status === 'not_in_text' && result.message.trim() === '') return { ...result, message: KID_MESSAGES.notInText };
-  if (result.status === 'blocked' && result.message.trim() === '') {
-    return { ...result, message: result.reason === 'adult_redirect' ? KID_MESSAGES.adultRedirect : KID_MESSAGES.blocked };
-  }
+  if (result.status === 'blocked' && result.message.trim() === '') return { ...result, message: blockedMessage(op, result.reason) };
   return result;
 }
 
@@ -189,6 +185,17 @@ export async function localAICacheKey<Op extends AIOperation>(op: Op, body: Requ
   return sha256Hex(stableStringify({ op, body: rest, profile: signature, promptVersion: PROMPT_VERSION }));
 }
 
+/**
+ * Operations never stored in (nor read from) the local cache: handwriting images and their text (§15.4), free questions
+ * (personal, time-sensitive, logged for the parent on every ask, §18.2), texts corrected with « Corriger » (§24, kept for the
+ * adult on every correction).
+ */
+const NEVER_CACHED: ReadonlySet<AIOperation> = new Set<AIOperation>(['recognize_handwriting', 'free_question', 'correct_writing']);
+
+export function isLocallyCached(op: AIOperation): boolean {
+  return !NEVER_CACHED.has(op);
+}
+
 let pruned = false;
 
 function pruneAICacheOnce(): void {
@@ -243,6 +250,8 @@ function inputCharsOf(op: AIOperation, body: RequestFor<AIOperation>): number {
       return Math.min(LIMITS.retrieveMaxChars, totalChars((body as RequestFor<'question_on_text'>).pages));
     case 'correct_answer':
       return (body as RequestFor<'correct_answer'>).answerText.length;
+    case 'free_question':
+      return (body as RequestFor<'free_question'>).question.length;
     default:
       return 0;
   }
@@ -271,7 +280,10 @@ async function pollJob<Op extends AIOperation>(op: Op, jobId: string, firstDelay
     if (!isOnline()) return unavailable('offline');
     let raw: unknown;
     try {
-      raw = await getAIJob<Op>(jobId, { signal, timeoutMs: Math.max(1000, Math.min(deadlineAt - Date.now(), 30_000)) });
+      // The server holds the request until the answer is there (at most JOB_WAIT_MS): no time lost between two polls.
+      const left = deadlineAt - Date.now();
+      const waitMs = Math.max(0, Math.min(JOB_WAIT_MS, left - 1_000));
+      raw = await getAIJob<Op>(jobId, { signal, waitMs, timeoutMs: Math.max(1000, Math.min(left, waitMs + 10_000)) });
     } catch (error) {
       if (!signal?.aborted && isTransientPollError(error) && transientErrors < MAX_TRANSIENT_POLL_ERRORS && isOnline()) {
         transientErrors += 1;
@@ -307,96 +319,20 @@ async function callServer<Op extends AIOperation>(op: Op, body: RequestFor<Op>, 
   return parseResult(op, raw) ?? unavailable('provider_error');
 }
 
-// ---------- local fallbacks ----------
-
-function cleanWord(word: string): string {
-  const clean = word.normalize('NFC').trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
-  return clean.length > LIMITS.wordMaxChars ? '' : clean;
-}
-
-function dictionaryKey(word: string): string {
-  return word.toLocaleLowerCase('fr');
-}
-
-async function parentGlossary(): Promise<GlossaryEntry[]> {
-  try {
-    return await db.glossary.toArray();
-  } catch {
-    return [];
-  }
-}
-
-async function readDictionaryCache(key: string): Promise<DictionaryCacheRecord | null> {
-  try {
-    return (await db.dictionaryCache.get(key)) ?? null;
-  } catch {
-    return null;
-  }
-}
-
-export interface LocalExplanation { headword: string; definition: string; example: string | null }
-
-/** Kid-friendly definition available without network: parent + built-in glossary, then kid-friendly cached entries. */
-export async function lookupLocalExplanation(word: string): Promise<LocalExplanation | null> {
-  try {
-    const clean = cleanWord(word);
-    if (clean === '') return null;
-    const local = lookupGlossary(clean, await parentGlossary());
-    if (local) return { headword: local.entry.headword, definition: local.entry.kidDefinition, example: local.entry.example };
-    const cached = await readDictionaryCache(dictionaryKey(clean));
-    if (cached?.result.status === 'found' && cached.result.entry.kidFriendly) {
-      const { entry } = cached.result;
-      return { headword: entry.headword, definition: entry.definition, example: entry.example };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-async function localFallback<Op extends AIOperation>(op: Op, body: RequestFor<Op>): Promise<Result<Op> | null> {
-  switch (op) {
-    case 'explain_word': {
-      const request = body as RequestFor<'explain_word'>;
-      const local = await lookupLocalExplanation(request.word);
-      if (!local) return null;
-      const data: ExplanationData = { explanation: local.definition, example: local.example, sourceQuotes: [] };
-      const result: AIResult<ExplanationData> = { status: 'ok', data, meta: localMeta(request.ocrLowConfidence) };
-      return result as Result<Op>;
-    }
-    case 'generate_questions': {
-      const request = body as RequestFor<'generate_questions'>;
-      const questions = generateLocalQuestions(request.pages, request.count, request.types);
-      if (questions.length === 0) return null;
-      const result: AIResult<QuestionsData> = {
-        status: 'ok',
-        data: { questions },
-        meta: localMeta(request.pages.some((p) => p.ocrLowConfidence)),
-      };
-      return result as Result<Op>;
-    }
-    default:
-      return null;
-  }
-}
-
 // ---------- public API ----------
 
 async function requestAIWith<Op extends AIOperation>(op: Op, body: RequestFor<Op>, opts: InternalOptions): Promise<Result<Op>> {
   try {
     if (opts.signal?.aborted) return unavailable('timeout');
     pruneAICacheOnce();
-    // Handwriting images and their text are never cached (§15.4).
-    const key = op === 'recognize_handwriting' ? null : await localAICacheKey(op, body).catch(() => null);
+    const key = isLocallyCached(op) ? await localAICacheKey(op, body).catch(() => null) : null;
     if (key && !opts.bypassCache) {
       const hit = await readAICache(key, op);
       if (hit) return hit;
     }
     const result = isOnline() ? await callServer(op, body, opts.signal) : unavailable<DataFor<Op>>('offline');
-    if (result.status === 'unavailable') {
-      if (opts.noFallback || opts.signal?.aborted) return result;
-      return (await localFallback(op, body)) ?? result;
-    }
+    // No local answer any more: glossary, dictionary, questions and summaries all come from the AI (2026-09-19).
+    if (result.status === 'unavailable') return result;
     if (key) await writeAICache(key, op, result);
     return result;
   } catch {
@@ -406,8 +342,9 @@ async function requestAIWith<Op extends AIOperation>(op: Op, body: RequestFor<Op
 
 /**
  * offline → unavailable/offline immediately (after the local cache); timeout = AI_DEADLINES[route] + 15 s, 202 jobs polled
- * until that deadline (or until start + `waitMs` when the 202 answer gives one); errors → unavailable. Local fallbacks: explain_word (glossary / cached dictionary),
- * generate_questions (generateLocalQuestions, `meta.route === 'local'` ⇒ Exercise.origin 'local'). Never throws.
+ * until that deadline (or until start + `waitMs` when the 202 answer gives one), each poll waiting on the server; errors →
+ * unavailable, never a local answer (2026-09-19). recognize_handwriting, free_question and correct_writing are never cached
+ * locally (the server answers or refuses every time, and logs it). Never throws.
  */
 export async function requestAI<Op extends AIOperation>(op: Op, body: RequestFor<Op>, opts?: { signal?: AbortSignal }): Promise<AIResult<DataFor<Op>>> {
   return requestAIWith(op, body, { signal: opts?.signal });
@@ -435,16 +372,6 @@ async function runPool<T, R>(items: readonly T[], limit: number, worker: (item: 
 function isSummaryData(data: unknown): data is SummaryData {
   return typeof data === 'object' && data !== null && typeof (data as SummaryData).summary === 'string'
     && Array.isArray((data as SummaryData).keyPoints) && Array.isArray((data as SummaryData).sourceRefs);
-}
-
-function localSummary(pages: AIPageInput[], level: SummarizeRequest['level'], sourceWarning: boolean, reasonIfEmpty: AIUnavailableReason): AIResult<SummaryData> {
-  try {
-    const data = extractiveSummary(pages, level);
-    if (data.summary.trim() === '') return unavailable(reasonIfEmpty);
-    return { status: 'ok', data, meta: localMeta(sourceWarning) };
-  } catch {
-    return unavailable(reasonIfEmpty);
-  }
 }
 
 /**
@@ -476,10 +403,8 @@ export async function summarizeProgressively(
     report(done, total);
 
     const fallback = (reason: AIUnavailableReason): AIResult<SummaryData> => {
-      if (signal?.aborted) return unavailable('timeout');
-      const local = localSummary(pages, req.level, sourceWarning, reason);
       report(total, total);
-      return local;
+      return unavailable(signal?.aborted ? 'timeout' : reason);
     };
     if (signal?.aborted) return unavailable('timeout');
     if (!isOnline()) return fallback('offline');
@@ -498,7 +423,7 @@ export async function summarizeProgressively(
               stage: { kind: 'chunk', planHash: hash, chunk },
               ocrLowConfidence: chunk.pageIndexes.some((i) => lowConfidence.get(i) === true),
             },
-            { signal, bypassCache, noFallback: true },
+            { signal, bypassCache },
           );
           if (countProgress) {
             done += 1;
@@ -520,7 +445,7 @@ export async function summarizeProgressively(
       const final = await requestAIWith(
         'summarize',
         { ...base, stage: { kind: 'final', planHash: hash, chunkCount: chunks.length }, ocrLowConfidence: sourceWarning },
-        { signal, noFallback: true },
+        { signal },
       );
       if (final.status === 'unavailable') {
         if (final.reason === 'missing_chunks' && attempt < MAX_MISSING_CHUNK_RETRIES) {
@@ -545,53 +470,3 @@ export async function summarizeProgressively(
   }
 }
 
-function isFreshDictionaryRecord(record: DictionaryCacheRecord): boolean {
-  if (record.result.status === 'found') return true;
-  if (record.result.status === 'not_found') return Date.now() - record.fetchedAt < DICTIONARY_NOT_FOUND_TTL_MS;
-  return false;
-}
-
-/** Local glossary (parent entries in Dexie, then built-in) → dictionaryCache → /api/dictionary. Never throws. */
-export async function lookupDefinition(word: string): Promise<DictionaryResult> {
-  try {
-    const clean = cleanWord(word);
-    if (clean === '') return { status: 'not_found' };
-    const local = lookupGlossary(clean, await parentGlossary());
-    if (local) {
-      return {
-        status: 'found',
-        entry: {
-          headword: local.entry.headword,
-          lemma: local.lemma,
-          partOfSpeech: local.entry.partOfSpeech,
-          definition: local.entry.kidDefinition,
-          example: local.entry.example,
-          source: local.source,
-          attribution: null,
-          kidFriendly: true,
-        },
-      };
-    }
-    const key = dictionaryKey(clean);
-    const cached = await readDictionaryCache(key);
-    if (cached && isFreshDictionaryRecord(cached)) return cached.result;
-    if (!isOnline()) return cached?.result ?? { status: 'unavailable' };
-
-    let remote: DictionaryResult = { status: 'unavailable' };
-    try {
-      const parsed = DictionaryResultSchema.safeParse(await getDictionary(clean));
-      if (parsed.success) remote = parsed.data;
-    } catch {
-      remote = { status: 'unavailable' };
-    }
-    if (remote.status === 'unavailable') return cached?.result ?? remote;
-    try {
-      await db.dictionaryCache.put({ word: key, result: remote, fetchedAt: Date.now() });
-    } catch {
-      // Cache is an optimisation.
-    }
-    return remote;
-  } catch {
-    return { status: 'unavailable' };
-  }
-}

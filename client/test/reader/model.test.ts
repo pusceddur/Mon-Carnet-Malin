@@ -93,6 +93,7 @@ describe('speech items', () => {
       { id: '3:0:0', text: 'Peut-être mal lu.' },
     ]);
     expect(parseSpeechItemId('12:3:4')).toEqual({ pageIndex: 12, blockIndex: 3, sentenceIndex: 4 });
+    expect(items.every((item) => !('spoken' in item))).toBe(true);
     expect(parseSpeechItemId('x')).toBeNull();
     expect(speechStartIndex(items, { pageIndex: 1, blockIndex: 0, sentenceIndex: 1 })).toBe(2);
     expect(speechStartIndex(items, { pageIndex: 2 })).toBe(3);
@@ -202,5 +203,14 @@ describe('navigation and AI inputs', () => {
     const prefs = { font: 'lexend', fontSizePx: 24, lineHeight: 1.8, letterSpacingEm: 0.04, wordSpacingEm: 0.16, columnWidthEm: 30, layoutMode: 'page' };
     expect(layoutKeyOf(prefs, 1024)).not.toBe(layoutKeyOf({ ...prefs, fontSizePx: 26 }, 1024));
     expect(layoutKeyOf(prefs, 1024)).not.toBe(layoutKeyOf(prefs, 768));
+    expect(layoutKeyOf(prefs, 1024)).not.toBe(layoutKeyOf({ ...prefs, aids: { liaisons: true } }, 1024));
+  });
+});
+
+describe('§22 text prepared for the voice', () => {
+  it('puts the prepared part in the speech items', async () => {
+    const page = makePage(0, ['x']);
+    const pages = [await buildPageModel({ ...page, blocks: [{ kind: 'paragraph', text: 'Il pleut il fait froid.', spoken: 'Il pleut, il fait froid.' }] })];
+    expect(buildSpeechItems(pages)).toEqual([{ id: '0:0:0', text: 'Il pleut il fait froid.', spoken: 'Il pleut, il fait froid.' }]);
   });
 });

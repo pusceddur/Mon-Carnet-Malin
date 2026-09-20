@@ -70,6 +70,29 @@ export const ModelHandwritingSchema = z.object({
   text: z.string(),
 });
 
+/**
+ * §18 free question: no document, so no not_in_text. `redirect_adult`: the question reveals distress, danger or a secret
+ * with an adult (the router answers with the adult-redirect message and alerts the parent). The limit of 3 suggestions is
+ * applied by the validator (a 4th suggestion is dropped, it never costs a regeneration).
+ */
+export const ModelFreeAnswerStatusSchema = z.enum(['ok', 'cannot_help', 'redirect_adult']);
+export const ModelFreeAnswerSchema = z.object({
+  status: ModelFreeAnswerStatusSchema,
+  answer: z.string(),
+  example: z.string().nullable(),
+  suggestions: z.array(z.string()),
+});
+
+/**
+ * §24 « Corriger »: the corrected lines (as many as given) and, for the adult, one short explanation per correction. What
+ * changed is computed by the server from the two texts, the notes only give the rule.
+ */
+export const ModelWritingSchema = z.object({
+  status: ModelStatusSchema,
+  lines: z.array(z.string()),
+  notes: z.array(z.object({ from: z.string(), to: z.string(), rule: z.string() })),
+});
+
 export type ModelSourceRef = z.infer<typeof ModelSourceRefSchema>;
 export type ModelExplanation = z.infer<typeof ModelExplanationSchema>;
 export type ModelSimplification = z.infer<typeof ModelSimplificationSchema>;
@@ -80,6 +103,10 @@ export type ModelQuestions = z.infer<typeof ModelQuestionsSchema>;
 export type ModelCorrection = z.infer<typeof ModelCorrectionSchema>;
 export type ModelAnswer = z.infer<typeof ModelAnswerSchema>;
 export type ModelHandwriting = z.infer<typeof ModelHandwritingSchema>;
+export type ModelFreeAnswer = z.infer<typeof ModelFreeAnswerSchema>;
+export type ModelWriting = z.infer<typeof ModelWritingSchema>;
+/** Every status a model output can carry (the router maps each one). */
+export type ModelResultStatus = ModelStatus | z.infer<typeof ModelFreeAnswerStatusSchema>;
 
 export const MODEL_SCHEMA_BY_TRANSPORT_OPERATION = {
   explain_word: ModelExplanationSchema,
@@ -92,6 +119,8 @@ export const MODEL_SCHEMA_BY_TRANSPORT_OPERATION = {
   correct_answer: ModelCorrectionSchema,
   question_on_text: ModelAnswerSchema,
   recognize_handwriting: ModelHandwritingSchema,
+  free_question: ModelFreeAnswerSchema,
+  correct_writing: ModelWritingSchema,
 } as const satisfies Record<AITransportOperation, z.ZodType>;
 
 const DROPPED_KEYWORDS = new Set(['$schema', 'minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf', 'minLength', 'maxLength', 'pattern', 'minItems', 'maxItems']);

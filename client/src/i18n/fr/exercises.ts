@@ -140,9 +140,11 @@ export const exercises = {
     ],
     stop: 'Arrêter',
     blockedTitle: 'Pas de questions pour ce passage',
+    unavailableTitle: 'Les questions ne sont pas disponibles pour le moment',
     emptyTitle: 'Pas de questions cette fois',
     emptyText: 'Je n’ai pas réussi à préparer des questions sur ces pages. Essaie avec d’autres pages.',
     tryAgain: 'Choisir d’autres pages',
+    retry: 'Réessayer',
   },
 
   player: {

@@ -9,12 +9,15 @@ import { loadKnownWords } from '../../src/ai/wordList';
 import { createMemoryAICacheRepository } from '../../src/db/repositories/aiCache';
 import { createMemoryAIJobsRepository } from '../../src/db/repositories/aiJobs';
 import { createMemoryAIRequestsRepository } from '../../src/db/repositories/aiRequests';
+import { createMemoryFreeQuestionsRepository } from '../../src/db/repositories/freeQuestions';
 import { createMemorySafetyAlertsRepository } from '../../src/db/repositories/safetyAlerts';
 import { silentLogger } from '../../src/logger';
 
 export const LEARNER: AILearner = { age: 10, readingLevel: 'intermediaire', explanationDifficulty: 'simple' };
 export const PARENT_ID = 'parent-1';
 export const CHILD_ID = 'child-1';
+/** A second family, with a child of the same profile (the AI cache must never be shared between families). */
+export const OTHER_PARENT_ID = 'parent-2';
 export const DOC_ID = 'doc-1';
 export const DOC_HASH = 'd'.repeat(64);
 
@@ -73,6 +76,7 @@ export interface Harness {
   requests: ReturnType<typeof createMemoryAIRequestsRepository>;
   alerts: ReturnType<typeof createMemorySafetyAlertsRepository>;
   jobs: ReturnType<typeof createMemoryAIJobsRepository>;
+  freeQuestions: ReturnType<typeof createMemoryFreeQuestionsRepository>;
   clock: { now: number };
   settings: { value: ParentSettings };
 }
@@ -86,20 +90,21 @@ export function createHarness(overrides: Partial<AIRouterDeps> & { settings?: Pa
   const requests = createMemoryAIRequestsRepository();
   const alerts = createMemorySafetyAlertsRepository();
   const jobs = createMemoryAIJobsRepository();
+  const freeQuestions = createMemoryFreeQuestionsRepository();
   const router = new AIRouter({
     now: () => clock.now,
     logger: silentLogger,
     store: {
-      getLearner: (parentId, childId) => Promise.resolve(parentId === PARENT_ID && childId === CHILD_ID ? LEARNER : null),
+      getLearner: (parentId, childId) => Promise.resolve((parentId === PARENT_ID || parentId === OTHER_PARENT_ID) && childId === CHILD_ID ? LEARNER : null),
       getSettings: () => Promise.resolve(settings.value),
     },
-    cache, requests, alerts, jobs,
+    cache, requests, alerts, jobs, freeQuestions,
     providers: { light: lightProvider, complex: complexProvider },
     dictionary: null,
     isKnownWord,
     ...overrides,
   });
-  return { router, light: lightProvider.mock, complex: complexProvider.mock, cache, requests, alerts, jobs, clock, settings };
+  return { router, light: lightProvider.mock, complex: complexProvider.mock, cache, requests, alerts, jobs, freeQuestions, clock, settings };
 }
 
 export function explainTextBody(text: string, extra: Record<string, unknown> = {}): Record<string, unknown> {

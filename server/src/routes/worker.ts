@@ -11,24 +11,29 @@ import { ipKey, parentIdOf, rateLimiter, requireAuth, requireParentUnlock, requi
 import { getDocument } from '../db/repositories/documents';
 import { findStoredFile } from '../db/repositories/files';
 import {
-  claimWorkerJob, finishLeasedWorkerJob, getWorkerJob, getWorkerState, listLeaseCandidates, PROTECTED_TEXT_SOURCES, reclaimWorkerJobs,
+  claimWorkerJob, finishLeasedWorkerJob, getWorkerJob, getWorkerState, isProtectedTextSource, listLeaseCandidates, reclaimWorkerJobs,
   expirePendingWorkerJob, recordHeartbeat, releaseWorkerLeases, renewWorkerLease, requeueLeasedWorkerJob, setWorkerLimitedUntil,
   skipQueuedWorkerJob, touchWorker, type WorkerJob,
 } from '../db/repositories/workerJobs';
+import { recordWorkerUsage } from '../db/repositories/workerUsage';
 import { fileSize, resolveStoragePath } from '../db/storage/uploads';
 import { appError, ERROR_MESSAGES_FR, parseOrThrow, sendError } from '../errors';
 import { uploadsDir } from '../paths';
 import type { AppDeps } from '../types';
-import { applyPageTranscription, enqueueDocumentTranscriptions, JobNotLeasedError } from '../worker/pageTranscription';
+import { applyPageTranscription, enqueueDocumentTranscriptions, JobNotLeasedError, transcriptionModeOf } from '../worker/pageTranscription';
 import {
   HeartbeatRequestSchema, type HeartbeatResponse, type LeasedWorkerJob, type LeaseRequest, LeaseRequestSchema, type LeaseResponse,
-  ResultRequestSchema, type ResultResponse, type TranscriptionsResponse, WORKER_PROTOCOL, WorkerNameSchema,
+  type ResultRequest, ResultRequestSchema, type ResultResponse, type TranscriptionsResponse, WORKER_PROTOCOL, WorkerNameSchema,
+  type WorkerReasoning,
 } from '../worker/protocol';
+import { applyReadingPreparation } from '../worker/readingPreparation';
 import { getWorkerRuntime, type WorkerRuntime } from '../worker/runtime';
 
 const TranscriptionsRequestSchema = z.object({
   documentId: IdSchema,
   pageIndexes: z.array(PageIndexSchema).max(2000).optional(),
+  // « Relire avec l'IA » (§25): also pages already transcribed from the same image.
+  reread: z.boolean().optional(),
 });
 
 /** Constant delay before a refused token is answered (not in tests). */
@@ -88,15 +93,24 @@ function sleep(ms: number, signals: readonly AbortSignal[]): Promise<void> {
   });
 }
 
-/** Execution budget sent to the worker: the tier deadline for `ai` (never beyond the job expiry), fixed for page_text. */
+/** Execution budget sent to the worker: the tier deadline for `ai` (never beyond the job expiry), fixed for the pages. */
 function deadlineFor(deps: AppDeps, job: WorkerJob, now: number): number {
-  if (job.kind === 'page_text') return WORKER_PROTOCOL.pageTextDeadlineMs;
+  if (job.kind === 'page_text' || job.kind === 'page_speech') return WORKER_PROTOCOL.pageTextDeadlineMs;
   return Math.max(1_000, Math.min(deps.config.worker.deadlines[job.tier], job.expiresAt - now));
+}
+
+/**
+ * How much the model may reflect before answering: nothing for the short requests of the reader and the pages (measured on
+ * 2026-09-19: an explanation took 12 s with the reflection, 5 s without, same answer), a little for the long ones.
+ */
+export function reasoningFor(job: Pick<WorkerJob, 'kind' | 'tier'>): WorkerReasoning {
+  return job.kind === 'ai' && job.tier === 'complex' ? 'low' : 'off';
 }
 
 function leasedView(deps: AppDeps, job: WorkerJob, now: number): LeasedWorkerJob | null {
   if (!job.request) return null;
   return {
+    reasoning: reasoningFor(job),
     ...job.request,
     id: job.id,
     kind: job.kind,
@@ -106,6 +120,20 @@ function leasedView(deps: AppDeps, job: WorkerJob, now: number): LeasedWorkerJob
     deadlineMs: deadlineFor(deps, job, now),
     leaseMs: WORKER_PROTOCOL.leaseMs,
   };
+}
+
+/** §21: every run the worker reports is counted, done or not (it used the subscription); never blocks the result. */
+async function noteWorkerUsage(deps: AppDeps, job: WorkerJob, body: ResultRequest, now: number): Promise<void> {
+  const inputTokens = body.outcome === 'done' ? body.inputTokens : null;
+  const outputTokens = body.outcome === 'done' ? body.outputTokens : null;
+  const costMicros = body.costMicros ?? null;
+  if (costMicros === null && inputTokens === null && outputTokens === null) return;
+  const outcome = body.outcome === 'done' ? 'done' : body.error;
+  try {
+    await recordWorkerUsage(deps.db, { parentId: job.parentId, kind: job.kind, operation: job.operation, outcome, inputTokens, outputTokens, costMicros }, now);
+  } catch (err) {
+    deps.logger.warn('worker_usage_record_failed', { jobId: job.id, error: err });
+  }
 }
 
 /** One lease pass (§17.3 b, c): the first queued candidate this worker can take, claimed atomically. */
@@ -118,7 +146,7 @@ async function leaseOnce(deps: AppDeps, runtime: WorkerRuntime, body: LeaseReque
     const candidates = await listLeaseCandidates(deps.db, body.kinds, now, LEASE_CANDIDATES);
     if (candidates.length === 0) return null;
     for (const candidate of candidates) {
-      if (candidate.kind === 'page_text' && candidate.textSource !== null && PROTECTED_TEXT_SOURCES.has(candidate.textSource)) {
+      if (candidate.kind === 'page_text' && isProtectedTextSource(candidate.textSource, transcriptionModeOf(candidate.operation))) {
         await skipQueuedWorkerJob(deps.db, candidate.id, 'text_source', now);
         continue;
       }
@@ -156,7 +184,7 @@ export function createWorkerRouter(deps: AppDeps): Router {
     const parentId = parentIdOf(req);
     const body = parseOrThrow(TranscriptionsRequestSchema, req.body);
     if (!(await getDocument(deps.db, parentId, body.documentId))) throw appError(404, 'not_found');
-    const response: TranscriptionsResponse = { queued: await enqueueDocumentTranscriptions(deps, parentId, body.documentId, body.pageIndexes) };
+    const response: TranscriptionsResponse = { queued: await enqueueDocumentTranscriptions(deps, parentId, body.documentId, body.pageIndexes, { reread: body.reread }) };
     res.set('Cache-Control', 'no-store').json(response);
   });
 
@@ -191,7 +219,11 @@ export function createWorkerRouter(deps: AppDeps): Router {
       if (job || gone.signal.aborted || runtime.closing) break;
       const remaining = body.waitMs - (performance.now() - startedAt);
       if (remaining <= 0) break;
-      await sleep(Math.min(WORKER_PROTOCOL.leaseCheckIntervalMs, remaining), [gone.signal, runtime.closeSignal]);
+      // A request queued in this process wakes the lease at once (another process's: within leaseCheckIntervalMs).
+      const queued = new AbortController();
+      const off = runtime.onQueued(() => queued.abort());
+      await sleep(Math.min(WORKER_PROTOCOL.leaseCheckIntervalMs, remaining), [gone.signal, runtime.closeSignal, queued.signal]);
+      off();
       if (gone.signal.aborted) break;
     }
     if (gone.signal.aborted) {
@@ -234,6 +266,7 @@ export function createWorkerRouter(deps: AppDeps): Router {
     }
     await touchWorker(deps.db, body.worker, 'unknown', now);
     runtime.presence.invalidate();
+    await noteWorkerUsage(deps, job, body, now);
     const log = { jobId: id, kind: job.kind, operation: job.operation, worker: body.worker };
 
     let applied = false;
@@ -241,6 +274,9 @@ export function createWorkerRouter(deps: AppDeps): Router {
       if (body.outcome === 'done') {
         if (job.kind === 'page_text') {
           const outcome = await applyPageTranscription(deps, job, body.worker, { json: body.json, refusal: body.refusal, truncated: body.truncated });
+          applied = outcome.applied;
+        } else if (job.kind === 'page_speech') {
+          const outcome = await applyReadingPreparation(deps, job, body.worker, { json: body.json, refusal: body.refusal, truncated: body.truncated });
           applied = outcome.applied;
         } else {
           const stored = {

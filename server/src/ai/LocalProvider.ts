@@ -12,6 +12,43 @@ function firstSentence(text: string): string {
   return sentence.length > LOCAL_QUOTE_MAX_CHARS ? sentence.slice(0, LOCAL_QUOTE_MAX_CHARS).trimEnd() : sentence;
 }
 
+// §18.2.7 local fallback of a free question: « c'est quoi X », « que veut dire X », « qu'est-ce qu'un(e) X »,
+// « ça veut dire quoi X » → X is looked up in the glossary / dictionary (same path as explain_word).
+const ARTICLE = "(?:(?:un|une|le|la|les|des|du)\\s+|l'|d')?";
+const WORD_OR_PHRASE = "(?:le\\s+mot\\s+|l'expression\\s+)?";
+const TERM = "([\\p{L}][\\p{L}'\\- ]*)";
+const DEFINITION_QUESTIONS: readonly RegExp[] = [
+  new RegExp(`^c'?\\s?est\\s+quoi\\s*,?\\s*${WORD_OR_PHRASE}${ARTICLE}${TERM}$`, 'u'),
+  new RegExp(`^qu'est-ce\\s+que\\s+c'est\\s*,?\\s*(?:qu'|que\\s+)?${WORD_OR_PHRASE}${ARTICLE}${TERM}$`, 'u'),
+  new RegExp(`^qu'est-ce\\s+qu'(?:un|une)\\s+${TERM}$`, 'u'),
+  new RegExp(`^qu'est-ce\\s+que\\s+${WORD_OR_PHRASE}(?:(?:le|la|les)\\s+|l')${TERM}$`, 'u'),
+  new RegExp(`^(?:que|qu'est-ce\\s+que|qu'est-ce\\s+qu'il|qu'est-ce\\s+qu'elle)\\s+(?:veut\\s+dire|veulent\\s+dire|signifie|signifient)\\s+${WORD_OR_PHRASE}${ARTICLE}${TERM}$`, 'u'),
+  new RegExp(`^(?:ça|ca)\\s+veut\\s+dire\\s+quoi\\s*,?\\s+${WORD_OR_PHRASE}${ARTICLE}${TERM}$`, 'u'),
+  new RegExp(`^${WORD_OR_PHRASE}${ARTICLE}${TERM}\\s*,?\\s+(?:ça|ca)\\s+veut\\s+dire\\s+quoi$`, 'u'),
+];
+const TERM_MAX_WORDS = 4;
+const TERM_MAX_CHARS = 60;
+
+/** The word or short expression asked about by a definition question, lowercase; null for any other question. */
+export function definitionTermOf(question: string): string | null {
+  const text = question
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/[’‘`´]/g, "'")
+    .replace(/[«»“”"]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[\s?!.…:;]+$/u, '')
+    .replace(/\s*-\s*/g, '-');
+  for (const re of DEFINITION_QUESTIONS) {
+    const term = re.exec(text)?.[1]?.replace(/-+$/, '').trim();
+    if (!term) continue;
+    if (term.length > TERM_MAX_CHARS || term.split(' ').length > TERM_MAX_WORDS) return null;
+    return term;
+  }
+  return null;
+}
+
 export class LocalProvider {
   readonly id = 'local' as const;
 

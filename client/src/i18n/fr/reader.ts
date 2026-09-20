@@ -106,7 +106,7 @@ export const reader = {
     readingGuide: 'Règle de lecture',
     readingGuideHint: 'Une bande t’aide à suivre la ligne.',
     rate: 'Vitesse de la voix',
-    voice: 'Voix de cet iPad',
+    voice: 'Voix de cet appareil',
     voiceTest: '🔊 Écouter la voix',
     reset: 'Revenir aux réglages de départ',
     values: {

@@ -32,7 +32,10 @@ export interface AppConfig {
     tokenSha256: string | null;
     /** Names the worker's model could use to talk about itself (WORKER_SELF_REFERENCE_TERMS, comma separated). */
     selfReferenceTerms: readonly string[];
-    /** End-to-end deadlines of AI requests served by the worker (regeneration included). */
+    /**
+     * Budget of one run on the worker, per tier (regeneration included). The end-to-end deadline of a request adds
+     * WORKER_PROTOCOL.queueGraceMs, so waiting behind another job never eats into this budget.
+     */
     deadlines: { light: number; complex: number };
   };
   /** Raw values from env (resolve with paths.ts). */
@@ -46,6 +49,24 @@ export interface AppConfig {
   uploadQuotaBytes: number;
   /** bcrypt cost factor (fast in tests). */
   passwordHashRounds: number;
+  /**
+   * §20 e-mails (password reset, confirmation of use every 180 days). Null = not configured: « Mot de passe oublié » is
+   * unavailable and nobody is signed out for lack of confirmation.
+   */
+  mail: MailConfig | null;
+}
+
+export interface MailConfig {
+  host: string;
+  port: number;
+  /** TLS from the start (port 465) instead of STARTTLS. */
+  secure: boolean;
+  user: string | null;
+  password: string | null;
+  /** Sender, e.g. « Mon Carnet Malin <noreply@example.fr> ». */
+  from: string;
+  /** Address of the app used in the links (https://…, no trailing slash). */
+  publicUrl: string;
 }
 
 const ProviderSchema = z.enum(['plugin', 'local', 'mock', 'worker']);
@@ -78,6 +99,13 @@ const EnvSchema = z.object({
   WORKER_SELF_REFERENCE_TERMS: z.string().max(2000).optional(),
   WORKER_DEADLINE_LIGHT_MS: DurationMsSchema.optional(),
   WORKER_DEADLINE_COMPLEX_MS: DurationMsSchema.optional(),
+  SMTP_HOST: z.string().min(1).max(255).optional(),
+  SMTP_PORT: z.string().regex(/^\d{1,5}$/).optional(),
+  SMTP_SECURE: BoolSchema.optional(),
+  SMTP_USER: z.string().min(1).max(255).optional(),
+  SMTP_PASSWORD: z.string().min(1).max(500).optional(),
+  MAIL_FROM: z.string().min(3).max(255).optional(),
+  PUBLIC_URL: z.string().regex(/^https?:\/\/[^\s/]+(\/[^\s]*)?$/).optional(),
 });
 
 /** Loads `.env` from the working directory if present (does not override existing variables). */
@@ -104,6 +132,21 @@ function parseTrustProxy(raw: string | undefined): number | false {
   if (raw === undefined || !/^\d+$/.test(raw)) return false;
   const hops = Number(raw);
   return hops > 0 ? hops : false;
+}
+
+/** Mail settings when SMTP_HOST, MAIL_FROM and PUBLIC_URL are all set; port 465 = TLS from the start. */
+function parseMail(e: z.infer<typeof EnvSchema>): MailConfig | null {
+  if (!e.SMTP_HOST || !e.MAIL_FROM || !e.PUBLIC_URL) return null;
+  const port = e.SMTP_PORT ? Number(e.SMTP_PORT) : 465;
+  return {
+    host: e.SMTP_HOST,
+    port,
+    secure: e.SMTP_SECURE ?? port === 465,
+    user: e.SMTP_USER ?? null,
+    password: e.SMTP_PASSWORD ?? null,
+    from: e.MAIL_FROM,
+    publicUrl: e.PUBLIC_URL.replace(/\/+$/, ''),
+  };
 }
 
 function parsePort(raw: string | undefined): number | string {
@@ -169,5 +212,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     trustProxy: parseTrustProxy(e.TRUST_PROXY),
     uploadQuotaBytes: Number(e.UPLOAD_QUOTA_MB ?? DEFAULT_UPLOAD_QUOTA_MB) * 1024 * 1024,
     passwordHashRounds: isTest ? 4 : 12,
+    mail: parseMail(e),
   };
 }

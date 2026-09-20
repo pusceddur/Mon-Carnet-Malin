@@ -1,5 +1,5 @@
 // worker_jobs + worker_state (§17.2, §17.3): portable SQL (MySQL/MariaDB and SQLite), atomic claims by conditional UPDATE.
-import type { PageTextSource } from '@aide/shared';
+import type { DocumentTextMode, PageTextSource } from '@aide/shared';
 import type { WorkerJobKind, WorkerJobRequest, WorkerJobStatus, WorkerLimits, WorkerTier } from '../../worker/protocol';
 import { type Db, type Row, parseJson, toNum, toNumOrNull, toStr, toStrOrNull } from './common';
 
@@ -9,6 +9,12 @@ const EMPTY_REQUEST = '{}';
 
 /** Pages whose text never comes from a worker transcription. */
 export const PROTECTED_TEXT_SOURCES: ReadonlySet<PageTextSource> = new Set<PageTextSource>(['manual', 'pdf-text', 'epub-text']);
+/** §17.10: the text of a child is punctuated even over a PDF text layer; a correction by hand is still never replaced. */
+export const PUNCTUATED_PROTECTED_TEXT_SOURCES: ReadonlySet<PageTextSource> = new Set<PageTextSource>(['manual', 'epub-text']);
+
+export function isProtectedTextSource(source: PageTextSource | null, mode: DocumentTextMode): boolean {
+  return source !== null && (mode === 'punctuated' ? PUNCTUATED_PROTECTED_TEXT_SOURCES : PROTECTED_TEXT_SOURCES).has(source);
+}
 
 export const FINAL_WORKER_STATUSES: readonly WorkerJobStatus[] = ['done', 'failed', 'expired', 'skipped'];
 
@@ -20,6 +26,7 @@ export interface WorkerJob {
   operation: string;
   documentId: string | null;
   pageIndex: number | null;
+  /** page_text: sha256 of the page image; page_speech (§22): hash of the page text it was prepared from. */
   imageSha256: string | null;
   /** null once the job is final (request emptied). */
   request: WorkerJobRequest | null;
@@ -152,6 +159,7 @@ export async function releaseWorkerLeases(db: Db, worker: string, now: number): 
 export interface LeaseCandidate {
   id: string;
   kind: WorkerJobKind;
+  operation: string;
   /** page_text: text source of the page row (the row is guaranteed to exist). */
   textSource: PageTextSource | null;
 }
@@ -168,12 +176,12 @@ export async function listLeaseCandidates(db: Db, kinds: readonly WorkerJobKind[
     .leftJoin('documents as d', (join) => {
       join.on('d.id', '=', 'j.document_id').andOn('d.parent_id', '=', 'j.parent_id');
     })
-    .select('j.id', 'j.kind', 'p.text_source')
+    .select('j.id', 'j.kind', 'j.operation', 'p.text_source')
     .where('j.status', 'queued')
     .andWhere('j.expires_at', '>=', now)
     .whereIn('j.kind', [...kinds])
     .andWhere((q) => {
-      q.whereNot('j.kind', 'page_text').orWhere((page) => {
+      q.whereNotIn('j.kind', ['page_text', 'page_speech']).orWhere((page) => {
         page.whereNotNull('p.document_id').whereNotNull('d.id').whereNull('d.deleted_at');
       });
     })
@@ -182,6 +190,7 @@ export async function listLeaseCandidates(db: Db, kinds: readonly WorkerJobKind[
   return rows.map((row) => ({
     id: toStr(row.id),
     kind: toStr(row.kind) as WorkerJobKind,
+    operation: toStr(row.operation),
     textSource: toStrOrNull(row.text_source) as PageTextSource | null,
   }));
 }
@@ -252,39 +261,91 @@ export async function expirePendingWorkerJob(db: Db, id: string, now: number): P
 
 export interface PageJobRef {
   id: string;
+  operation: string;
   status: WorkerJobStatus;
   imageSha256: string | null;
 }
 
-export async function listPageWorkerJobs(db: Db, parentId: string, documentId: string, pageIndex: number): Promise<PageJobRef[]> {
+export async function listPageWorkerJobs(
+  db: Db, parentId: string, documentId: string, pageIndex: number, kind: 'page_text' | 'page_speech' = 'page_text',
+): Promise<PageJobRef[]> {
   const rows = (await db(JOBS)
-    .select('id', 'status', 'image_sha256')
-    .where({ parent_id: parentId, document_id: documentId, page_index: pageIndex, kind: 'page_text' })) as Row[];
-  return rows.map((row) => ({ id: toStr(row.id), status: toStr(row.status) as WorkerJobStatus, imageSha256: toStrOrNull(row.image_sha256) }));
+    .select('id', 'operation', 'status', 'image_sha256')
+    .where({ parent_id: parentId, document_id: documentId, page_index: pageIndex, kind })) as Row[];
+  return rows.map((row) => ({
+    id: toStr(row.id),
+    operation: toStr(row.operation),
+    status: toStr(row.status) as WorkerJobStatus,
+    imageSha256: toStrOrNull(row.image_sha256),
+  }));
 }
 
 /** Jobs of a parent still waiting for or held by a worker. */
-export async function countActiveWorkerJobs(db: Db, parentId: string): Promise<{ ai: number; pageText: number }> {
+export async function countActiveWorkerJobs(db: Db, parentId: string): Promise<{ ai: number; pageText: number; pageSpeech: number }> {
   const rows = (await db(JOBS)
     .select('kind')
     .count({ n: '*' })
     .where('parent_id', parentId)
     .whereIn('status', ['queued', 'leased'])
     .groupBy('kind')) as Row[];
-  const counts = { ai: 0, pageText: 0 };
+  const counts = { ai: 0, pageText: 0, pageSpeech: 0 };
   for (const row of rows) {
     if (row.kind === 'ai') counts.ai = toNum(row.n);
     else if (row.kind === 'page_text') counts.pageText = toNum(row.n);
+    else if (row.kind === 'page_speech') counts.pageSpeech = toNum(row.n);
   }
   return counts;
 }
 
-/** Retention of §17.2: expire overdue queued jobs, delete concluded `ai` rows after `aiMs` and other concluded rows after `otherMs`. */
-export async function purgeWorkerJobs(db: Db, now: number, opts: { aiMs: number; otherMs: number }): Promise<{ expired: number; deleted: number }> {
+const PAGE_JOB_KINDS: readonly WorkerJobKind[] = ['page_text', 'page_speech'];
+const DOCUMENT_DELETED = 'document_deleted';
+
+/**
+ * The page jobs still waiting for a document that was just deleted: no worker will ever get them (listLeaseCandidates), so
+ * they are closed at once instead of showing as waiting until they expire.
+ */
+export async function skipQueuedDocumentJobs(db: Db, parentId: string, documentId: string, now: number): Promise<number> {
+  return db(JOBS)
+    .where({ parent_id: parentId, document_id: documentId, status: 'queued' })
+    .whereIn('kind', [...PAGE_JOB_KINDS])
+    .update({ status: 'skipped', error: DOCUMENT_DELETED, request_json: EMPTY_REQUEST, updated_at: now });
+}
+
+/** Waiting page jobs of a deleted or missing document (a job queued while its document was being deleted, older rows). */
+export async function skipOrphanPageJobs(db: Db, now: number): Promise<number> {
+  const rows = (await db(`${JOBS} as j`)
+    .leftJoin('documents as d', (join) => {
+      join.on('d.id', '=', 'j.document_id').andOn('d.parent_id', '=', 'j.parent_id');
+    })
+    .select('j.id')
+    .where('j.status', 'queued')
+    .whereIn('j.kind', [...PAGE_JOB_KINDS])
+    .andWhere((q) => {
+      q.whereNull('d.id').orWhereNotNull('d.deleted_at');
+    })) as Row[];
+  const ids = rows.map((r) => toStr(r.id));
+  let skipped = 0;
+  for (let i = 0; i < ids.length; i += 500) {
+    skipped += await db(JOBS)
+      .whereIn('id', ids.slice(i, i + 500))
+      .andWhere('status', 'queued')
+      .update({ status: 'skipped', error: DOCUMENT_DELETED, request_json: EMPTY_REQUEST, updated_at: now });
+  }
+  return skipped;
+}
+
+/**
+ * Retention of §17.2: expire overdue queued jobs, close the page jobs of deleted documents, delete concluded `ai` rows after
+ * `aiMs` and other concluded rows after `otherMs`.
+ */
+export async function purgeWorkerJobs(
+  db: Db, now: number, opts: { aiMs: number; otherMs: number },
+): Promise<{ expired: number; orphaned: number; deleted: number }> {
   const expired = await expireQueuedWorkerJobs(db, now);
+  const orphaned = await skipOrphanPageJobs(db, now);
   const ai = await db(JOBS).where('kind', 'ai').whereIn('status', [...FINAL_WORKER_STATUSES]).andWhere('updated_at', '<', now - opts.aiMs).delete();
   const other = await db(JOBS).whereNot('kind', 'ai').whereIn('status', [...FINAL_WORKER_STATUSES]).andWhere('updated_at', '<', now - opts.otherMs).delete();
-  return { expired, deleted: ai + other };
+  return { expired, orphaned, deleted: ai + other };
 }
 
 export async function deleteDocumentWorkerJobs(db: Db, documentId: string): Promise<number> {

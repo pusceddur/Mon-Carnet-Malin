@@ -3,7 +3,7 @@
 import { newId } from '@aide/shared';
 import type { Knex } from 'knex';
 import { AITransportError, type AITier, type AITransport, type AITransportRequest, type AITransportResponse } from '../ai/plugin';
-import { deleteWorkerJob, expirePendingWorkerJob, getWorkerJobOutcome, insertWorkerJob } from '../db/repositories/workerJobs';
+import { countActiveWorkerJobs, deleteWorkerJob, expirePendingWorkerJob, getWorkerJobOutcome, insertWorkerJob } from '../db/repositories/workerJobs';
 import type { Logger } from '../logger';
 import type { WorkerJobRequest } from './protocol';
 import { WORKER_PROTOCOL } from './protocol';
@@ -62,6 +62,9 @@ function asStoredResult(value: unknown): StoredAIResult | null {
   };
 }
 
+/** §20 queue cap per family (summaries send a few chunks in parallel, far below this). */
+export const MAX_ACTIVE_AI_JOBS_PER_PARENT = 12;
+
 export class QueueTransport implements AITransport {
   readonly name = 'worker';
   readonly selfReferenceTerms: readonly string[];
@@ -102,6 +105,10 @@ export class QueueTransport implements AITransport {
       maxOutputTokens: req.maxOutputTokens,
       images: images.map((image) => ({ mediaType: image.mediaType, base64: image.base64 })),
     };
+    // §20: at most this many requests of a family waiting for (or held by) the home computer.
+    if ((await countActiveWorkerJobs(this.options.db, req.parentId)).ai >= MAX_ACTIVE_AI_JOBS_PER_PARENT) {
+      throw new AITransportError('rate_limited', 'too many pending requests');
+    }
     const id = newId();
     const now = this.options.now();
     try {
@@ -109,6 +116,7 @@ export class QueueTransport implements AITransport {
         id, parentId: req.parentId, kind: 'ai', tier: req.tier, operation: req.operation, request,
         priority: AI_JOB_PRIORITY, createdAt: now, expiresAt: now + Math.max(1, req.deadlineMs),
       });
+      this.options.runtime.notifyQueued();
     } catch (err) {
       this.options.logger.error('worker_job_insert_failed', { operation: req.operation, error: err });
       throw new AITransportError('unavailable', 'queue unavailable');

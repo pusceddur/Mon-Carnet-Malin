@@ -83,6 +83,40 @@ export const pencil = {
     detached: 'Note détachée du texte',
   },
 
+  /** §19.2 text boxes on the original page. */
+  textBox: {
+    tool: 'Écrire du texte',
+    toolHint: 'Touche la page là où tu veux écrire.',
+    label: 'Zone de texte',
+    placeholder: 'Écris ici…',
+    tools: 'Outils de la zone de texte',
+    read: 'Lire mon texte',
+    smaller: 'Texte plus petit',
+    bigger: 'Texte plus grand',
+    color: 'Changer la couleur',
+    move: 'Déplacer la zone de texte',
+    resize: 'Élargir ou rétrécir la zone de texte',
+    remove: 'Supprimer la zone de texte',
+    done: 'J’ai fini d’écrire',
+    listen: 'Écouter : {text}',
+    // §24 « Corriger » (shown when switched on in the Options).
+    correct: 'Corriger mon texte',
+    correcting: 'Correction en cours…',
+    correctedOne: 'J’ai corrigé 1 petite faute ({kinds}).',
+    correctedMany: 'J’ai corrigé {count} petites fautes ({kinds}).',
+    correctNone: 'Bravo, je n’ai trouvé aucune faute !',
+    correctChanged: 'Ton texte a changé pendant la correction : appuie encore sur « Corriger ».',
+    undo: 'Annuler',
+    kinds: {
+      accent: 'accents',
+      orthographe: 'orthographe',
+      grammaire: 'grammaire',
+      ponctuation: 'ponctuation',
+      majuscule: 'majuscules',
+      espace: 'espaces',
+    },
+  },
+
   errors: {
     saveFailed: 'Ton trait n’a pas pu être enregistré. Réessaie.',
     eraseFailed: 'La gomme n’a pas marché. Réessaie.',

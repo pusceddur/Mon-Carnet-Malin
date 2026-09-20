@@ -13,6 +13,13 @@ export const LOCKOUT = {
   maxLockMs: 24 * 60 * 60_000,
 } as const satisfies LockoutPolicy;
 
+/** §20 password lock: same start, but never more than 15 minutes (the owner cannot be kept out by a stranger). */
+export const LOGIN_LOCKOUT = {
+  freeAttempts: 5,
+  firstLockMs: 60_000,
+  maxLockMs: 15 * 60_000,
+} as const satisfies LockoutPolicy;
+
 export function isLocked(lockedUntil: number | null, now: number): boolean {
   return lockedUntil !== null && lockedUntil > now;
 }

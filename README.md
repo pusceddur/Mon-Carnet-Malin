@@ -60,6 +60,7 @@ Ce projet s'appuie sur les bibliothèques gratuites et open source suivantes, ch
 | [Knex.js](https://knexjs.org) | Accès base de données | MIT |
 | [mysql2](https://github.com/sidorares/node-mysql2) | Pilote MySQL / MariaDB | MIT |
 | [bcrypt.js](https://github.com/dcodeIO/bcrypt.js) | Hachage des mots de passe | BSD-3-Clause |
+| [Nodemailer](https://nodemailer.com) | Envoi des e-mails du compte | MIT-0 |
 | [Zod](https://zod.dev) | Validation des données | MIT |
 
 ### Outils de développement et de test

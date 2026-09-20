@@ -4,8 +4,9 @@ import { fetchPageImage } from '../../api/documents';
 import { db } from '../../db/localDb';
 import { EmptyState, IconButton, MinusIcon, PlusIcon, Spinner } from '../../design/components';
 import { format } from '../../i18n/fr';
+import { pencil as pencilStrings } from '../../i18n/fr/pencil';
 import { reader } from '../../i18n/fr/reader';
-import { InkLayer } from '../../pencil';
+import { InkLayer, TextBoxLayer, usePencilStore } from '../../pencil';
 import { isOnline } from '../../platform/online';
 
 export const ZOOM_MIN = 1;
@@ -28,15 +29,23 @@ export interface OriginalPageViewProps {
   pageIndex: number;
   page: PageContent | null;
   layoutKey: string;
+  /** Opens with « Écrire du texte » already on (homework, §19.3). */
+  startWriting?: boolean;
 }
 
 const zoomFormat = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
 
-/** Processed page image (local copy, else downloaded on demand) with 1×–3× zoom and ink in normalized coordinates. */
-export function OriginalPageView({ documentId, childId, pageIndex, page, layoutKey }: OriginalPageViewProps): JSX.Element {
+/**
+ * Page image in color (§19.1; grayscale for pages processed before), local copy or downloaded on demand, with 1×–3× zoom,
+ * ink and text boxes (§19.2) in normalized coordinates.
+ */
+export function OriginalPageView({ documentId, childId, pageIndex, page, layoutKey, startWriting = false }: OriginalPageViewProps): JSX.Element {
   const [image, setImage] = useState<ImageState>({ status: 'loading' });
   const [natural, setNatural] = useState<{ width: number; height: number } | null>(null);
   const [zoom, setZoom] = useState(ZOOM_MIN);
+  const [writing, setWriting] = useState(startWriting);
+  const [frameWidth, setFrameWidth] = useState(0);
+  const pencilMode = usePencilStore((st) => st.mode);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
@@ -45,6 +54,8 @@ export function OriginalPageView({ documentId, childId, pageIndex, page, layoutK
   const pageRef = useRef(page);
   pageRef.current = page;
 
+  // The image exists once the page has been processed (a sheet opened right after its import).
+  const processed = page !== null && page.width !== null;
   useEffect(() => {
     let cancelled = false;
     let url: string | null = null;
@@ -57,7 +68,8 @@ export function OriginalPageView({ documentId, childId, pageIndex, page, layoutK
       let width = pageRef.current?.width ?? null;
       let height = pageRef.current?.height ?? null;
       try {
-        const record = await db.pageImages.get([documentId, pageIndex, 'ocr']);
+        // §19.1: the color copy (same frame as the OCR image); pages processed before it only have the grayscale one.
+        const record = (await db.pageImages.get([documentId, pageIndex, 'color'])) ?? (await db.pageImages.get([documentId, pageIndex, 'ocr']));
         if (record) {
           blob = record.blob;
           width = record.width;
@@ -85,7 +97,33 @@ export function OriginalPageView({ documentId, childId, pageIndex, page, layoutK
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [documentId, pageIndex]);
+  }, [documentId, pageIndex, processed]);
+
+  // Drawing and writing text are two separate tools: taking a pencil ends the writing, and the other way round.
+  const previousPencilMode = useRef(pencilMode);
+  useEffect(() => {
+    if (startWriting) usePencilStore.getState().setMode('lecture');
+  }, []);
+  useEffect(() => {
+    if (previousPencilMode.current !== 'annotation' && pencilMode === 'annotation') setWriting(false);
+    previousPencilMode.current = pencilMode;
+  }, [pencilMode]);
+  const toggleWriting = (): void => {
+    if (!writing) usePencilStore.getState().setMode('lecture');
+    setWriting(!writing);
+  };
+
+  // Width of the page in px: font size of the text boxes (follows the zoom and the window).
+  const imageReady = image.status === 'ready';
+  useLayoutEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return undefined;
+    setFrameWidth(frame.getBoundingClientRect().width);
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(() => setFrameWidth(frame.getBoundingClientRect().width));
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, [imageReady, zoom]);
 
   // Keep the visual centre when the zoom changes.
   useLayoutEffect(() => {
@@ -147,7 +185,14 @@ export function OriginalPageView({ documentId, childId, pageIndex, page, layoutK
           {format(o.zoomValue, { value: zoomFormat.format(zoom) })}
         </button>
         <IconButton aria-label={o.zoomIn} icon={<PlusIcon />} variant="secondary" disabled={zoom >= ZOOM_MAX} onClick={() => setZoom((z) => clampZoom(z + ZOOM_STEP))} />
+        <span className="rd-original__sep" aria-hidden="true" />
+        <IconButton aria-label={pencilStrings.textBox.tool} icon="📝" variant="secondary" pressed={writing} onClick={toggleWriting} />
       </div>
+      {writing && (
+        <p className="rd-original__hint" role="status">
+          {pencilStrings.textBox.toolHint}
+        </p>
+      )}
       <div
         ref={viewportRef}
         className="rd-original__viewport"
@@ -175,6 +220,17 @@ export function OriginalPageView({ documentId, childId, pageIndex, page, layoutK
               containerRef={frameRef}
               imageSize={{ width, height }}
               layoutKey={`${layoutKey}|z${zoom}`}
+            />
+          )}
+          {width !== null && height !== null && frameWidth > 0 && (
+            <TextBoxLayer
+              documentId={documentId}
+              childId={childId}
+              pageIndex={pageIndex}
+              frameRef={frameRef}
+              frameWidth={frameWidth}
+              editing={writing}
+              readable={pencilMode === 'lecture'}
             />
           )}
         </div>

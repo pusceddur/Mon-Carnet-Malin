@@ -3,7 +3,8 @@ import { planChunks, planHash, sha256HexSync, type AIResult, type DictionaryResu
 import type { AIRouterOutcome } from '../../src/ai/AIRouter';
 import { MockProvider } from '../../src/ai/MockProvider';
 import {
-  CHILD_ID, createHarness, DOC_HASH, DOC_ID, explainTextBody, INJECTION_TEXT, page, PARENT_ID, SCIENCE_TEXT, settingsWith, STORY_TEXT,
+  CHILD_ID, createHarness, DOC_HASH, DOC_ID, explainTextBody, INJECTION_TEXT, OTHER_PARENT_ID, page, PARENT_ID, SCIENCE_TEXT, settingsWith,
+  STORY_TEXT,
 } from './helpers';
 
 const GOOD_EXPLANATION = {
@@ -52,6 +53,17 @@ describe('AIRouter — basic flow, cache, log', () => {
     const h = createHarness();
     await expect(h.router.handle('explain_text', PARENT_ID, { childId: CHILD_ID })).rejects.toMatchObject({ status: 400 });
     await expect(h.router.handle('explain_text', 'other-parent', explainTextBody(SCIENCE_TEXT))).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('never serves the cached answer of one family to another one (same book, same profile, 2026-09-19)', async () => {
+    const h = createHarness();
+    h.light.enqueue('explain_text', { json: GOOD_EXPLANATION });
+    h.light.enqueue('explain_text', { json: GOOD_EXPLANATION });
+    expect(result(await h.router.handle('explain_text', PARENT_ID, explainTextBody(SCIENCE_TEXT)))).toMatchObject({ meta: { cached: false } });
+    expect(result(await h.router.handle('explain_text', OTHER_PARENT_ID, explainTextBody(SCIENCE_TEXT)))).toMatchObject({ meta: { cached: false } });
+    expect(h.light.callsFor('explain_text')).toHaveLength(2);
+    // Each family keeps its own answers.
+    expect(result(await h.router.handle('explain_text', OTHER_PARENT_ID, explainTextBody(SCIENCE_TEXT)))).toMatchObject({ meta: { cached: true } });
   });
 });
 
@@ -125,14 +137,31 @@ describe('AIRouter — phase order', () => {
     expect(h.light.requests).toHaveLength(0);
   });
 
-  it('local dictionary resolution comes before the AI settings (works with AI disabled)', async () => {
-    const found: DictionaryResult = { status: 'found', entry: { headword: 'pollen', lemma: 'pollen', partOfSpeech: 'nom', definition: 'Poudre jaune des fleurs.', example: null, source: 'glossaire', attribution: null, kidFriendly: true } };
+  it('a definition written by the adult comes before the AI settings (works with AI disabled)', async () => {
+    const found: DictionaryResult = { status: 'found', entry: { headword: 'pollen', lemma: 'pollen', partOfSpeech: 'nom', definition: 'Poudre jaune des fleurs.', example: null, source: 'glossaire_parent', attribution: null, kidFriendly: true } };
     const h = createHarness({ settings: settingsWith({ ai: { enabled: false } }), dictionary: { lookup: () => Promise.resolve(found) } });
     const res = result(await h.router.handle('explain_word', PARENT_ID, {
       childId: CHILD_ID, documentId: DOC_ID, documentHash: DOC_HASH, word: 'pollen', sentence: 'Le pollen féconde l’ovule.', paragraph: SCIENCE_TEXT, pageIndex: 0, ocrLowConfidence: false,
     }));
     expect(res).toMatchObject({ status: 'ok', meta: { route: 'local' }, data: { explanation: 'Poudre jaune des fleurs.', sourceQuotes: [] } });
     expect(h.requests.records[0]).toMatchObject({ provider: 'local', cacheHit: false });
+  });
+
+  it('the built-in glossary and the dictionary are left to the AI (decision 2026-09-19)', async () => {
+    for (const source of ['glossaire', 'wiktionnaire'] as const) {
+      const found: DictionaryResult = { status: 'found', entry: { headword: 'pollen', lemma: 'pollen', partOfSpeech: 'nom', definition: 'Poudre jaune des fleurs.', example: null, source, attribution: null, kidFriendly: true } };
+      const h = createHarness({ dictionary: { lookup: () => Promise.resolve(found) } });
+      h.light.enqueue('explain_word', { json: { status: 'ok', explanation: 'Le pollen est une poudre que font les fleurs.', example: null, sourceQuotes: ['Le pollen féconde l’ovule.'] } });
+      const res = result(await h.router.handle('explain_word', PARENT_ID, {
+        childId: CHILD_ID, documentId: DOC_ID, documentHash: DOC_HASH, word: 'pollen', sentence: 'Le pollen féconde l’ovule.', paragraph: SCIENCE_TEXT, pageIndex: 0, ocrLowConfidence: false,
+      }));
+      expect(res, source).toMatchObject({ status: 'ok', meta: { route: 'light' } });
+      // Without the AI, no dictionary answer either.
+      const off = createHarness({ settings: settingsWith({ ai: { enabled: false } }), dictionary: { lookup: () => Promise.resolve(found) } });
+      expect(result(await off.router.handle('explain_word', PARENT_ID, {
+        childId: CHILD_ID, documentId: DOC_ID, documentHash: DOC_HASH, word: 'pollen', sentence: 'Le pollen féconde l’ovule.', paragraph: SCIENCE_TEXT, pageIndex: 0, ocrLowConfidence: false,
+      })).status, source).toBe('unavailable');
+    }
   });
 
   it('strict safety level blocks before any cache or provider', async () => {
@@ -266,11 +295,13 @@ describe('AIRouter — asynchronous jobs (complex route)', () => {
       ],
     }, delayMs: 30 });
     const outcome = await h.router.handle('generate_questions', PARENT_ID, questionsBody);
-    expect(outcome).toMatchObject({ kind: 'job', httpStatus: 202, body: { status: 'pending', pollAfterMs: 3000 } });
+    expect(outcome).toMatchObject({ kind: 'job', httpStatus: 202, body: { status: 'pending', pollAfterMs: 300 } });
     const jobId = outcome.kind === 'job' ? outcome.body.jobId : '';
     expect(await h.router.pollJob(PARENT_ID, jobId)).toEqual({ status: 'pending', pollAfterMs: 3000 });
-    await h.router.idle();
-    const done = await h.router.pollJob(PARENT_ID, jobId);
+    // Waiting on the server: the answer comes as soon as the job is done (30 ms here), not after the full wait.
+    const started = Date.now();
+    const done = await h.router.waitForJob(PARENT_ID, jobId, 10_000);
+    expect(Date.now() - started).toBeLessThan(2_000);
     expect(done).toMatchObject({ status: 'ok', meta: { route: 'complex' } });
     expect((done as { data: { questions: unknown[] } }).data.questions).toHaveLength(3);
     expect(await h.router.pollJob('other-parent', jobId)).toBeNull();
@@ -352,6 +383,47 @@ describe('AIRouter — progressive summary', () => {
       childId: CHILD_ID, documentId: DOC_ID, documentHash: DOC_HASH, level: 'bref', ocrLowConfidence: false, stage: { kind: 'final', planHash: hash, chunkCount: 4 },
     }));
     expect(res).toMatchObject({ status: 'unavailable', reason: 'missing_chunks', missingChunkIndexes: [0, 2, 3] });
+  });
+
+  it('a chunk whose provider fails falls back to the deterministic summary, so no chunk is missing', async () => {
+    const h = createHarness();
+    const chunks = texts.slice(0, 2).map((t, i) => chunkOf(i, i, t));
+    const hash = await planHash(chunks);
+    // Second chunk: the provider is there but the call fails (worker busy, usage limit reached mid-summary…).
+    h.light.enqueue('summarize_chunk',
+      { json: { status: 'ok', summary: 'Tom et Léo sont amis. Ils trouvent une carte.', keyQuotes: ['Léo est le meilleur ami de Tom.'] } },
+      { error: 'rate_limited' });
+    expect(result(await h.router.handle('summarize', PARENT_ID, await chunkBody(chunks[0]!, hash)))).toMatchObject({ status: 'ok', meta: { route: 'light' } });
+    expect(result(await h.router.handle('summarize', PARENT_ID, await chunkBody(chunks[1]!, hash)))).toMatchObject({ status: 'ok', meta: { route: 'local' } });
+
+    // The final stage finds both chunks in the cache: the summary goes on instead of stopping on the device.
+    const final = await h.router.handle('summarize', PARENT_ID, {
+      childId: CHILD_ID, documentId: DOC_ID, documentHash: DOC_HASH, level: 'bref', ocrLowConfidence: false, stage: { kind: 'final', planHash: hash, chunkCount: 2 },
+    });
+    expect(final.kind).toBe('job');
+    await h.router.idle();
+  });
+
+  it('the final stage whose provider fails still answers with the deterministic summary of the chunks', async () => {
+    const h = createHarness();
+    const chunks = texts.slice(0, 2).map((t, i) => chunkOf(i, i, t));
+    const hash = await planHash(chunks);
+    h.light.enqueue('summarize_chunk',
+      { json: { status: 'ok', summary: 'Tom et Léo sont amis. Ils jouent ensemble.', keyQuotes: ['Léo est le meilleur ami de Tom.'] } },
+      { json: { status: 'ok', summary: 'La carte montre une île avec un trésor.', keyQuotes: ['Dans le grenier, la carte montre une île.'] } });
+    for (const chunk of chunks) await h.router.handle('summarize', PARENT_ID, await chunkBody(chunk, hash));
+
+    // Every chunk is there, but the complex provider fails: the summary must not be lost on the last step.
+    h.complex.enqueue('summarize_final', { error: 'rate_limited' });
+    const final = await h.router.handle('summarize', PARENT_ID, {
+      childId: CHILD_ID, documentId: DOC_ID, documentHash: DOC_HASH, level: 'bref', ocrLowConfidence: false, stage: { kind: 'final', planHash: hash, chunkCount: 2 },
+    });
+    expect(final.kind).toBe('job');
+    await h.router.idle();
+    const done = await h.router.pollJob(PARENT_ID, final.kind === 'job' ? final.body.jobId : '');
+    expect(done).toMatchObject({ status: 'ok', meta: { route: 'local' } });
+    expect((done as { data: { summary: string } }).data.summary).toContain('Tom et Léo sont amis');
+    expect((done as { data: { summary: string } }).data.summary).toContain('trésor');
   });
 
   it('a blocked chunk is excluded with sourceWarning; more than 30 % excluded → blocked/validation', async () => {

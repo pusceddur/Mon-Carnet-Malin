@@ -42,6 +42,10 @@ export const ERROR_MESSAGES_FR = {
   email_taken: 'Cette adresse e-mail est déjà utilisée.',
   invalid_invitation: 'Le code d’invitation n’est pas valide ou les inscriptions sont fermées.',
   too_many_attempts: 'Trop de tentatives. Réessaie plus tard.',
+  // account security (§20)
+  invalid_token: 'Ce lien n’est plus valable. Demande un nouveau lien.',
+  mail_unavailable: 'L’envoi d’e-mails n’est pas configuré sur ce serveur.',
+  current_session: 'Pour cet appareil, utilise « Se déconnecter ».',
   // documents and uploads (§15.6)
   document_not_synced: 'Le document n’est pas encore synchronisé. Réessaie après la synchronisation.',
   uploads_disabled: 'L’envoi de ce fichier est désactivé dans les réglages de confidentialité.',

@@ -58,7 +58,6 @@ function SourceWarning({ show }: { show: boolean }): JSX.Element | null {
 export function HelpSheet({ request, onClose, onExplainInstead, onShowQuote, loadQuestionContext, onOutcome }: HelpSheetProps): JSX.Element | null {
   const [phase, setPhase] = useState<Phase>({ name: 'loading' });
   const [question, setQuestion] = useState('');
-  const [skipLocal, setSkipLocal] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const controller = useRef<AbortController | null>(null);
   const questionId = useId();
@@ -76,7 +75,6 @@ export function HelpSheet({ request, onClose, onExplainInstead, onShowQuote, loa
   const [seenRequest, setSeenRequest] = useState<number | null>(null);
   if (requestId !== seenRequest) {
     setSeenRequest(requestId);
-    setSkipLocal(false);
     setAttempt(0);
     setQuestion('');
     setPhase(request?.kind === 'question' ? { name: 'form' } : { name: 'loading' });
@@ -91,9 +89,9 @@ export function HelpSheet({ request, onClose, onExplainInstead, onShowQuote, loa
     const run = async (): Promise<HelpOutcome> => {
       switch (request.kind) {
         case 'definition':
-          return runDefinition(request.ctx.text);
+          return runDefinition(request.ctx, { signal: ctl.signal });
         case 'explain':
-          return runExplain(request.ctx, { skipLocal, signal: ctl.signal });
+          return runExplain(request.ctx, { signal: ctl.signal });
         case 'simplify':
           return runSimplify(request.ctx, { signal: ctl.signal });
       }
@@ -104,7 +102,7 @@ export function HelpSheet({ request, onClose, onExplainInstead, onShowQuote, loa
       onOutcomeRef.current?.(request.kind, outcome);
     });
     return () => ctl.abort();
-  }, [request, skipLocal, attempt]);
+  }, [request, attempt]);
 
   useEffect(() => () => cancelRunning(), []);
 
@@ -189,7 +187,6 @@ export function HelpSheet({ request, onClose, onExplainInstead, onShowQuote, loa
             <SourceWarning show={outcome.sourceWarning} />
             <div className="rd-help__actions">
               <ListenButton text={[outcome.text, outcome.example].filter(Boolean).join(' ')} />
-              {outcome.fromGlossary && <Button variant="secondary" onClick={() => setSkipLocal(true)}>{help.moreHelp}</Button>}
             </div>
           </div>
         );

@@ -61,7 +61,7 @@ describe('ProcessingQueue', () => {
     expect(p0.contentHash).toMatch(/^[0-9a-f]{64}$/);
     expect(p0.width).toBe(1000);
     expect((await db.documents.get(id))?.status).toBe('ready');
-    expect(await db.pageImages.where('documentId').equals(id).count()).toBe(6);
+    expect(await db.pageImages.where('documentId').equals(id).count()).toBe(9); // ocr + color + thumb per page
     expect((await getJob(id, 2))?.state).toBe('done');
     expect(h.ocr.notePageDone).toHaveBeenCalledTimes(3);
   });
@@ -88,22 +88,19 @@ describe('ProcessingQueue', () => {
     expect(p).toEqual({ documentId: 'd', total: 4, ready: 1, lowConfidence: 1, failed: 1, processingPageIndex: 3, percent: 75 });
   });
 
-  it('tries a binarized image then the server when the local reading is doubtful, and keeps the best', async () => {
+  it('tries a binarized image when the reading on the device is doubtful, and keeps the best', async () => {
     const id = await seedDocument({ pages: 1 });
-    h.ocr.recognize.mockResolvedValue(ocrResult(BAD_SENTENCE, 40));
-    h.recognizeOnServer.mockResolvedValue({ status: 'ok', blocks: [{ kind: 'paragraph', text: GOOD_SENTENCE }], confidence: 92 });
+    h.ocr.recognize.mockResolvedValueOnce(ocrResult(BAD_SENTENCE, 40)).mockResolvedValueOnce(ocrResult(GOOD_SENTENCE, 92));
 
     queue.start();
     await queue.whenIdle();
 
     expect(h.deps.binarize).toHaveBeenCalledTimes(1);
-    expect(h.recognizeOnServer).toHaveBeenCalledTimes(1);
-    expect(h.recognizeOnServer.mock.calls[0]?.[0]).toBeInstanceOf(Blob);
     const p = await page(id, 0);
-    expect(p.status).toBe('ready');
-    expect(p.textSource).toBe('ocr-server');
-    expect(p.warnings).toEqual(['server_fallback_used']);
+    expect(p).toMatchObject({ status: 'ready', textSource: 'ocr-local', warnings: [] });
+    expect(p.blocks[0]?.text).toBe(GOOD_SENTENCE);
     expect(h.enqueueUpload).toHaveBeenCalledWith('pageImage', id, 0);
+    expect(h.watchAiReading).not.toHaveBeenCalled();
   });
 
   it('marks the page low_confidence (document partial) when offline', async () => {
@@ -115,39 +112,25 @@ describe('ProcessingQueue', () => {
     const p = await page(id, 0);
     expect(p.status).toBe('low_confidence');
     expect(p.warnings).toContain('low_confidence');
-    expect(h.recognizeOnServer).not.toHaveBeenCalled();
     expect((await db.documents.get(id))?.status).toBe('partial');
   });
 
-  it('respects autoServerFallback = false', async () => {
-    await seedDocument({ pages: 1 });
-    h.settings.value = settings({ ocr: { autoServerFallback: false } });
-    h.ocr.recognize.mockResolvedValue(ocrResult(BAD_SENTENCE, 45));
-    queue.start();
-    await queue.whenIdle();
-    expect(h.recognizeOnServer).not.toHaveBeenCalled();
-  });
-
-  it('keeps the local result when the server is busy and retries later', async () => {
+  it('a later reading by the server queued by an older version of the app is dropped', async () => {
     const id = await seedDocument({ pages: 1 });
     h.ocr.recognize.mockResolvedValue(ocrResult(BAD_SENTENCE, 45));
-    h.recognizeOnServer.mockResolvedValueOnce({ status: 'busy', retryAfterMs: 60_000 });
     queue.start();
     await queue.whenIdle();
-
-    expect((await page(id, 0)).status).toBe('low_confidence');
+    const before = await page(id, 0);
     const job = await getJob(id, 0);
-    expect(job).toMatchObject({ state: 'queued', stage: 'server_retry', serverRetries: 1, notBefore: 70_000 });
-
-    h.recognizeOnServer.mockResolvedValueOnce({ status: 'ok', blocks: [{ kind: 'paragraph', text: GOOD_SENTENCE }], confidence: 90 });
-    h.clock.now = 80_000;
+    if (!job) throw new Error('job missing');
+    const legacy = { ...job, state: 'queued' as const, stage: 'server_retry' as const, mode: 'server', notBefore: 0 };
+    await db.jobs.put(legacy);
+    h.ocr.recognize.mockClear();
     queue.kick();
     await queue.whenIdle();
-    const p = await page(id, 0);
-    expect(p.status).toBe('ready');
-    expect(p.textSource).toBe('ocr-server');
-    expect((await getJob(id, 0))?.state).toBe('done');
-    expect(h.ocr.recognize).toHaveBeenCalledTimes(2 + 3); // gray + binarized + 3 rotation probes, no local OCR on retry
+    expect(await page(id, 0)).toEqual(before);
+    expect(h.ocr.recognize).not.toHaveBeenCalled();
+    expect(await getJob(id, 0)).toMatchObject({ state: 'done', mode: 'auto' });
   });
 
   it('tries rotations on a small copy and keeps a better orientation', async () => {
@@ -265,16 +248,13 @@ describe('ProcessingQueue', () => {
       expect((await getJob(id, 0))?.error).toBe('ocr_unavailable');
     });
 
-    it('a crash of the on-device engine is not fatal: the page is read by the server', async () => {
+    it('a crash of the on-device engine is not fatal: the page goes to the home computer when there is one', async () => {
       const id = await seedDocument({ pages: 1 });
+      h.aiReading.value = true;
       h.ocr.recognize.mockRejectedValue(new Error('recognize_timeout'));
-      h.recognizeOnServer.mockResolvedValue({ status: 'ok', blocks: [{ kind: 'paragraph', text: GOOD_SENTENCE }], confidence: 92 });
-      queue.start();
-      await queue.whenIdle();
-      const p = await page(id, 0);
-      expect(p.status).toBe('ready');
-      expect(p.textSource).toBe('ocr-server');
-      expect(h.recognizeOnServer).toHaveBeenCalledTimes(1);
+      await queue.reprocessPage(id, 0, { onDevice: true });
+      expect(await page(id, 0)).toMatchObject({ status: 'failed', warnings: ['awaiting_ai'] });
+      expect(h.watchAiReading).toHaveBeenCalledWith(id, 0);
     });
 
     it('when the full preprocessing fails (memory), a smaller preparation is used instead of failing the page', async () => {
@@ -337,32 +317,53 @@ describe('ProcessingQueue', () => {
     });
   });
 
-  describe('lecture intelligente (awaiting_ai)', () => {
-    it('hands an unreadable page over: image kept and uploaded, page failed with awaiting_ai, no local retry', async () => {
+  describe('lecture intelligente (§25: the home computer reads the pages)', () => {
+    beforeEach(() => {
+      h.aiReading.value = true;
+    });
+
+    it('hands every photo straight over: image kept and uploaded, page waiting, no reading on the device', async () => {
+      const id = await seedDocument({ pages: 2 });
+      queue.start();
+      await queue.whenIdle();
+
+      const p0 = await page(id, 0);
+      expect(p0).toMatchObject({ status: 'failed', textSource: null, blocks: [], confidence: null, warnings: ['awaiting_ai'], width: 1000, height: 100 });
+      expect(p0.updatedAt).toBeGreaterThan(1_000);
+      expect(await db.pageImages.get([id, 0, 'ocr'])).toBeDefined();
+      expect(await db.pageImages.get([id, 0, 'thumb'])).toBeDefined();
+      expect(h.enqueueUpload).toHaveBeenCalledWith('pageImage', id, 0);
+      expect(h.enqueueUpload).toHaveBeenCalledWith('pageImage', id, 1);
+      expect(h.watchAiReading).toHaveBeenCalledWith(id, 0);
+      expect(h.watchAiReading).toHaveBeenCalledWith(id, 1);
+      expect(await getJob(id, 0)).toMatchObject({ state: 'done', error: null, attempts: 0 });
+      expect(h.ocr.recognize).not.toHaveBeenCalled();
+      expect(h.deps.binarize).not.toHaveBeenCalled();
+      expect((await db.documents.get(id))?.status).toBe('partial');
+    });
+
+    it('also hands the page over offline (the image upload waits for the connection)', async () => {
+      const id = await seedDocument({ pages: 1 });
+      h.online.value = false;
+      queue.start();
+      await queue.whenIdle();
+      expect((await page(id, 0)).warnings).toEqual(['awaiting_ai']);
+      expect(h.ocr.recognize).not.toHaveBeenCalled();
+      expect(h.enqueueUpload).toHaveBeenCalledWith('pageImage', id, 0);
+    });
+
+    it('« Lire sur cet appareil » that cannot read gives the page back to the home computer (reported)', async () => {
       const reports: ClientDiagnosticReport[] = [];
       setDiagnosticsSender(async (batch) => {
         reports.push(...batch);
         return true;
       });
       try {
-        const id = await seedDocument({ pages: 2 });
+        const id = await seedDocument({ pages: 1 });
         readingFailsEverywhere(h);
-        queue.start();
-        await queue.whenIdle();
-
-        const p0 = await page(id, 0);
-        expect(p0).toMatchObject({ status: 'failed', textSource: null, blocks: [], confidence: null, warnings: ['awaiting_ai'], width: 1000, height: 100 });
-        expect(p0.updatedAt).toBeGreaterThan(1_000);
-        expect(await db.pageImages.get([id, 0, 'ocr'])).toBeDefined();
-        expect(await db.pageImages.get([id, 0, 'thumb'])).toBeDefined();
-        expect(h.enqueueUpload).toHaveBeenCalledWith('pageImage', id, 0);
-        expect(h.enqueueUpload).toHaveBeenCalledWith('pageImage', id, 1);
-        expect(await getJob(id, 0)).toMatchObject({ state: 'done', error: null, attempts: 0 });
-        // One try per page: the job is resolved without a second local attempt.
-        expect(h.ocr.recognize).toHaveBeenCalledTimes(2);
-        expect(h.recognizeOnServer).toHaveBeenCalledTimes(2);
-        expect((await db.documents.get(id))?.status).toBe('partial');
-
+        await queue.reprocessPage(id, 0, { onDevice: true });
+        expect(await page(id, 0)).toMatchObject({ status: 'failed', warnings: ['awaiting_ai'] });
+        expect(h.ocr.recognize).toHaveBeenCalledTimes(1);
         await flushDiagnostics();
         const failed = reports.filter((r) => r.kind === 'processing_failed');
         expect(failed.at(-1)?.context).toMatchObject({ code: 'ocr_unavailable', final: true, awaitingAi: true });
@@ -371,22 +372,11 @@ describe('ProcessingQueue', () => {
       }
     });
 
-    it('also hands the page over offline (the image upload waits for the connection)', async () => {
-      const id = await seedDocument({ pages: 1 });
-      h.online.value = false;
-      readingFailsEverywhere(h);
-      queue.start();
-      await queue.whenIdle();
-      expect((await page(id, 0)).warnings).toEqual(['awaiting_ai']);
-      expect(h.recognizeOnServer).not.toHaveBeenCalled();
-      expect(h.enqueueUpload).toHaveBeenCalledWith('pageImage', id, 0);
-    });
-
     it.each([
       ['aiTranscription', settings({ ocr: { aiTranscription: false } })],
       ['uploadPageImages', settings({ privacy: { uploadPageImages: false } })],
       ['syncDocumentText', settings({ privacy: { syncDocumentText: false } })],
-    ])('is not used when %s is off: the page fails as before', async (_flag, value) => {
+    ])('is not used when %s is off: the device reads, a page it cannot read fails', async (_flag, value) => {
       const id = await seedDocument({ pages: 1 });
       h.settings.value = value;
       readingFailsEverywhere(h);
@@ -400,21 +390,30 @@ describe('ProcessingQueue', () => {
       expect(h.enqueueUpload).not.toHaveBeenCalled();
     });
 
-    it('a waiting page is not read again when the app starts again', async () => {
+    it('without a home computer on the server, the device reads even when the settings allow the lecture intelligente', async () => {
       const id = await seedDocument({ pages: 1 });
+      h.aiReading.value = false;
       readingFailsEverywhere(h);
       queue.start();
       await queue.whenIdle();
+      expect(await page(id, 0)).toMatchObject({ status: 'failed', warnings: [] });
+      expect(await getJob(id, 0)).toMatchObject({ state: 'error', error: 'ocr_unavailable' });
+      expect(h.watchAiReading).not.toHaveBeenCalled();
+    });
+
+    it('a waiting page is not read again when the app starts again', async () => {
+      const id = await seedDocument({ pages: 1 });
+      queue.start();
+      await queue.whenIdle();
       const before = await page(id, 0);
-      h.ocr.recognize.mockClear();
-      h.recognizeOnServer.mockClear();
+      h.preparePage.mockClear();
 
       const reloaded = createProcessingQueue(h.deps);
       reloaded.start();
       await reloaded.whenIdle();
       reloaded.stop();
+      expect(h.preparePage).not.toHaveBeenCalled();
       expect(h.ocr.recognize).not.toHaveBeenCalled();
-      expect(h.recognizeOnServer).not.toHaveBeenCalled();
       expect(await page(id, 0)).toEqual(before);
     });
 
@@ -436,25 +435,37 @@ describe('ProcessingQueue', () => {
       expect((await getJob(id, 0))?.state).toBe('done');
     });
 
-    it('a page that already has text keeps it when a new reading fails (no hand-over)', async () => {
+    it('a page that already has text keeps it when « Lire sur cet appareil » fails (no hand-over)', async () => {
       const id = await seedDocument({ pages: 1 });
-      queue.start();
-      await queue.whenIdle();
+      await queue.reprocessPage(id, 0, { onDevice: true });
       const before = await page(id, 0);
+      expect(before.textSource).toBe('ocr-local');
       readingFailsEverywhere(h);
-      await expect(queue.reprocessPage(id, 0)).rejects.toMatchObject({ code: 'ocr_unavailable' });
+      await expect(queue.reprocessPage(id, 0, { onDevice: true })).rejects.toMatchObject({ code: 'ocr_unavailable' });
       expect(await page(id, 0)).toEqual(before);
     });
 
-    it('« Relancer la lecture » on a waiting page reads it on the device when possible', async () => {
+    it('a page with text read again by the home computer keeps its text meanwhile', async () => {
       const id = await seedDocument({ pages: 1 });
-      readingFailsEverywhere(h);
+      await queue.reprocessPage(id, 0, { onDevice: true });
+      const before = await page(id, 0);
+      h.enqueueUpload.mockClear();
+      h.ocr.recognize.mockClear();
+      await queue.reprocessPage(id, 0);
+      expect(await page(id, 0)).toMatchObject({ status: 'ready', textSource: 'ocr-local', blocks: before.blocks, warnings: [] });
+      expect(h.ocr.recognize).not.toHaveBeenCalled();
+      expect(h.enqueueUpload).toHaveBeenCalledWith('pageImage', id, 0);
+      expect(h.watchAiReading).toHaveBeenCalledWith(id, 0);
+    });
+
+    it('« Lire sur cet appareil » on a waiting page reads it on the device', async () => {
+      const id = await seedDocument({ pages: 1 });
       queue.start();
       await queue.whenIdle();
-      h.ocr.recognize.mockReset();
-      h.ocr.recognize.mockResolvedValue(ocrResult(GOOD_SENTENCE, 95));
-      await queue.reprocessPage(id, 0);
+      expect((await page(id, 0)).warnings).toEqual(['awaiting_ai']);
+      await queue.reprocessPage(id, 0, { onDevice: true });
       expect(await page(id, 0)).toMatchObject({ status: 'ready', textSource: 'ocr-local', warnings: [] });
+      expect(await getJob(id, 0)).toMatchObject({ state: 'done', mode: 'auto' });
     });
   });
 
@@ -490,32 +501,12 @@ describe('ProcessingQueue', () => {
       expect(await getJob(id, 1)).toMatchObject({ state: 'done', rotateDegrees: 90, quad });
     });
 
-    it('explicit server reading offline rejects and keeps the page', async () => {
+    it('a failed explicit reading rejects with its code and leaves the job done', async () => {
       const id = await readyDocument();
-      const before = await page(id, 0);
-      h.online.value = false;
-      await expect(queue.reprocessPage(id, 0, { useServer: true })).rejects.toMatchObject({ code: 'offline' });
-      expect(await page(id, 0)).toEqual(before);
-      expect(h.ocr.recognize).not.toHaveBeenCalled();
-    });
-
-    it('explicit server reading uses only the server', async () => {
-      const id = await readyDocument();
-      h.recognizeOnServer.mockResolvedValue({ status: 'ok', blocks: [{ kind: 'title', text: 'Le jardin' }, { kind: 'paragraph', text: GOOD_SENTENCE }], confidence: 88 });
-      await queue.reprocessPage(id, 0, { useServer: true });
-      expect(h.ocr.recognize).not.toHaveBeenCalled();
-      const p = await page(id, 0);
-      expect(p.textSource).toBe('ocr-server');
-      expect(p.blocks[0]).toEqual({ kind: 'title', text: 'Le jardin' });
-    });
-
-    it('rejects a busy server for an explicit request', async () => {
-      const id = await readyDocument();
-      h.recognizeOnServer.mockResolvedValue({ status: 'busy', retryAfterMs: 30_000 });
-      const error = await queue.reprocessPage(id, 0, { useServer: true }).catch((e: unknown) => e);
+      readingFailsEverywhere(h);
+      const error = await queue.reprocessPage(id, 0).catch((e: unknown) => e);
       expect(error).toBeInstanceOf(ProcessingError);
-      expect((error as ProcessingError).code).toBe('server_busy');
-      expect((await getJob(id, 0))?.state).toBe('done');
+      expect((error as ProcessingError).code).toBe('ocr_unavailable');
     });
 
     it('replacePageImage stores the new photo as the page source and processes it', async () => {
@@ -572,5 +563,128 @@ describe('ProcessingQueue', () => {
       expect(await db.jobs.where('documentId').equals(id).count()).toBe(0);
       expect(h.ocr.recognize).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe('ProcessingQueue — texte écrit par un enfant (§17.10)', () => {
+  let h: Harness;
+  let queue: ProcessingQueue;
+
+  beforeEach(async () => {
+    await clearDb();
+    h = createHarness();
+    h.aiReading.value = true;
+    queue = createProcessingQueue(h.deps);
+  });
+
+  afterEach(async () => {
+    queue.stop();
+    await queue.whenIdle();
+  });
+
+  it('hands every page straight to the lecture intelligente: no reading on the device, image kept and sent', async () => {
+    const id = await seedDocument({ pages: 2, textMode: 'punctuated' });
+    queue.start();
+    await queue.whenIdle();
+    expect(h.ocr.recognize).not.toHaveBeenCalled();
+    for (const index of [0, 1]) {
+      expect(await page(id, index)).toMatchObject({ status: 'failed', textSource: null, blocks: [], warnings: ['awaiting_ai'], width: 1000, height: 100 });
+      expect(await db.pageImages.get([id, index, 'ocr'])).toBeDefined();
+      expect(h.enqueueUpload).toHaveBeenCalledWith('pageImage', id, index);
+      expect(await getJob(id, index)).toMatchObject({ state: 'done', error: null });
+    }
+  });
+
+  it('a PDF text layer is shown meanwhile and its page image is sent; a scanned PDF page waits', async () => {
+    const id = await seedDocument({ pages: 2, kind: 'pdf', textMode: 'punctuated' });
+    const handle: PdfHandle = {
+      numPages: 2,
+      getPageLines: vi.fn(async (index: number) =>
+        index === 0 ? [{ text: 'hier je suis allé au parc avec mon chien il a couru partout', top: 10, left: 10, height: 12, fontSize: 12 }] : [],
+      ),
+      renderPage: vi.fn(async () => ({ data: new Uint8ClampedArray(16), width: 2, height: 2 })),
+      destroy: vi.fn(async () => undefined),
+    };
+    h.deps.openPdf = vi.fn(async () => handle);
+    queue = createProcessingQueue(h.deps);
+    queue.start();
+    await queue.whenIdle();
+    expect(await page(id, 0)).toMatchObject({ status: 'ready', textSource: 'pdf-text' });
+    expect(await page(id, 1)).toMatchObject({ status: 'failed', warnings: ['awaiting_ai'] });
+    expect(h.enqueueUpload).toHaveBeenCalledWith('pageImage', id, 0);
+    expect(h.enqueueUpload).toHaveBeenCalledWith('pageImage', id, 1);
+    expect(h.ocr.recognize).not.toHaveBeenCalled();
+  });
+
+  it('without the lecture intelligente the pages are read on the device as before', async () => {
+    const id = await seedDocument({ pages: 1, textMode: 'punctuated' });
+    h.settings.value = settings({ ocr: { aiTranscription: false } });
+    queue.start();
+    await queue.whenIdle();
+    expect(await page(id, 0)).toMatchObject({ status: 'ready', textSource: 'ocr-local' });
+    expect(h.ocr.recognize).toHaveBeenCalled();
+  });
+
+  it('without a home computer on the server the pages are read on the device', async () => {
+    const id = await seedDocument({ pages: 1, textMode: 'punctuated' });
+    h.aiReading.value = false;
+    queue.start();
+    await queue.whenIdle();
+    expect(await page(id, 0)).toMatchObject({ status: 'ready', textSource: 'ocr-local' });
+  });
+
+  it('a new reading (rotation) keeps the current text until the new transcription arrives; « Lire sur cet appareil » still works', async () => {
+    const id = await seedDocument({ pages: 1, textMode: 'punctuated' });
+    queue.start();
+    await queue.whenIdle();
+    const transcribed: PageContent = {
+      ...(await page(id, 0)),
+      status: 'ready',
+      textSource: 'ocr-ai',
+      blocks: [{ kind: 'paragraph', text: 'Hier, je suis allé au parc.' }],
+      warnings: [],
+      updatedAt: 20_000,
+    };
+    await db.pages.put(transcribed);
+    h.enqueueUpload.mockClear();
+    h.clock.now = 30_000;
+
+    await queue.reprocessPage(id, 0, { rotateDegrees: 90 });
+    expect(await page(id, 0)).toMatchObject({ status: 'ready', textSource: 'ocr-ai', blocks: transcribed.blocks, width: 1090 });
+    expect(h.enqueueUpload).toHaveBeenCalledWith('pageImage', id, 0);
+    expect(h.ocr.recognize).not.toHaveBeenCalled();
+
+    await queue.reprocessPage(id, 0, { onDevice: true });
+    expect(h.ocr.recognize).toHaveBeenCalled();
+    expect(await page(id, 0)).toMatchObject({ textSource: 'ocr-local' });
+  });
+});
+
+describe('ProcessingQueue — color copy of the page (§19.1)', () => {
+  let h: Harness;
+  let queue: ProcessingQueue;
+
+  beforeEach(async () => {
+    await clearDb();
+    h = createHarness();
+    queue = createProcessingQueue(h.deps);
+  });
+
+  afterEach(async () => {
+    queue.stop();
+    await queue.whenIdle();
+  });
+
+  it('keeps the color copy with its own size; a reading without one removes the copy of the previous frame', async () => {
+    const id = await seedDocument({ pages: 1 });
+    queue.start();
+    await queue.whenIdle();
+    expect(await db.pageImages.get([id, 0, 'color'])).toMatchObject({ variant: 'color', width: 1000, height: 100 });
+
+    // Memory problem on the iPad: the smaller main-thread preparation has no color copy.
+    h.preparePage.mockRejectedValueOnce(new Error('out of memory'));
+    await queue.reprocessPage(id, 0, { rotateDegrees: 90 });
+    expect(await db.pageImages.get([id, 0, 'color'])).toBeUndefined();
+    expect(await db.pageImages.get([id, 0, 'ocr'])).toMatchObject({ width: 800 });
   });
 });

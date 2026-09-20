@@ -19,6 +19,8 @@ export function isAIOperationEnabled(op: AIOperation, settings: Pick<ParentSetti
     case 'correct_answer': return ai.features.correctAnswers;
     case 'question_on_text': return ai.features.questionOnText;
     case 'recognize_handwriting': return ai.handwritingRecognition;
+    case 'free_question': return ai.features.freeQuestion;
+    case 'correct_writing': return ai.features.correctWriting;
   }
 }
 
@@ -27,6 +29,8 @@ function tierFor(op: AIOperation, inputChars: number, settings: Pick<ParentSetti
     case 'explain_word':
     case 'correct_answer':
     case 'recognize_handwriting':
+    case 'free_question':
+    case 'correct_writing':
       return 'light';
     case 'explain_text':
     case 'simplify_text':

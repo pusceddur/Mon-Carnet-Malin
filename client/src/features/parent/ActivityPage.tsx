@@ -12,6 +12,8 @@ import { PATHS } from '../../state/guards';
 import { useSessionStore } from '../../state/session';
 import { computeActivityStats, periodRange, sortAlerts, type ActivityPeriod } from './activityStats';
 import { formatDateTime, formatDuration, formatEuros } from './format';
+import { FreeQuestionsSection } from './FreeQuestionsSection';
+import { WritingCorrectionsSection } from './WritingCorrectionsSection';
 import { ParentPage, ParentSection } from './ParentPage';
 
 const t = parent.activity;
@@ -34,6 +36,7 @@ export default function ActivityPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState<string | null>(null);
   const [marking, setMarking] = useState<Id | null>(null);
+  const [questionsRefresh, setQuestionsRefresh] = useState(0);
 
   const load = useCallback(async (): Promise<void> => {
     setLoading(true);
@@ -86,7 +89,16 @@ export default function ActivityPage(): JSX.Element {
     <ParentPage
       title={t.title}
       actions={
-        <Button variant="secondary" size="parent" icon="🔄" loading={loading} onClick={() => void load()}>
+        <Button
+          variant="secondary"
+          size="parent"
+          icon="🔄"
+          loading={loading}
+          onClick={() => {
+            void load();
+            setQuestionsRefresh((n) => n + 1);
+          }}
+        >
           {t.refresh}
         </Button>
       }
@@ -160,13 +172,15 @@ export default function ActivityPage(): JSX.Element {
             <ProgressBar
               label={t.budget.title}
               hideLabel
-              value={stats.budget.budgetEur > 0 ? stats.budget.spentEur : stats.budget.percent}
+              value={stats.budget.budgetEur > 0 ? Math.min(stats.budget.totalEur, stats.budget.budgetEur) : stats.budget.percent}
               max={stats.budget.budgetEur > 0 ? stats.budget.budgetEur : 100}
-              valueText={format(t.budget.value, { spent: formatEuros(stats.budget.spentEur), budget: formatEuros(stats.budget.budgetEur) })}
-              tone={stats.budget.level === 'ok' ? 'accent' : 'warm'}
+              valueText={format(t.budget.value, { spent: formatEuros(stats.budget.totalEur), budget: formatEuros(stats.budget.budgetEur) })}
+              tone={stats.budget.level === 'ok' && !stats.budget.estimateOver ? 'accent' : 'warm'}
             />
+            {stats.budget.estimateEur > 0 && <p className="parent-section__hint">{format(t.budget.estimate, { amount: formatEuros(stats.budget.estimateEur) })}</p>}
             {stats.budget.level === 'warning' && <p className="form-notice">{t.budget.warning}</p>}
             {stats.budget.level === 'reached' && <p className="form-error">{t.budget.reached}</p>}
+            {stats.budget.estimateOver && <p className="form-notice">{t.budget.estimateOver}</p>}
           </ParentSection>
 
           <ParentSection title={t.alerts.title}>
@@ -242,6 +256,11 @@ export default function ActivityPage(): JSX.Element {
           </ParentSection>
         </>
       )}
+
+      {/* Loaded on its own: one child at a time, last 30 days (§18.3). */}
+      <FreeQuestionsSection preferredChildId={childId === ALL ? null : childId} refreshToken={questionsRefresh} />
+      {/* §24 texts corrected with « Corriger », one child at a time, the kept year. */}
+      <WritingCorrectionsSection preferredChildId={childId === ALL ? null : childId} refreshToken={questionsRefresh} />
     </ParentPage>
   );
 }

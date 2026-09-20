@@ -3,6 +3,7 @@ export { usePencilStore, resetPencilStore, type PencilActions, type PencilExtraS
 export { InkLayer, type InkLayerProps } from './InkLayer';
 export { PencilToolbar } from './PencilToolbar';
 export { AnswerPad, type AnswerPadProps, type AnswerPadTab } from './AnswerPad';
+export { TextBoxLayer, TEXT_BOX_COLORS, type TextBoxLayerProps } from './TextBoxLayer';
 export {
   addTextHighlight,
   clearAnswerInk,

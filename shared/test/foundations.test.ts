@@ -4,7 +4,8 @@ import {
   AI_DEADLINES, AIDataSchemaByOperation, AIJobAcceptedSchema, AIJobPollSchema, AILearnerSchema, AIOperationSchema,
   AIRequestSchemaByOperation, AnnotationSchema, AnswerSchema, AuthStatusSchema, CAPITALIZED_COMMON, ChildProfileSchema,
   ChunkSummaryDataSchema, CorrectAnswerRequestSchema, DEFAULT_PARENT_SETTINGS, DEFAULT_READING_PREFERENCES, DEFAULT_TTS_PREFERENCES,
-  DEFAULT_EXERCISE_PREFERENCES, DictionaryResultSchema, DocumentMetaSchema, ExerciseSchema, ExplainWordRequestSchema,
+  DEFAULT_EXERCISE_PREFERENCES, DictionaryResultSchema, DocumentMetaSchema, DocumentTextModeRequestSchema,
+  DocumentTextModeResponseSchema, ExerciseSchema, ExplainWordRequestSchema,
   GenerateQuestionsRequestSchema, GlossaryEntrySchema, HandwritingDataSchema, HealthStatusSchema, InkSpaceSchema, InvitationConfigSchema, ClientDiagnosticReportSchema, ClientDiagnosticsRequestSchema,
   InviteCodeSchema, KID_MESSAGES, ParentUserSchema, RegisterRequestSchema, UpdateInvitationRequestSchema,
   LIMITS, OcrServerResultSchema, PageContentSchema, ParentSettingsSchema, PIN_DEFAULT_DIGITS, PROMPT_VERSION,
@@ -16,7 +17,8 @@ import {
 } from '../src/index';
 import type {
   ActivitySummary, AIDataByOperation, AIJobAccepted, AIJobPoll, AILearner, AIOperation, AIRequestByOperation, AIResult, Annotation,
-  Answer, AuthStatus, ChildProfile, ChunkSummaryData, CorrectAnswerRequest, DictionaryResult, DocumentMeta, Exercise,
+  Answer, AuthStatus, ChildProfile, ChunkSummaryData, CorrectAnswerRequest, DictionaryResult, DocumentMeta, DocumentTextModeRequest,
+  DocumentTextModeResponse, Exercise,
   ExplainTextRequest, ExplainWordRequest, ExplanationData, GenerateQuestionsRequest, GlossaryEntry, HandwritingData, HealthStatus,
   InkSpace, InvitationConfig, ClientDiagnosticReport, ClientDiagnosticsRequest, OcrServerResult, PageContent, ParentSettings, ParentUser, Question, QuestionOnTextRequest, ReadingPreferences, ReadingProgress,
   ReadingSession, RecognizeHandwritingRequest, SimplifyTextRequest, SummarizeRequest, SummarizeStage, SummaryData, SyncRejection,
@@ -98,6 +100,8 @@ describe('shared foundations', () => {
     expectTypeOf<Same<Out<typeof ChildProfileSchema>, ChildProfile>>().toEqualTypeOf<true>();
     expectTypeOf<Same<Out<typeof TTSPreferencesSchema>, TTSPreferences>>().toEqualTypeOf<true>();
     expectTypeOf<Same<Out<typeof DocumentMetaSchema>, DocumentMeta>>().toEqualTypeOf<true>();
+    expectTypeOf<Same<Out<typeof DocumentTextModeRequestSchema>, DocumentTextModeRequest>>().toEqualTypeOf<true>();
+    expectTypeOf<Same<Out<typeof DocumentTextModeResponseSchema>, DocumentTextModeResponse>>().toEqualTypeOf<true>();
     expectTypeOf<Same<Out<typeof PageContentSchema>, PageContent>>().toEqualTypeOf<true>();
     expectTypeOf<Same<Out<typeof ReadingProgressSchema>, ReadingProgress>>().toEqualTypeOf<true>();
     expectTypeOf<Same<Out<typeof ReadingSessionSchema>, ReadingSession>>().toEqualTypeOf<true>();
@@ -199,7 +203,7 @@ describe('shared foundations', () => {
     expect(syncEntityKey('pages', page)).toBe('d1:7');
     expect(syncEntityKey('progress', { childId: 'c1', documentId: 'd1', pageIndex: 0, blockIndex: 0, sentenceIndex: 0, updatedAt: 1 })).toBe('c1:d1');
     expect(syncEntityKey('documents', {
-      id: 'doc', ownerParentId: 'p', childIds: [], title: 't', kind: 'pdf', sourceHash: HASH_A, pageCount: 1, status: 'ready',
+      id: 'doc', ownerParentId: 'p', childIds: [], title: 't', kind: 'pdf', textMode: 'faithful', purpose: 'reading', homeworkDoneAt: null, sourceHash: HASH_A, pageCount: 1, status: 'ready',
       createdAt: 1, updatedAt: 1, deletedAt: null,
     })).toBe('doc');
     expect(syncEntityKey('sessions', {
@@ -261,6 +265,7 @@ describe('shared foundations', () => {
       const flags: Record<AIOperation, keyof ParentSettings['ai']['features'] | null> = {
         explain_word: 'explainWord', explain_text: 'explainText', simplify_text: 'simplify', summarize: 'summarize',
         generate_questions: 'questions', correct_answer: 'correctAnswers', question_on_text: 'questionOnText', recognize_handwriting: null,
+        free_question: 'freeQuestion', correct_writing: 'correctWriting',
       };
       for (const op of AIOperationSchema.options) {
         const flag = flags[op];
@@ -275,3 +280,23 @@ describe('shared foundations', () => {
 function emptyChanges(): SyncRequest['changes'] {
   return { documents: [], pages: [], annotations: [], progress: [], sessions: [], exercises: [], answers: [], children: [] };
 }
+
+describe('document text mode (§17.10)', () => {
+  const doc = {
+    id: newId(), ownerParentId: newId(), childIds: [], title: 'Ma rédaction', kind: 'images', sourceHash: HASH_A, pageCount: 1,
+    status: 'processing', createdAt: 1, updatedAt: 1, deletedAt: null,
+  };
+
+  it('documents without a text mode (older copies and clients) are faithful; only the two modes exist', () => {
+    expect(DocumentMetaSchema.parse(doc).textMode).toBe('faithful');
+    expect(DocumentMetaSchema.parse({ ...doc, textMode: 'punctuated' }).textMode).toBe('punctuated');
+    expect(DocumentMetaSchema.safeParse({ ...doc, textMode: 'corrected' }).success).toBe(false);
+  });
+
+  it('the change request only carries the mode', () => {
+    expect(DocumentTextModeRequestSchema.safeParse({ textMode: 'punctuated' }).success).toBe(true);
+    expect(DocumentTextModeRequestSchema.safeParse({ textMode: 'punctuated', documentId: newId() }).success).toBe(false);
+    expect(DocumentTextModeResponseSchema.safeParse({ document: { ...doc, textMode: 'punctuated' }, queued: 2 }).success).toBe(true);
+    expect(DocumentTextModeResponseSchema.safeParse({ document: doc, queued: -1 }).success).toBe(false);
+  });
+});

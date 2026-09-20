@@ -15,6 +15,7 @@ import { OfflineAssetsError, prepareOfflineAssets, type OfflineAssetsProgress } 
 import { useSessionStore } from '../../state/session';
 import { subscribeSync, syncNow } from '../../sync/SyncEngine';
 import { inviteCodeError, passwordError, pinFormatError, pinShortWarning, sanitizePinInput } from '../auth/authForms';
+import { DevicesSection, PinRequiredSection } from './AccountSecurity';
 import { formatBytes } from './format';
 import { ParentPage, ParentSection } from './ParentPage';
 
@@ -390,6 +391,8 @@ function LogoutSection(): JSX.Element {
   const online = useOnlineStatus();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(0);
+  // §20: by default the family's books and notes leave this device with the sign-out.
+  const [wipe, setWipe] = useState(true);
 
   useEffect(() => subscribeSync((s) => setPending(s.pending)), []);
 
@@ -397,7 +400,8 @@ function LogoutSection(): JSX.Element {
     try {
       if (online) await syncNow();
       await logout();
-      await useSessionStore.getState().markSignedOut();
+      if (wipe) await useSessionStore.getState().forgetThisDevice();
+      else await useSessionStore.getState().markSignedOut();
       setOpen(false);
       navigate(PATHS.login, { replace: true });
     } catch (error) {
@@ -422,6 +426,7 @@ function LogoutSection(): JSX.Element {
           <>
             <p>{t.logout.confirmMessage}</p>
             {pending > 0 && <p>{format(t.logout.pendingWarning, { count: pending })}</p>}
+            <Toggle size="parent" label={t.logout.wipeLabel} description={t.logout.wipeHint} checked={wipe} onChange={setWipe} />
           </>
         }
         confirmLabel={t.logout.confirm}
@@ -432,7 +437,10 @@ function LogoutSection(): JSX.Element {
   );
 }
 
-/** Parent account: PIN and password, invitations (owner), installation, storage, offline assets, sign-out. */
+/**
+ * Parent account: PIN (and whether it is asked, §20), password, devices signed in (§20), invitations (owner), installation,
+ * storage, offline assets, sign-out.
+ */
 export default function AccountPage(): JSX.Element {
   const account = useSessionStore((s) => s.authStatus?.parent ?? null);
   return (
@@ -440,9 +448,11 @@ export default function AccountPage(): JSX.Element {
       <ParentSection title={t.pin.title}>
         <ChangePinForm />
       </ParentSection>
+      <PinRequiredSection />
       <ParentSection title={t.password.title}>
         <ChangePasswordForm />
       </ParentSection>
+      <DevicesSection />
       {account?.isOwner === true && <InvitationsSection />}
       <InstallSection />
       <StorageSection />

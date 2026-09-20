@@ -1,6 +1,6 @@
 // Provider-neutral AIProvider built on an AITransport (§15.1): French prompts, JSON Schema, zod parsing.
 import type {
-  CorrectAnswerRequest, ExplainTextRequest, ExplainWordRequest, GenerateQuestionsRequest, QuestionOnTextRequest,
+  CorrectAnswerRequest, CorrectWritingRequest, ExplainTextRequest, ExplainWordRequest, FreeQuestionRequest, GenerateQuestionsRequest, QuestionOnTextRequest,
   RecognizeHandwritingRequest, SimplifyTextRequest, SummaryLevel, TextChunk,
 } from '@aide/shared';
 import type { z } from 'zod';
@@ -8,13 +8,13 @@ import type { AIProvider, ProviderCallContext, ProviderId, ProviderResponse, Sum
 import type { AITier, AITransport, AITransportOperation, AITransportRequest } from './plugin';
 import {
   chunkDocumentBlock, chunkSummariesBlock, correctAnswerUserText, documentBlock, explainTextUserText, explainWordUserText,
-  generateQuestionsUserText, handwritingUserText, plainDocumentBlock, questionOnTextUserText, simplifyUserText, summarizeChunkUserText,
-  summarizeFinalUserText, type UserTextOptions,
+  correctWritingUserText, freeQuestionUserText, generateQuestionsUserText, handwritingUserText, plainDocumentBlock, questionOnTextUserText, simplifyUserText,
+  summarizeChunkUserText, summarizeFinalUserText, type UserTextOptions,
 } from './prompts/build.fr';
 import { systemPrompt } from './prompts/system.fr';
 import {
   MODEL_SCHEMA_BY_TRANSPORT_OPERATION, modelJsonSchema, type ModelAnswer, type ModelChunkSummary, type ModelCorrection, type ModelExplanation,
-  type ModelHandwriting, type ModelQuestions, type ModelSimplification, type ModelSummary,
+  type ModelFreeAnswer, type ModelHandwriting, type ModelQuestions, type ModelSimplification, type ModelSummary, type ModelWriting,
 } from './schemas';
 
 /** Output token budgets per operation (the transport may add thinking headroom on the complex tier). */
@@ -29,6 +29,8 @@ export const MAX_OUTPUT_TOKENS: Record<AITransportOperation, number> = {
   correct_answer: 800,
   question_on_text: 900,
   recognize_handwriting: 600,
+  free_question: 900,
+  correct_writing: 3000,
 };
 
 interface CallSpec {
@@ -183,5 +185,23 @@ export class RemoteProvider implements AIProvider {
       userText: handwritingUserText(this.userTextOptions(ctx)),
       images: [{ mediaType: 'image/png', base64: req.imagePngBase64 }],
     }, MODEL_SCHEMA_BY_TRANSPORT_OPERATION.recognize_handwriting, ctx);
+  }
+
+  /** No document: the (untrusted) question goes in the variable user text, inside its own tags. */
+  answerFreeQuestion(req: FreeQuestionRequest, ctx: ProviderCallContext): Promise<ProviderResponse<ModelFreeAnswer>> {
+    return this.call({
+      operation: 'free_question',
+      documentText: null,
+      userText: freeQuestionUserText(req, this.userTextOptions(ctx)),
+    }, MODEL_SCHEMA_BY_TRANSPORT_OPERATION.free_question, ctx);
+  }
+
+  /** No document: the child's lines go in the variable user text, inside their own tags. */
+  correctWriting(req: CorrectWritingRequest, ctx: ProviderCallContext): Promise<ProviderResponse<ModelWriting>> {
+    return this.call({
+      operation: 'correct_writing',
+      documentText: null,
+      userText: correctWritingUserText(req.text, this.userTextOptions(ctx)),
+    }, MODEL_SCHEMA_BY_TRANSPORT_OPERATION.correct_writing, ctx);
   }
 }

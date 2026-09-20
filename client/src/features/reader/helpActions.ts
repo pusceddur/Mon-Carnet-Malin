@@ -1,15 +1,14 @@
-// What happens behind 📖 Définition, 💡 Explique, ✨ Simplifie and ❓ question: local first, AI when needed.
+// What happens behind 📖 Définition, 💡 Explique, ✨ Simplifie and ❓ question: every answer comes from the AI (§25).
 // The child never sees which engine answered (§59).
 import {
   KID_MESSAGES,
   LIMITS,
   type AIPageInput,
   type AIResult,
-  type DictionaryResult,
   type Id,
   type SourceRef,
 } from '@aide/shared';
-import { kidMessageForUnavailable, lookupDefinition, lookupLocalExplanation, requestAI } from '../../ai/aiClient';
+import { kidMessageForUnavailable, requestAI } from '../../ai/aiClient';
 import { help } from '../../i18n/fr/help';
 
 export type HelpKind = 'definition' | 'explain' | 'simplify' | 'question';
@@ -35,18 +34,16 @@ export type MessageTone = 'info' | 'warning' | 'adult';
 export type HelpOutcome =
   | { kind: 'definition'; headword: string; definition: string; example: string | null; partOfSpeech: string | null; attribution: string | null; kidFriendly: boolean }
   | { kind: 'definition_not_found' }
-  | { kind: 'explanation'; text: string; example: string | null; quotes: string[]; sourceWarning: boolean; fromGlossary: boolean }
+  | { kind: 'explanation'; text: string; example: string | null; quotes: string[]; sourceWarning: boolean }
   | { kind: 'simplified'; text: string; sourceWarning: boolean }
   | { kind: 'answer'; text: string; refs: SourceRef[]; sourceWarning: boolean }
   | { kind: 'message'; text: string; tone: MessageTone; canRetry: boolean };
 
 export interface HelpDeps {
   requestAI: typeof requestAI;
-  lookupDefinition: typeof lookupDefinition;
-  lookupLocalExplanation: typeof lookupLocalExplanation;
 }
 
-const defaultDeps: HelpDeps = { requestAI, lookupDefinition, lookupLocalExplanation };
+const defaultDeps: HelpDeps = { requestAI };
 
 /** Maps a non-ok AI result to a kind message for the child. */
 export function messageFor(result: Exclude<AIResult<unknown>, { status: 'ok' }>): Extract<HelpOutcome, { kind: 'message' }> {
@@ -67,51 +64,35 @@ function clip(text: string, max: number): string {
   return text.length > max ? text.slice(0, max) : text;
 }
 
-export async function runDefinition(word: string, deps: HelpDeps = defaultDeps): Promise<HelpOutcome> {
-  const result: DictionaryResult = await deps.lookupDefinition(word);
-  switch (result.status) {
-    case 'found': {
-      const { entry } = result;
-      const attribution = entry.source === 'wiktionnaire' ? entry.attribution ?? help.wiktionnaireDefault : null;
-      return {
-        kind: 'definition', headword: entry.headword, definition: entry.definition, example: entry.example, partOfSpeech: entry.partOfSpeech,
-        attribution, kidFriendly: entry.kidFriendly,
-      };
-    }
-    case 'not_found':
-      return { kind: 'definition_not_found' };
-    case 'unavailable':
-      return { kind: 'message', text: KID_MESSAGES.offline, tone: 'warning', canRetry: true };
-  }
+/**
+ * 📖 Définition: the AI defines the word in its sentence (explain_word; the definitions written by the adult in the
+ * « Glossaire » come first, on the server). Decision 2026-09-19: no built-in glossary nor dictionary any more.
+ */
+export async function runDefinition(ctx: HelpTextContext, opts: { signal?: AbortSignal } = {}, deps: HelpDeps = defaultDeps): Promise<HelpOutcome> {
+  const result = await deps.requestAI('explain_word', {
+    childId: ctx.childId, documentId: ctx.documentId, documentHash: ctx.documentHash, pageIndex: ctx.pageIndex, ocrLowConfidence: ctx.ocrLowConfidence,
+    word: clip(ctx.text, LIMITS.wordMaxChars),
+    sentence: clip(ctx.sentence, LIMITS.selectionMaxChars),
+    paragraph: clip(ctx.paragraph, LIMITS.paragraphMaxChars),
+  }, { signal: opts.signal });
+  if (result.status !== 'ok') return messageFor(result);
+  return {
+    kind: 'definition', headword: ctx.text.trim(), definition: result.data.explanation, example: result.data.example, partOfSpeech: null,
+    attribution: null, kidFriendly: true,
+  };
 }
 
-/**
- * 💡 Explique: a single word is first looked up in the local glossary. « Je ne comprends pas encore » (`skipLocal`) asks
- * for an explanation of the word in its paragraph through explain_text: explain_word would be answered again from the
- * same glossary by the server (local resolution step of the router).
- */
-export async function runExplain(ctx: HelpTextContext, opts: { skipLocal?: boolean; signal?: AbortSignal } = {}, deps: HelpDeps = defaultDeps): Promise<HelpOutcome> {
-  if (ctx.isSingleWord && !opts.skipLocal) {
-    const local = await deps.lookupLocalExplanation(ctx.text);
-    if (local) return { kind: 'explanation', text: local.definition, example: local.example, quotes: [], sourceWarning: ctx.ocrLowConfidence, fromGlossary: true };
-  }
-  const base = { childId: ctx.childId, documentId: ctx.documentId, documentHash: ctx.documentHash, pageIndex: ctx.pageIndex, ocrLowConfidence: ctx.ocrLowConfidence };
-  const result = ctx.isSingleWord && !opts.skipLocal
-    ? await deps.requestAI('explain_word', {
-      ...base,
-      word: clip(ctx.text, LIMITS.wordMaxChars),
-      sentence: clip(ctx.sentence, LIMITS.selectionMaxChars),
-      paragraph: clip(ctx.paragraph, LIMITS.paragraphMaxChars),
-    }, { signal: opts.signal })
-    : await deps.requestAI('explain_text', {
-      ...base,
-      text: clip(ctx.text, LIMITS.selectionMaxChars),
-      paragraph: clip(ctx.paragraph, LIMITS.paragraphMaxChars),
-    }, { signal: opts.signal });
+/** 💡 Explique: the AI explains the selection (a single word: its meaning in the sentence and the paragraph). */
+export async function runExplain(ctx: HelpTextContext, opts: { signal?: AbortSignal } = {}, deps: HelpDeps = defaultDeps): Promise<HelpOutcome> {
+  const result = await deps.requestAI('explain_text', {
+    childId: ctx.childId, documentId: ctx.documentId, documentHash: ctx.documentHash, pageIndex: ctx.pageIndex, ocrLowConfidence: ctx.ocrLowConfidence,
+    text: clip(ctx.text, LIMITS.selectionMaxChars),
+    paragraph: clip(ctx.paragraph, LIMITS.paragraphMaxChars),
+  }, { signal: opts.signal });
   if (result.status !== 'ok') return messageFor(result);
   return {
     kind: 'explanation', text: result.data.explanation, example: result.data.example, quotes: result.data.sourceQuotes,
-    sourceWarning: result.meta.sourceWarning || ctx.ocrLowConfidence, fromGlossary: false,
+    sourceWarning: result.meta.sourceWarning || ctx.ocrLowConfidence,
   };
 }
 
@@ -142,7 +123,5 @@ export async function runQuestion(ctx: QuestionContext, question: string, opts: 
 
 /** Whether a finished outcome went through the AI layer (session statistics). */
 export function countsAsAiRequest(kind: HelpKind, outcome: HelpOutcome): boolean {
-  if (kind === 'definition') return false;
-  if (outcome.kind === 'explanation' && outcome.fromGlossary) return false;
   return !(outcome.kind === 'message' && (outcome.text === help.question.empty || outcome.text === help.question.noText));
 }

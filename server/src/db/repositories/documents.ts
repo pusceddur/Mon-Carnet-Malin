@@ -1,6 +1,7 @@
-import type { DocumentKind, DocumentMeta, DocumentStatus } from '@aide/shared';
+import type { DocumentKind, DocumentMeta, DocumentStatus, DocumentTextMode } from '@aide/shared';
 import type { SeqAllocator } from './syncCounters';
 import { type Db, type Row, parseJson, toNum, toNumOrNull, toStr, updateEach } from './common';
+import { skipQueuedDocumentJobs } from './workerJobs';
 
 export function documentFromRow(row: Row): DocumentMeta {
   const childIds = parseJson<unknown>(row.child_ids_json, []);
@@ -10,6 +11,9 @@ export function documentFromRow(row: Row): DocumentMeta {
     childIds: Array.isArray(childIds) ? childIds.filter((c): c is string => typeof c === 'string') : [],
     title: toStr(row.title),
     kind: toStr(row.kind) as DocumentKind,
+    textMode: toStr(row.text_mode) === 'punctuated' ? 'punctuated' : 'faithful',
+    purpose: toStr(row.purpose) === 'homework' ? 'homework' : 'reading',
+    homeworkDoneAt: toNumOrNull(row.homework_done_at),
     sourceHash: toStr(row.source_hash),
     pageCount: toNum(row.page_count),
     status: toStr(row.status) as DocumentStatus,
@@ -40,6 +44,9 @@ export async function saveDocument(db: Db, doc: DocumentMeta, serverSeq: number)
       parent_id: doc.ownerParentId,
       title: doc.title,
       kind: doc.kind,
+      text_mode: doc.textMode,
+      purpose: doc.purpose,
+      homework_done_at: doc.homeworkDoneAt,
       source_hash: doc.sourceHash,
       page_count: doc.pageCount,
       status: doc.status,
@@ -53,8 +60,25 @@ export async function saveDocument(db: Db, doc: DocumentMeta, serverSeq: number)
     .merge();
 }
 
-/** Soft-deletes the annotations and exercises of a document, each tombstone with its own server_seq. */
+/**
+ * §17.10: new text mode of a live document of this parent, with a new server_seq so that every device pulls it.
+ * Returns the saved document (unchanged when the mode is already the requested one), null when not found.
+ */
+export async function setDocumentTextMode(db: Db, parentId: string, id: string, textMode: DocumentTextMode, now: number, seq: SeqAllocator): Promise<DocumentMeta | null> {
+  const doc = await getDocument(db, parentId, id);
+  if (!doc) return null;
+  if (doc.textMode === textMode) return doc;
+  const next: DocumentMeta = { ...doc, textMode, updatedAt: Math.max(now, doc.updatedAt + 1) };
+  await saveDocument(db, next, seq.next());
+  return next;
+}
+
+/**
+ * Soft-deletes the annotations and exercises of a document, each tombstone with its own server_seq, and closes its page jobs
+ * still waiting for the worker.
+ */
 export async function cascadeDocumentDeletion(db: Db, parentId: string, documentId: string, now: number, seq: SeqAllocator): Promise<void> {
+  await skipQueuedDocumentJobs(db, parentId, documentId, now);
   for (const table of ['annotations', 'exercises'] as const) {
     const ids = (await db(table).select('id').where({ parent_id: parentId, document_id: documentId }).whereNull('deleted_at')) as Row[];
     if (ids.length === 0) continue;

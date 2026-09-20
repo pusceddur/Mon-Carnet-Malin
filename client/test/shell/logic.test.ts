@@ -24,7 +24,7 @@ import { homePathFor, readerPath, resolveGuard } from '../../src/state/guards';
 
 const signedIn: AuthStatus = {
   setupRequired: false, authenticated: true, parent: { id: 'p1', email: 'a@example.org', displayName: 'A', createdAt: 1, isOwner: true },
-  parentUnlockedUntil: null, pinSet: true, pinLockedUntil: null, registrationOpen: false,
+  parentUnlockedUntil: null, pinSet: true, pinLockedUntil: null, registrationOpen: false, pinRequired: true, passwordResetAvailable: false, aiReading: false,
 };
 
 function child(patch: Partial<ChildProfile> = {}): ChildProfile {
@@ -129,7 +129,7 @@ describe('auth forms', () => {
 
 describe('books', () => {
   const doc = (id: string, patch: Partial<DocumentMeta> = {}): DocumentMeta => ({
-    id, ownerParentId: 'p1', childIds: ['c1'], title: id, kind: 'pdf', sourceHash: 'x', pageCount: 3, status: 'ready',
+    id, ownerParentId: 'p1', childIds: ['c1'], title: id, kind: 'pdf', textMode: 'faithful', purpose: 'reading', homeworkDoneAt: null, sourceHash: 'x', pageCount: 3, status: 'ready',
     createdAt: 1, updatedAt: 1, deletedAt: null, ...patch,
   });
   const progress = (documentId: string, updatedAt: number, childId = 'c1'): ReadingProgress => ({
@@ -171,7 +171,7 @@ describe('activity stats', () => {
       { id: 'al3', createdAt: 7, childId: null, kind: 'budget_warning', detail: '', seenAt: null },
     ],
     ocrIssues: [],
-    budget: { monthToDateEur: 8.5, monthlyBudgetEur: 10 },
+    budget: { monthToDateEur: 8.5, monthlyBudgetEur: 10, workerEstimateEur: 0 },
   };
 
   it('aggregates reading time (capped), distinct pages, lookups and AI requests by status', () => {
@@ -183,7 +183,7 @@ describe('activity stats', () => {
     expect(all.ttsSeconds).toBe(125);
     expect(all.ai).toEqual({ total: 3, cacheHits: 1, byStatus: [{ status: 'ok', count: 2 }, { status: 'blocked', count: 1 }] });
     expect(all.unseenAlerts).toBe(2);
-    expect(all.budget).toEqual({ spentEur: 8.5, budgetEur: 10, percent: 85, level: 'warning' });
+    expect(all.budget).toEqual({ spentEur: 8.5, estimateEur: 0, totalEur: 8.5, budgetEur: 10, percent: 85, level: 'warning', estimateOver: false });
 
     const c2 = computeActivityStats(summary, 'c2');
     expect(c2.pagesRead).toBe(1);
@@ -192,9 +192,15 @@ describe('activity stats', () => {
   });
 
   it('reports the budget level and sorts alerts unseen first', () => {
-    expect(computeActivityStats({ ...summary, budget: { monthToDateEur: 12, monthlyBudgetEur: 10 } }).budget.level).toBe('reached');
-    expect(computeActivityStats({ ...summary, budget: { monthToDateEur: 1, monthlyBudgetEur: 10 } }).budget.level).toBe('ok');
-    expect(computeActivityStats({ ...summary, budget: { monthToDateEur: 0.5, monthlyBudgetEur: 0 } }).budget.level).toBe('reached');
+    const budget = (monthToDateEur: number, monthlyBudgetEur: number, workerEstimateEur = 0) =>
+      computeActivityStats({ ...summary, budget: { monthToDateEur, monthlyBudgetEur, workerEstimateEur } }).budget;
+    expect(budget(12, 10).level).toBe('reached');
+    expect(budget(1, 10).level).toBe('ok');
+    expect(budget(0.5, 0).level).toBe('reached');
+    // §21 the estimate of the home computer is shown in the budget but never pauses the help.
+    expect(budget(1, 10, 3)).toEqual({ spentEur: 1, estimateEur: 3, totalEur: 4, budgetEur: 10, percent: 40, level: 'ok', estimateOver: false });
+    expect(budget(1, 10, 12)).toMatchObject({ totalEur: 13, percent: 100, level: 'ok', estimateOver: true });
+    expect(budget(11, 10, 12)).toMatchObject({ level: 'reached', estimateOver: false });
     expect(sortAlerts(summary.alerts).map((a) => a.id)).toEqual(['al3', 'al2', 'al1']);
   });
 

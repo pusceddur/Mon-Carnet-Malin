@@ -19,21 +19,21 @@ vi.mock('@aide/shared', async (importOriginal) => {
 });
 
 vi.mock('../../src/ai/aiClient', () => ({
-  requestAI: vi.fn(async () => ({ status: 'unavailable', reason: 'offline', message: 'Pas de connexion pour le moment.', meta: null })),
-  lookupDefinition: vi.fn(async () => ({ status: 'not_found' })),
-  lookupLocalExplanation: vi.fn(async () => ({ headword: 'chat', definition: 'Un petit animal qui miaule.', example: null })),
+  requestAI: vi.fn(async (op: string) => (op === 'explain_text'
+    ? { status: 'ok', data: { explanation: 'Un petit animal qui miaule.', example: null, sourceQuotes: [] }, meta: { route: 'light', sourceWarning: false } }
+    : { status: 'unavailable', reason: 'offline', message: 'Pas de connexion pour le moment.', meta: null })),
   kidMessageForUnavailable: () => 'Indisponible',
   summarizeProgressively: vi.fn(),
 }));
 
 const doc: DocumentMeta = {
-  id: 'doc-1', ownerParentId: 'parent-1', childIds: ['child-1'], title: 'Mon livre', kind: 'pdf', sourceHash: 'b'.repeat(64), pageCount: 3,
+  id: 'doc-1', ownerParentId: 'parent-1', childIds: ['child-1'], title: 'Mon livre', kind: 'pdf', textMode: 'faithful', purpose: 'reading', homeworkDoneAt: null, sourceHash: 'b'.repeat(64), pageCount: 3,
   status: 'processing', createdAt: 1, updatedAt: 1, deletedAt: null,
 };
 
 const authStatus: AuthStatus = {
   setupRequired: false, authenticated: true, parent: null, parentUnlockedUntil: null, pinSet: true, pinLockedUntil: null,
-  registrationOpen: false,
+  registrationOpen: false, pinRequired: true, passwordResetAvailable: false, aiReading: false,
 };
 
 async function waitFor(check: () => boolean, timeoutMs = 3000): Promise<void> {
@@ -116,7 +116,7 @@ describe('ReaderPage', () => {
     await waitFor(() => text().includes('Page 3 / 3'));
   });
 
-  it('tap on a word → selection toolbar; 💡 Explique uses the local glossary first; 🖍️ Surligner saves a highlight', async () => {
+  it('tap on a word → selection toolbar; 💡 Explique asks the AI; 🖍️ Surligner saves a highlight', async () => {
     await mount('/lire/doc-1');
     await waitFor(() => document.querySelector('.rp-w') !== null);
     const chat = document.querySelector('.rp-block[data-block-index="1"] .rp-w[data-o="3"]');
@@ -126,7 +126,6 @@ describe('ReaderPage', () => {
 
     await click(buttonByName(`💡${reader.selection.explain}`) ?? buttonByName(reader.selection.explain) ?? Array.from(document.querySelectorAll('button')).find((b) => b.textContent?.includes(reader.selection.explain)));
     await waitFor(() => text().includes('Un petit animal qui miaule.'));
-    expect(text()).toContain(help.moreHelp);
     await click(document.querySelector('.ui-sheet__close'));
     await wait(250);
 

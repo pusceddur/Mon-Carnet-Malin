@@ -4,7 +4,7 @@ import type { Question, QuestionType, SourceRef, Verdict } from './exercises';
 
 export type AIOperation =
   | 'explain_word' | 'explain_text' | 'simplify_text' | 'summarize' | 'generate_questions' | 'correct_answer' | 'question_on_text'
-  | 'recognize_handwriting';
+  | 'recognize_handwriting' | 'free_question' | 'correct_writing';
 export type AIRoute = 'local' | 'light' | 'complex';
 export interface AIPageInput { pageIndex: number; text: string; contentHash: string; ocrLowConfidence: boolean }
 export interface AIRequestBase { childId: Id; documentId: Id | null; documentHash: string | null }
@@ -21,6 +21,26 @@ export interface GenerateQuestionsRequest extends AIRequestBase { count: 3 | 5 |
 export interface CorrectAnswerRequest extends AIRequestBase { question: Extract<Question, { type: 'reponse_libre' }>; answerText: string; pages: AIPageInput[] }
 export interface QuestionOnTextRequest extends AIRequestBase { question: string; pages: AIPageInput[] }
 export interface RecognizeHandwritingRequest extends AIRequestBase { imagePngBase64: string }
+// §18: question typed by the user, not tied to a book (documentId/documentHash null). `previous`: the last exchange, for
+// « Je n'ai pas compris » (mode simpler) and follow-up questions; `mode` simpler asks for an easier answer.
+export interface FreeQuestionRequest extends Omit<AIRequestBase, 'documentId' | 'documentHash'> {
+  documentId: null;
+  documentHash: null;
+  question: string;
+  previous: { question: string; answer: string } | null;
+  mode: 'normal' | 'simpler';
+}
+
+// §24 « Corriger » in a text box: spelling, grammar and punctuation of the child's own text, same lines, words and meaning.
+export interface CorrectWritingRequest extends AIRequestBase {
+  text: string;                     // ≤ TEXT_BOX_MAX_CHARS, ≤ LIMITS.writingMaxLines lines
+  annotationId: Id | null;          // the text box, for the history
+  pageIndex: number | null;
+}
+export type WritingChangeKind = 'accent' | 'orthographe' | 'grammaire' | 'ponctuation' | 'majuscule' | 'espace';
+/** One correction, found by comparing the two texts (not trusted from the model); `rule`: short explanation for the adult. */
+export interface WritingChange { line: number /* 0-based */; from: string; to: string; kind: WritingChangeKind; rule: string | null }
+export interface CorrectWritingData { correctedText: string; changes: WritingChange[] }
 
 export interface ExplanationData { explanation: string; example: string | null; sourceQuotes: string[] }
 export interface SimplifyData { simplifiedText: string }
@@ -30,6 +50,7 @@ export interface QuestionsData { questions: Question[] }
 export interface CorrectionData { verdict: Verdict; feedback: string; rereadRef: SourceRef | null }
 export interface QuestionOnTextData { answer: string; sourceRefs: SourceRef[] }
 export interface HandwritingData { text: string }
+export interface FreeQuestionData { answer: string; example: string | null; suggestions: string[] /* 0..3 short follow-up questions */ }
 
 // Learner profile sent to providers: never the child's name or id.
 export interface AILearner { age: number; readingLevel: ReadingLevel; explanationDifficulty: ExplanationDifficulty }
@@ -62,6 +83,8 @@ export interface AIRequestByOperation {
   correct_answer: CorrectAnswerRequest;
   question_on_text: QuestionOnTextRequest;
   recognize_handwriting: RecognizeHandwritingRequest;
+  free_question: FreeQuestionRequest;
+  correct_writing: CorrectWritingRequest;
 }
 export interface AIDataByOperation {
   explain_word: ExplanationData;
@@ -72,6 +95,8 @@ export interface AIDataByOperation {
   correct_answer: CorrectionData;
   question_on_text: QuestionOnTextData;
   recognize_handwriting: HandwritingData;
+  free_question: FreeQuestionData;
+  correct_writing: CorrectWritingData;
 }
 export type RequestFor<Op extends AIOperation> = AIRequestByOperation[Op];
 export type DataFor<Op extends AIOperation> = AIDataByOperation[Op];

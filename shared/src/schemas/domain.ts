@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PREFERENCE_RANGES as R, LIMITS } from '../constants';
+import { SPOKEN_BLOCK_MAX_CHARS } from '../text/spoken';
 import { IdSchema, MillisSchema, PageIndexSchema, QuestionTypeSchema, Sha256HexSchema } from './common';
 
 export const ParentUserSchema = z.object({
@@ -16,6 +17,14 @@ export const ReadingFontSchema = z.enum(['lexend', 'andika', 'atkinson', 'opendy
 export const ReadingThemeSchema = z.enum(['creme', 'clair', 'sombre']);
 export const LayoutModeSchema = z.enum(['page', 'continu']);
 
+export const ReadingAidsSchema = z.object({
+  syllables: z.boolean(),
+  silentLetters: z.boolean(),
+  sounds: z.boolean(),
+  changedLetters: z.boolean(),
+  liaisons: z.boolean(),
+});
+
 export const ReadingPreferencesSchema = z.object({
   font: ReadingFontSchema,
   fontSizePx: z.number().min(R.fontSizePx.min).max(R.fontSizePx.max),
@@ -27,15 +36,27 @@ export const ReadingPreferencesSchema = z.object({
   layoutMode: LayoutModeSchema,
   sentenceHighlight: z.boolean(),
   readingGuide: z.boolean(),
+  // §26: profiles saved before the reading aids existed have none.
+  aids: ReadingAidsSchema.default({ syllables: false, silentLetters: false, sounds: false, changedLetters: false, liaisons: false }),
 });
+
+const SentencePauseSchema = z.number().int().min(R.ttsSentencePauseMs.min).max(R.ttsSentencePauseMs.max);
+const ParagraphPauseSchema = z.number().int().min(R.ttsParagraphPauseMs.min).max(R.ttsParagraphPauseMs.max);
 
 export const TTSPreferencesSchema = z.object({
   rate: z.number().min(R.ttsRate.min).max(R.ttsRate.max),
   pitch: z.number().min(R.ttsPitch.min).max(R.ttsPitch.max),
   // Defaults: profiles saved before the pause settings existed stay valid.
-  sentencePauseMs: z.number().int().min(R.ttsSentencePauseMs.min).max(R.ttsSentencePauseMs.max).default(250),
-  paragraphPauseMs: z.number().int().min(R.ttsParagraphPauseMs.min).max(R.ttsParagraphPauseMs.max).default(700),
+  sentencePauseMs: SentencePauseSchema.default(250),
+  paragraphPauseMs: ParagraphPauseSchema.default(700),
 });
+
+/**
+ * Partial preferences (PATCH /api/children/:id/preferences): without the defaults of the full profile, which `.partial()`
+ * would apply to every missing field (a new font size must not switch the couleurs de lecture off).
+ */
+export const ReadingPreferencesPatchSchema = ReadingPreferencesSchema.extend({ aids: ReadingAidsSchema }).partial();
+export const TTSPreferencesPatchSchema = TTSPreferencesSchema.extend({ sentencePauseMs: SentencePauseSchema, paragraphPauseMs: ParagraphPauseSchema }).partial();
 
 export const QuestionCountSchema = z.union([z.literal(3), z.literal(5), z.literal(10)]);
 
@@ -61,6 +82,8 @@ export const ChildProfileSchema = z.object({
 });
 
 export const DocumentKindSchema = z.enum(['pdf', 'images', 'epub']);
+export const DocumentTextModeSchema = z.enum(['faithful', 'punctuated']);
+export const DocumentPurposeSchema = z.enum(['reading', 'homework']);
 export const DocumentStatusSchema = z.enum(['processing', 'ready', 'partial']);
 export const PageStatusSchema = z.enum(['pending', 'processing', 'ready', 'low_confidence', 'failed']);
 export const PageTextSourceSchema = z.enum(['pdf-text', 'ocr-local', 'ocr-server', 'manual', 'epub-text', 'ocr-ai']);
@@ -72,6 +95,11 @@ export const DocumentMetaSchema = z.object({
   childIds: z.array(IdSchema).max(20),
   title: z.string().max(LIMITS.titleMaxChars),
   kind: DocumentKindSchema,
+  // Absent in documents created before §17.10 (local copies, older clients).
+  textMode: DocumentTextModeSchema.default('faithful'),
+  // Absent in documents created before §19.3.
+  purpose: DocumentPurposeSchema.default('reading'),
+  homeworkDoneAt: MillisSchema.nullable().default(null),
   sourceHash: Sha256HexSchema,
   pageCount: z.number().int().nonnegative().max(10000),
   status: DocumentStatusSchema,
@@ -83,6 +111,7 @@ export const DocumentMetaSchema = z.object({
 export const TextBlockSchema = z.object({
   kind: z.enum(['title', 'paragraph']),
   text: z.string().max(LIMITS.pagesMaxTotalChars),
+  spoken: z.string().max(SPOKEN_BLOCK_MAX_CHARS).optional(),
 });
 
 export const PageContentSchema = z.object({

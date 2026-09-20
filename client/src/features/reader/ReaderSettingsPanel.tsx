@@ -1,16 +1,19 @@
 import { DEFAULT_TTS_PREFERENCES, PREFERENCE_RANGES, type LayoutMode, type ReadingFont, type ReadingPreferences, type ReadingTheme, type TTSPreferences } from '@aide/shared';
 import { useEffect, useId, useState, type JSX } from 'react';
 import { BottomSheet, Button, Segmented, Select, Slider, Toggle } from '../../design/components';
-import { READING_FONTS, READING_THEMES, readingFontClass, readingStyleVars } from '../../design/reading';
+import { READING_FONTS, READING_THEMES, readingFontClass } from '../../design/reading';
 import { format } from '../../i18n/fr';
+import { aids as aidStrings } from '../../i18n/fr/aids';
 import { common } from '../../i18n/fr/common';
 import { reader } from '../../i18n/fr/reader';
 import { tts as ttsStrings } from '../../i18n/fr/tts';
 import { speechEngine } from '../../tts/SpeechEngine';
-import { bestFrenchVoiceQuality, normalizeLang, pickFrenchVoice, voiceQuality } from '../../tts/voices';
+import { bestFrenchVoiceQuality, isFranceFrench, normalizeLang, pickFrenchVoice, voiceQuality } from '../../tts/voices';
 import { isNativeApp } from '../../platform/nativeApp';
-import { isIPad } from '../../platform/support';
+import { isAndroid, isIPad } from '../../platform/support';
+import { READING_AID_KEYS, readingAidsOf } from './aids';
 import type { PreferencesPatch } from './preferences';
+import { ReadingPreview } from './ReadingPreview';
 
 export interface ReaderSettingsPanelProps {
   open: boolean;
@@ -60,14 +63,15 @@ export function ReaderSettingsPanel({ open, onClose, reading, tts, onChange, onR
   const setReading = (patch: Partial<ReadingPreferences>): void => onChange({ reading: patch });
   const automaticVoice = pickFrenchVoice(voices, null);
   const bestQuality = bestFrenchVoiceQuality(voices);
-  const showBetterVoiceTip = voices.length === 0 || bestQuality === 'standard' || bestQuality === 'robotic';
+  // The automatic voice has another accent only when the device has no voice of France (2026-09-19).
+  const otherAccent = voiceURI === null && automaticVoice !== null && !isFranceFrench(automaticVoice);
+  const regions: Readonly<Record<string, string>> = ttsStrings.voices.regions;
+  const showBetterVoiceTip = voices.length === 0 || otherAccent || bestQuality === 'standard' || bestQuality === 'robotic';
 
   return (
     <BottomSheet open={open} onClose={onClose} title={s.title} height="tall">
       <div className="rd-settings">
-        <p className={`rd-settings__preview reading ${readingFontClass(reading.font)}`} style={readingStyleVars(reading)} aria-hidden="true">
-          {s.preview}
-        </p>
+        <ReadingPreview text={s.preview} reading={reading} className="rd-settings__preview" />
 
         <section className="rd-settings__section" aria-labelledby={`${fontGroupId}-title`}>
           <h3 id={`${fontGroupId}-title`} className="rd-settings__title">{s.sectionText}</h3>
@@ -126,6 +130,20 @@ export function ReaderSettingsPanel({ open, onClose, reading, tts, onChange, onR
         </section>
 
         <section className="rd-settings__section">
+          <h3 className="rd-settings__title">{aidStrings.title}</h3>
+          <p className="rd-settings__hint">{aidStrings.hint}</p>
+          {READING_AID_KEYS.map((key) => (
+            <Toggle
+              key={key}
+              label={aidStrings[key]}
+              description={aidStrings[`${key}Hint`]}
+              checked={readingAidsOf(reading)[key]}
+              onChange={(on) => setReading({ aids: { ...readingAidsOf(reading), [key]: on } })}
+            />
+          ))}
+        </section>
+
+        <section className="rd-settings__section">
           <h3 className="rd-settings__title">{s.sectionVoice}</h3>
           <Slider label={s.rate} value={tts.rate} min={r.ttsRate.min} max={r.ttsRate.max} step={0.05}
             formatValue={(v) => format(s.values.times, { value: n(v) })} onChange={(rate) => onChange({ tts: { rate } })} />
@@ -147,6 +165,11 @@ export function ReaderSettingsPanel({ open, onClose, reading, tts, onChange, onR
             )}
             <Button variant="secondary" onClick={() => speechEngine.speakOnce(ttsStrings.voices.sample)}>{s.voiceTest}</Button>
           </div>
+          {otherAccent && automaticVoice && (
+            <p className="rd-settings__hint" role="note">
+              {format(ttsStrings.voices.otherAccent, { region: regions[normalizeLang(automaticVoice.lang)] ?? ttsStrings.voices.regions.other })}
+            </p>
+          )}
           <Slider label={ttsStrings.pauses.sentence} value={tts.sentencePauseMs ?? DEFAULT_TTS_PREFERENCES.sentencePauseMs}
             min={r.ttsSentencePauseMs.min} max={r.ttsSentencePauseMs.max} step={50}
             formatValue={(v) => format(ttsStrings.pauses.value, { value: n(v / 1000) })} onChange={(sentencePauseMs) => onChange({ tts: { sentencePauseMs } })} />
@@ -172,7 +195,17 @@ export function ReaderSettingsPanel({ open, onClose, reading, tts, onChange, onR
                       <p>{ttsStrings.voices.betterVoiceSafariApp}</p>
                     </>
                   )
-                  : <p>{ttsStrings.voices.betterVoiceDesktop}</p>}
+                  : isAndroid()
+                    ? (
+                      <>
+                        <p>{ttsStrings.voices.betterVoiceAndroidIntro}</p>
+                        <ol>
+                          {ttsStrings.voices.betterVoiceAndroidSteps.map((step) => <li key={step}>{step}</li>)}
+                        </ol>
+                        <p>{ttsStrings.voices.betterVoiceAndroidNote}</p>
+                      </>
+                    )
+                    : <p>{ttsStrings.voices.betterVoiceDesktop}</p>}
             </div>
           )}
         </section>

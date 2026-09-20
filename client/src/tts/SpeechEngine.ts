@@ -5,10 +5,15 @@
 import { DEFAULT_TTS_PREFERENCES, PREFERENCE_RANGES, TIMINGS } from '@aide/shared';
 import { requestWakeLock } from '../platform/support';
 import { createNativeSpeechEnv, getNativeSpeechPlugin } from './nativeSpeech';
-import { prepareSpokenText } from './speechText';
+import { prepareSpokenText, preparedSpokenText } from './speechText';
 import { loadVoices, normalizeLang, pickFrenchVoice, sortFrenchVoices, type VoiceSource } from './voices';
 
-export interface SpeechItem { id: string /* `${pageIndex}:${blockIndex}:${sentenceIndex}` */; text: string }
+export interface SpeechItem {
+  id: string /* `${pageIndex}:${blockIndex}:${sentenceIndex}` */;
+  text: string;
+  /** §22 the same words punctuated for the voice (« Préparer la lecture »): read instead of `text` when they still match. */
+  spoken?: string;
+}
 export interface SpeechState { status: 'idle' | 'playing' | 'paused'; index: number; itemId: string | null; rate: number; wordRange: { start: number; end: number } | null; supported: boolean }
 
 /** Out-of-band notifications: end of the queue, or a failure the UI should show (toast). */
@@ -387,7 +392,7 @@ export class SpeechEngine {
       this.finish();
       return;
     }
-    const spoken = prepareSpokenText(item.text);
+    const spoken = (item.spoken ? preparedSpokenText(item.text, item.spoken) : null) ?? prepareSpokenText(item.text);
     if (spoken.text === '') {
       // Nothing to say (OCR noise only): go on without a pause.
       if (this.index + 1 < this.queue.length) {

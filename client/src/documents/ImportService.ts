@@ -1,5 +1,5 @@
 // Import of PDF / image / EPUB files: hashes, DocumentMeta, pages, persisted jobs, local originals, queue start.
-import { newId, sha256Hex, type DocumentKind, type DocumentMeta, type Id, type PageContent } from '@aide/shared';
+import { newId, sha256Hex, type DocumentKind, type DocumentMeta, type DocumentPurpose, type DocumentTextMode, type Id, type PageContent } from '@aide/shared';
 import { db, type DocumentFileRecord } from '../db/localDb';
 import { documents as t } from '../i18n/fr/documents';
 import { canDecodeImage } from '../ocr/preprocess/canvas';
@@ -106,11 +106,20 @@ export function mixedEpubName(files: readonly { type: string; name: string }[]):
   return files.find((f) => detectFileKind(f) === 'epub')?.name ?? null;
 }
 
+export interface ImportOptions {
+  title: string;
+  childIds: Id[];
+  /** §17.10 « Texte écrit par un enfant » ('punctuated'); an EPUB is always faithful. Default 'faithful'. */
+  textMode?: DocumentTextMode;
+  /** §19.3 'homework': a sheet to complete in the app (not for an EPUB). Default 'reading'. */
+  purpose?: DocumentPurpose;
+}
+
 /**
  * PDF / images: DocumentMeta + 'pending' pages + jobs, originals kept locally, queue started.
  * EPUB: every page is saved 'ready' at once, without any job. Returns the document id.
  */
-export async function importFiles(files: File[], opts: { title: string; childIds: Id[] }): Promise<Id> {
+export async function importFiles(files: File[], opts: ImportOptions): Promise<Id> {
   if (files.length === 0) throw new ImportError('no_files');
   const mixedEpub = mixedEpubName(files);
   if (mixedEpub !== null) throw new ImportError('epub_must_be_alone', mixedEpub);
@@ -159,6 +168,9 @@ export async function importFiles(files: File[], opts: { title: string; childIds
       childIds: [...new Set(opts.childIds)],
       title: title.slice(0, 200),
       kind,
+      textMode: opts.textMode ?? 'faithful',
+      purpose: opts.purpose ?? 'reading',
+      homeworkDoneAt: null,
       sourceHash,
       pageCount,
       status: 'processing',
@@ -184,7 +196,7 @@ export async function importFiles(files: File[], opts: { title: string; childIds
   return documentId;
 }
 
-async function importEpub(file: File, opts: { title: string; childIds: Id[] }): Promise<Id> {
+async function importEpub(file: File, opts: ImportOptions): Promise<Id> {
   const book = await readEpubFile(file);
   const pageCount = book.pages.length;
   if (pageCount > MAX_IMPORT_PAGES) throw new ImportError('too_many_pages');
@@ -220,6 +232,9 @@ async function importEpub(file: File, opts: { title: string; childIds: Id[] }): 
       childIds: [...new Set(opts.childIds)],
       title: title.slice(0, 200),
       kind: 'epub',
+      textMode: 'faithful',
+      purpose: 'reading',
+      homeworkDoneAt: null,
       sourceHash,
       pageCount,
       status: 'ready',
@@ -233,6 +248,7 @@ async function importEpub(file: File, opts: { title: string; childIds: Id[] }): 
     await db.documentFiles.where('documentId').equals(documentId).delete().catch(() => undefined);
     throw new ImportError('storage_failed');
   }
-  // The original is not uploaded: the server only stores PDF and image originals.
+  // §20: like PDF and photos, the book is kept on the server when the parent allows it (another iPad can open it).
+  if ((await getParentSettings()).privacy.uploadOriginals) await enqueueUpload('original', documentId, 0).catch(() => undefined);
   return documentId;
 }

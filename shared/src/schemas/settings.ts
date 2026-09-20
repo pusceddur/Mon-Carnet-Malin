@@ -14,6 +14,10 @@ export const ParentSettingsSchema = z.object({
       questions: z.boolean(),
       correctAnswers: z.boolean(),
       questionOnText: z.boolean(),
+      // Stored settings written before §18 have no value.
+      freeQuestion: z.boolean().default(true),
+      // Stored settings written before §24 have no value.
+      correctWriting: z.boolean().default(true),
     }),
     dailyRequestLimitPerChild: z.number().int().min(0).max(1000),
     monthlyBudgetEur: z.number().min(0).max(1000),

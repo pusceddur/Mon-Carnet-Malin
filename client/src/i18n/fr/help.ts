@@ -22,7 +22,6 @@ export const help = {
   definitionHard: 'Cette définition est peut-être difficile. Tu peux demander une explication.',
   notFound: 'Je ne connais pas encore ce mot.',
   askExplain: '💡 Demander une explication',
-  moreHelp: '💡 Je ne comprends pas encore',
   retry: 'Réessayer',
   seeInText: '📍 Voir dans le texte · page {page}',
   partOfSpeech: {

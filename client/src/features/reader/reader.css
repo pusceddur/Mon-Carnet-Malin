@@ -380,6 +380,20 @@
   margin-bottom: var(--space-3);
 }
 
+.rd-original__sep {
+  width: 1px;
+  height: 28px;
+  margin: 0 var(--space-1);
+  background: var(--line-strong);
+}
+
+.rd-original__hint {
+  margin: 0 0 var(--space-2);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
 .rd-original__zoom {
   min-width: var(--tap);
   min-height: var(--tap);

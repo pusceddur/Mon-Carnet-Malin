@@ -31,7 +31,7 @@ describe('client foundations', () => {
 
   it('i18n aggregates all areas and formats placeholders', () => {
     expect(Object.keys(fr).sort()).toEqual(
-      ['common', 'documents', 'errors', 'exercises', 'help', 'home', 'library', 'notes', 'parent', 'pencil', 'reader', 'tts'],
+      ['common', 'documents', 'errors', 'exercises', 'help', 'home', 'homework', 'library', 'notes', 'parent', 'pencil', 'question', 'reader', 'tts'],
     );
     expect(format('Bonjour {prenom} !', { prenom: 'Léo' })).toBe('Bonjour Léo !');
     expect(format('Page {n} / {total}', { n: 3 })).toBe('Page 3 / {total}');
@@ -60,7 +60,7 @@ describe('client foundations', () => {
     const paths = routes.map((r) => r.path);
     expect(paths).toEqual(expect.arrayContaining([
       '/', '/installation', '/connexion', '/inscription', '/enfant', '/accueil', '/livres', '/lire/:documentId', '/exercices',
-      '/exercices/:documentId/resume', '/exercices/:documentId/questions', '/exercices/quiz/:exerciseId', '/notes', '/parent',
+      '/exercices/:documentId/resume', '/exercices/:documentId/questions', '/exercices/quiz/:exerciseId', '/notes', '/question', '/parent',
     ]));
     const parentChildren = routes.find((r) => r.path === '/parent')?.children?.map((c) => c.path).filter(Boolean);
     expect(parentChildren).toEqual([

@@ -55,7 +55,7 @@ export async function resetDb(): Promise<void> {
 export function setSession(child: ChildProfile, settings: ParentSettings = DEFAULT_PARENT_SETTINGS): void {
   const authStatus: AuthStatus = {
     setupRequired: false, authenticated: true, parent: null, parentUnlockedUntil: null, pinSet: true, pinLockedUntil: null,
-    registrationOpen: false,
+    registrationOpen: false, pinRequired: true, passwordResetAvailable: false, aiReading: false,
   };
   useSessionStore.setState({ authStatus, selectedChildId: child.id, children: [child], parentSettings: settings });
 }

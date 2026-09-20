@@ -336,6 +336,27 @@
   margin: 0;
 }
 
+.protections-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  font-size: var(--text-sm);
+}
+
+.protections-note__title {
+  margin: 0;
+  font-weight: var(--weight-bold);
+}
+
+.protections-note__list {
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--ink-soft);
+}
+
 .check-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -391,6 +412,142 @@
   background: var(--warn-soft);
 }
 
+/* « Questions posées » (§18.3). */
+.question-log {
+  align-items: flex-start;
+}
+
+.question-log__answer summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-parent);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+
+.question-log__answer p {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+/* « Écriture corrigée » (§24). */
+.writing-log {
+  align-items: flex-start;
+}
+
+.writing-log__label {
+  margin: 0;
+  font-weight: var(--weight-bold);
+}
+
+.writing-log__changes,
+.writing-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.writing-summary {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.writing-log__change {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+  overflow-wrap: anywhere;
+}
+
+.writing-log__from {
+  color: var(--danger-ink);
+}
+
+.writing-log__to {
+  color: var(--ok-ink);
+  font-weight: var(--weight-bold);
+  text-decoration: none;
+}
+
+.writing-log__rule {
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+
+.writing-kind {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+}
+
+.writing-kind--orthographe,
+.writing-kind--grammaire {
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+}
+
+.writing-kind--accent,
+.writing-kind--espace {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.writing-log__texts summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap-parent);
+  color: var(--accent-ink);
+  cursor: pointer;
+}
+
+.writing-log__text {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.outcome-badge {
+  flex: none;
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+}
+
+.outcome-badge--answered {
+  background: var(--ok-soft);
+  color: var(--ok-ink);
+}
+
+.outcome-badge--blocked {
+  background: var(--danger-soft);
+  color: var(--danger-ink);
+}
+
+.outcome-badge--adult_redirect {
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+}
+
 .tag {
   display: inline-block;
   padding: 0 var(--space-2);
@@ -444,6 +601,20 @@
   gap: var(--space-2);
 }
 
+/* §21 use of the subscription and estimate of the month. */
+.worker-usage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+}
+
+.worker-usage__estimate {
+  margin: 0;
+  font-weight: var(--weight-bold);
+}
+
 .steps {
   display: flex;
   flex-direction: column;
@@ -488,3 +659,62 @@
 .diagnostic-step__detail { color: var(--ink-soft, #5b5750); font-size: 0.9rem; overflow-wrap: anywhere; }
 .diagnostic-step--error { border-color: var(--danger, #b83a2e); }
 .diagnostic-step--warning { border-color: var(--warn, #b8640a); }
+
+/* ---------- §27 profils de lecture, réglages avancés ---------- */
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+.profile-choice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  align-items: start;
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.profile-choice[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.profile-choice__emoji {
+  grid-row: span 2;
+  font-size: 32px;
+  line-height: 1;
+}
+
+.profile-choice__name {
+  font-weight: 700;
+}
+
+.profile-choice__description {
+  color: var(--ink-soft);
+  font-size: 0.9375rem;
+}
+
+.advanced-settings {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-block: var(--space-4);
+}
+
+.advanced-settings__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-self: stretch;
+}

@@ -76,6 +76,8 @@ export const documents = {
     deleteFailed: 'La suppression n’a pas abouti. Réessayez.',
     progress: 'Préparation',
     progressValue: '{done} / {total} pages',
+    homeworkTodo: 'Devoir à faire',
+    homeworkDone: 'Devoir terminé le {date}',
   },
 
   importPage: {
@@ -108,6 +110,8 @@ export const documents = {
     moveDown: 'Descendre « {name} »',
     remove: 'Retirer « {name} »',
     photoName: 'Photo {number}',
+    homeworkLabel: 'C’est un devoir à compléter',
+    homeworkHint: 'L’enfant le retrouve dans « Mes devoirs » : il peut écrire sur la page avec le clavier ou l’Apple Pencil, puis l’envoyer ou l’imprimer.',
     submit: 'Importer',
     success: 'Document importé. La lecture des pages commence.',
     successEpub: 'Livre importé. Toutes les pages sont prêtes.',
@@ -131,6 +135,23 @@ export const documents = {
     },
   },
 
+  /** §17.10 « Texte écrit par un enfant » (import and document detail). */
+  textMode: {
+    label: 'Type de document',
+    faithful: 'Livre ou document imprimé',
+    punctuated: 'Texte écrit par un enfant',
+    current: 'Type de document : {mode}',
+    faithfulHint: 'Le texte est gardé tel qu’il est imprimé.',
+    punctuatedHint: 'Rédaction, dictée, cahier… La lecture intelligente garde tous les mots de l’enfant, fautes comprises, et remet seulement la ponctuation et les majuscules, pour une lecture à voix haute naturelle.',
+    punctuatedWaits: 'Les pages attendent la lecture intelligente avant d’afficher leur texte.',
+    needsAi: 'La lecture intelligente n’est pas disponible (désactivée dans Options ou pas d’ordinateur de la maison) : la ponctuation ne sera pas adaptée et les pages seront lues sur l’iPad.',
+    manualKept: 'Les pages corrigées à la main gardent leur texte.',
+    switchToPunctuated: 'C’est un texte écrit par un enfant',
+    switchToFaithful: 'C’est un livre ou un document imprimé',
+    saved: 'Type de document enregistré.',
+    offline: 'Changer le type de document demande une connexion.',
+  },
+
   detail: {
     back: 'Retour aux documents',
     notFound: 'Ce document n’existe pas ou a été supprimé.',
@@ -149,6 +170,20 @@ export const documents = {
     relaunchAiNone: 'Aucune page à envoyer : elles sont déjà en attente, déjà lues, ou leurs images ne sont pas encore sur le serveur.',
     relaunchAiUnavailable: 'La lecture intelligente n’est pas disponible sur votre serveur.',
     relaunchAiOffline: 'La lecture intelligente demande une connexion.',
+    // §22 « Préparer la lecture » of the whole document.
+    prepare: 'Préparer la lecture à voix haute',
+    prepareAgain: 'Préparer à nouveau',
+    prepareHint: 'L’ordinateur de la maison ajoute les pauses pour la voix (après « 1 : », à la fin des consignes…). Le texte affiché ne change pas.',
+    prepareCount: 'Pages préparées pour la voix : {prepared} sur {total}.',
+    prepareOne: '1 page envoyée à l’ordinateur de la maison.',
+    prepareMany: '{count} pages envoyées à l’ordinateur de la maison.',
+    prepareNone: 'Aucune page à préparer : elles sont déjà prêtes ou en attente.',
+    prepareUnavailable: {
+      not_configured: 'L’ordinateur de la maison n’est pas configuré sur votre serveur.',
+      ai_disabled: 'L’aide intelligente est désactivée dans Options.',
+      text_not_synced: 'Activez la synchronisation du texte des documents dans Options : l’ordinateur de la maison en a besoin.',
+    },
+    prepareOffline: 'La préparation demande une connexion.',
   },
 
   editor: {
@@ -182,8 +217,10 @@ export const documents = {
     cornerHint: 'Flèches du clavier pour déplacer le coin.',
     retakePhoto: 'Reprendre la photo',
     rerun: 'Relancer la lecture',
-    serverRun: 'Lecture serveur',
-    serverOffline: 'La lecture serveur demande une connexion.',
+    rerunAi: 'Relancer la lecture intelligente',
+    readOnDevice: 'Lire sur cet appareil',
+    aiOffline: 'Pas de connexion : la page sera envoyée à l’ordinateur de la maison dès le retour du réseau.',
+    rerunSentToAi: 'La page est envoyée à l’ordinateur de la maison : le nouveau texte arrive dans quelques secondes.',
     manualWillBeReplaced: 'Le texte corrigé à la main sera remplacé par la nouvelle lecture.',
     rerunDone: 'Nouvelle lecture terminée.',
     rerunAwaitingAi: 'Cet appareil n’a pas pu lire la page : elle attend la lecture intelligente.',
@@ -205,9 +242,6 @@ export const documents = {
     saveFailed: 'L’enregistrement n’a pas abouti.',
     notFound: 'Cette page n’existe pas.',
     errors: {
-      offline: 'Pas de connexion : la lecture serveur n’est pas possible.',
-      server_busy: 'Le serveur est occupé. Réessayez dans quelques minutes.',
-      server_unavailable: 'La lecture serveur n’est pas disponible.',
       source_missing: 'L’image de cette page n’est pas disponible sur cet appareil.',
       image_decode_failed: 'Cette photo ne peut pas être ouverte.',
       unsupported_file: 'Choisissez une image (photo).',

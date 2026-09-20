@@ -23,7 +23,7 @@ export function buildWorkerJobsSchema(schema: Knex.SchemaBuilder, dialect: Schem
       options(t);
       t.string('id', 36).primary();
       t.string('parent_id', 36).notNullable().references('id').inTable('users').onDelete('CASCADE');
-      t.string('kind', 16).notNullable(); // ai | page_text (page_audio reserved)
+      t.string('kind', 16).notNullable(); // ai | page_text | page_speech (§22) (page_audio reserved)
       t.string('tier', 16).notNullable(); // light | complex
       t.string('operation', 40).notNullable();
       t.string('document_id', 36).nullable();

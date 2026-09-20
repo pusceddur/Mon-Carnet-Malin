@@ -112,6 +112,14 @@
   --speaking: #FFF0B3;
   --selection: #FFE38A;
   --focus: #1D4ED8;
+  /* §26 couleurs de lecture */
+  --aid-syl-a: #1D4ED8;         /* syllables: blue / red, both AA on paper */
+  --aid-syl-b: #B91C1C;
+  --aid-mute: #A8A29A;          /* silent letters: light grey on purpose */
+  --aid-sound: rgba(22, 163, 74, 0.2);
+  --aid-sound-2: rgba(22, 163, 74, 0.34);
+  --aid-changed: #7C3AED;
+  --aid-liaison: #DB2777;
 
   --overlay: rgba(43, 36, 24, 0.42);
   --shadow-1: 0 1px 2px rgba(74, 58, 30, 0.08), 0 2px 8px rgba(74, 58, 30, 0.06);
@@ -159,6 +167,14 @@
   --speaking: #FFF0B3;
   --selection: #FFE38A;
   --focus: #1D4ED8;
+  /* §26 couleurs de lecture */
+  --aid-syl-a: #1D4ED8;         /* syllables: blue / red, both AA on paper */
+  --aid-syl-b: #B91C1C;
+  --aid-mute: #A8A29A;          /* silent letters: light grey on purpose */
+  --aid-sound: rgba(22, 163, 74, 0.2);
+  --aid-sound-2: rgba(22, 163, 74, 0.34);
+  --aid-changed: #7C3AED;
+  --aid-liaison: #DB2777;
 
   --overlay: rgba(30, 30, 28, 0.4);
   --shadow-1: 0 1px 2px rgba(20, 20, 18, 0.08), 0 2px 8px rgba(20, 20, 18, 0.06);
@@ -206,6 +222,14 @@
   --speaking: #4D4322;
   --selection: #5A4A1C;
   --focus: #8CB2F5;
+  /* §26 couleurs de lecture */
+  --aid-syl-a: #93C5FD;
+  --aid-syl-b: #FCA5A5;
+  --aid-mute: #6E6A63;
+  --aid-sound: rgba(74, 222, 128, 0.2);
+  --aid-sound-2: rgba(74, 222, 128, 0.34);
+  --aid-changed: #C4B5FD;
+  --aid-liaison: #F9A8D4;
 
   --overlay: rgba(0, 0, 0, 0.56);
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.24);
@@ -253,6 +277,14 @@
     --speaking: #4D4322;
     --selection: #5A4A1C;
     --focus: #8CB2F5;
+    /* §26 couleurs de lecture */
+    --aid-syl-a: #93C5FD;
+    --aid-syl-b: #FCA5A5;
+    --aid-mute: #6E6A63;
+    --aid-sound: rgba(74, 222, 128, 0.2);
+    --aid-sound-2: rgba(74, 222, 128, 0.34);
+    --aid-changed: #C4B5FD;
+    --aid-liaison: #F9A8D4;
 
     --overlay: rgba(0, 0, 0, 0.56);
     --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.24);

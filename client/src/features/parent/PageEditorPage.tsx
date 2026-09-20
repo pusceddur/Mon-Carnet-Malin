@@ -3,8 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useEffect, useRef, useState, type ChangeEvent, type JSX } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { Button, EmptyState, Field, IconButton, Segmented, Select, Spinner, TextArea, useToast } from '../../design/components';
+import { relaunchTranscription } from '../../api/worker';
+import { watchAiReading } from '../../documents/aiReadingWatch';
 import { getDocument, getJob, getPage } from '../../documents/DocumentCache';
-import { ProcessingError, processingQueue, useDocumentProgress } from '../../documents/ProcessingQueue';
+import { ProcessingError, processingQueue, useDocumentProgress, usePagesReadByAi } from '../../documents/ProcessingQueue';
 import { editorErrorMessage, jobErrorMessage, pageStatusLabel } from '../../documents/ui/labels';
 import { usePageSourceImage, useRotatedPreview } from '../../documents/ui/pageSource';
 import '../../documents/ui/parentDocuments.css';
@@ -18,13 +20,16 @@ import { ParentPage, ParentSection } from './ParentPage';
 const t = documents.editor;
 
 type Tab = 'image' | 'text';
-type Action = 'rerun' | 'server' | 'retake' | 'save';
+type Action = 'rerun' | 'device' | 'retake' | 'save';
 
 interface EditableBlock extends TextBlock {
   key: number;
 }
 
-/** Page editor: rotation, 4-corner frame, new photo, reprocessing (local or server) and manual text correction. */
+/**
+ * Page editor: rotation, 4-corner frame, new photo, new reading (by the home computer when it reads the pages, §25, or on
+ * this device) and manual text correction.
+ */
 export default function PageEditorPage(): JSX.Element {
   const params = useParams();
   const documentId = params.documentId ?? '';
@@ -33,6 +38,7 @@ export default function PageEditorPage(): JSX.Element {
   const navigate = useNavigate();
   const toast = useToast();
   const online = useOnlineStatus();
+  const readByAi = usePagesReadByAi();
 
   const doc = useLiveQuery(async () => (await getDocument(documentId)) ?? false, [documentId], null);
   const page = useLiveQuery(async () => (validIndex ? ((await getPage(documentId, pageIndex)) ?? false) : false), [documentId, pageIndex], null);
@@ -109,9 +115,10 @@ export default function PageEditorPage(): JSX.Element {
     setAction(kind);
     try {
       await task();
-      // A reading that failed again hands the page over to the « lecture intelligente » (§17.7): say so instead of « terminée ».
+      // A page handed over to the « lecture intelligente » (§17.7, §25): its text arrives later, say so instead of « terminée ».
       const awaitingAi = kind !== 'save' && (await getPage(documentId, pageIndex))?.warnings.includes('awaiting_ai') === true;
-      if (awaitingAi) toast.info(t.rerunAwaitingAi);
+      if (kind === 'rerun' && readByAi) toast.info(t.rerunSentToAi);
+      else if (awaitingAi) toast.info(t.rerunAwaitingAi);
       else toast.success(success);
     } catch (error) {
       toast.error(error instanceof ProcessingError ? editorErrorMessage(error.code) : t.errors.failed);
@@ -120,9 +127,17 @@ export default function PageEditorPage(): JSX.Element {
     }
   };
 
-  const rerun = (useServer: boolean): void => {
+  const rerun = (onDevice: boolean): void => {
     const frame = framing || quad !== null ? (quad ?? FULL_FRAME) : undefined;
-    void run(useServer ? 'server' : 'rerun', () => processingQueue.reprocessPage(documentId, pageIndex, { useServer, rotateDegrees: rotation, quad: frame }), t.rerunDone);
+    // Same image as before: the home computer is asked to read it again; a new frame or rotation is a new image, read anyway.
+    const sameImage = rotation === 0 && frame === undefined;
+    void run(onDevice ? 'device' : 'rerun', async () => {
+      await processingQueue.reprocessPage(documentId, pageIndex, { onDevice, rotateDegrees: rotation, quad: frame });
+      if (!onDevice && readByAi && sameImage) {
+        await relaunchTranscription(documentId, [pageIndex], { reread: true }).catch(() => undefined);
+        watchAiReading(documentId, pageIndex);
+      }
+    }, t.rerunDone);
     setFraming(false);
   };
 
@@ -260,17 +275,19 @@ export default function PageEditorPage(): JSX.Element {
           {page.textSource === 'manual' && <p className="docs-muted">{t.manualWillBeReplaced}</p>}
           <div className="parent-actions">
             <Button size="parent" icon="🔄" loading={action === 'rerun'} disabled={busy && action !== 'rerun'} onClick={() => rerun(false)}>
-              {t.rerun}
+              {readByAi ? t.rerunAi : t.rerun}
             </Button>
-            <Button size="parent" variant="secondary" icon="☁️" loading={action === 'server'} disabled={!online || (busy && action !== 'server')} onClick={() => rerun(true)}>
-              {t.serverRun}
-            </Button>
+            {readByAi && (
+              <Button size="parent" variant="secondary" icon="📱" loading={action === 'device'} disabled={busy && action !== 'device'} onClick={() => rerun(true)}>
+                {t.readOnDevice}
+              </Button>
+            )}
             <Button size="parent" variant="secondary" icon="📷" loading={action === 'retake'} disabled={busy && action !== 'retake'} onClick={() => retakeInput.current?.click()}>
               {t.retakePhoto}
             </Button>
             <input ref={retakeInput} className="visually-hidden" type="file" accept="image/*" capture="environment" tabIndex={-1} aria-hidden="true" onChange={onRetake} />
           </div>
-          {!online && <p className="docs-muted">{t.serverOffline}</p>}
+          {readByAi && !online && <p className="docs-muted">{t.aiOffline}</p>}
         </ParentSection>
       ) : (
         <ParentSection title={t.textTitle} hint={t.textHint}>

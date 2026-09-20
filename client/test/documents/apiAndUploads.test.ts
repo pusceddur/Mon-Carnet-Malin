@@ -107,7 +107,7 @@ describe('pending uploads', () => {
     await flushPendingUploads(() => 1_000);
     expect(calls).toEqual([`PUT /api/documents/${id}/pages/0/image`]);
     let pending = await readPendingUploads();
-    expect(pending).toEqual([{ kind: 'pageImage', documentId: id, index: 0, attempts: 0, nextAttemptAt: 61_000 }]);
+    expect(pending).toEqual([{ kind: 'pageImage', documentId: id, index: 0, attempts: 0, nextAttemptAt: 4_000 }]);
 
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(200, { ok: true })));
     await flushPendingUploads(() => 2_000);
@@ -115,6 +115,27 @@ describe('pending uploads', () => {
     await flushPendingUploads(() => 70_000);
     pending = await readPendingUploads();
     expect(pending).toEqual([]);
+  });
+
+  it('sends the color copy of the page when there is one, the grayscale page otherwise (§19.1)', async () => {
+    const id = await seedDocument({ pages: 2 });
+    const blobs: Record<string, Blob> = { color: new Blob(['color-page'], { type: 'image/jpeg' }), ocr: new Blob(['gray'], { type: 'image/jpeg' }) };
+    vi.spyOn(db.pageImages, 'get').mockImplementation((async (key: [string, number, 'ocr' | 'color' | 'thumb']) => {
+      const [documentId, pageIndex, variant] = key;
+      // Page 0 has both copies, page 1 (processed before the color copy existed) only the grayscale one.
+      if (variant === 'thumb' || (variant === 'color' && pageIndex === 1)) return undefined;
+      return { documentId, pageIndex, variant, blob: blobs[variant]!, width: 10, height: 10 };
+    }) as unknown as typeof db.pageImages.get);
+    const sent: number[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+      const image = (init?.body as FormData).get('image') as Blob;
+      sent.push(image.size);
+      return jsonResponse(200, { ok: true });
+    }));
+    await enqueueUpload('pageImage', id, 0, 0);
+    await enqueueUpload('pageImage', id, 1, 0);
+    await flushPendingUploads(() => 1_000);
+    expect(sent).toEqual([blobs.color!.size, blobs.ocr!.size]);
   });
 
   it('backs off exponentially up to one hour', () => {

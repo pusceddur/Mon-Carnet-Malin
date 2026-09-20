@@ -122,7 +122,9 @@ export default function ParentLayout(): JSX.Element {
   const navigate = useNavigate();
   const toast = useToast();
   const unlocked = useParentUnlocked();
-  const until = useSessionStore((s) => s.authStatus?.parentUnlockedUntil ?? null);
+  // §20: without the code there is nothing to lock.
+  const pinRequired = useSessionStore((s) => s.authStatus?.pinRequired !== false);
+  const until = useSessionStore((s) => (s.authStatus?.pinRequired === false ? null : (s.authStatus?.parentUnlockedUntil ?? null)));
   const hasChild = useSelectedChild() !== null;
   const [locking, setLocking] = useState(false);
 
@@ -155,9 +157,15 @@ export default function ParentLayout(): JSX.Element {
         </div>
         <div className="parent-shell__actions">
           <OfflineBadge />
-          <Button variant="secondary" size="parent" icon="🔒" loading={locking} onClick={() => void onLock()}>
-            {t.lock}
-          </Button>
+          {pinRequired ? (
+            <Button variant="secondary" size="parent" icon="🔒" loading={locking} onClick={() => void onLock()}>
+              {t.lock}
+            </Button>
+          ) : (
+            <Button variant="secondary" size="parent" icon="🏠" onClick={leave}>
+              {t.leave}
+            </Button>
+          )}
         </div>
       </header>
       <div className="parent-shell__main">

@@ -9,7 +9,12 @@ export function postAI<Op extends AIOperation>(op: Op, body: RequestFor<Op>, opt
   return api<AIResult<DataFor<Op>> | AIJobAccepted>('POST', `/api/ai/${op}`, body, opts);
 }
 
-/** GET /api/ai/jobs/:jobId → AIJobPoll. Throws ApiError. */
-export function getAIJob<Op extends AIOperation>(jobId: string, opts: AIHttpOptions = {}): Promise<AIJobPoll<DataFor<Op>>> {
-  return api<AIJobPoll<DataFor<Op>>>('GET', `/api/ai/jobs/${encodeURIComponent(jobId)}`, undefined, opts);
+/**
+ * GET /api/ai/jobs/:jobId → AIJobPoll. `waitMs`: the server answers as soon as the job is done, at the latest after waitMs
+ * (older servers answer at once). Throws ApiError.
+ */
+export function getAIJob<Op extends AIOperation>(jobId: string, opts: AIHttpOptions & { waitMs?: number } = {}): Promise<AIJobPoll<DataFor<Op>>> {
+  const { waitMs, ...http } = opts;
+  const query = waitMs !== undefined && waitMs > 0 ? `?waitMs=${Math.round(waitMs)}` : '';
+  return api<AIJobPoll<DataFor<Op>>>('GET', `/api/ai/jobs/${encodeURIComponent(jobId)}${query}`, undefined, http);
 }

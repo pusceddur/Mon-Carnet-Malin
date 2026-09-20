@@ -11,7 +11,11 @@ export const SESSION_COOKIE = 'aide_sid';
 /** Sliding renewal is written at most once per hour per session. */
 export const SESSION_RENEW_AFTER_MS = 60 * 60_000;
 
-export interface AuthContext { userId: string; sessionId: string; parentUnlockedUntil: number | null }
+/**
+ * `parentUnlockedUntil`: end of the unlocked adult area; when the account does not ask for the code (§20 `pinRequired`
+ * false) it is always « now + unlock duration ».
+ */
+export interface AuthContext { userId: string; sessionId: string; parentUnlockedUntil: number | null; pinRequired: boolean }
 
 /** Random 32-byte token (base64url) and its sha256, which is the only value stored. */
 export function newSessionToken(): { token: string; id: string } {
@@ -48,7 +52,9 @@ export function readSessionToken(req: Request): string | null {
   return typeof value === 'string' && value.length > 0 && value.length <= 128 ? value : null;
 }
 
-export async function createSession(db: Db, userId: string, now: number, userAgent: string | null): Promise<{ token: string; session: SessionRecord }> {
+export async function createSession(
+  db: Db, userId: string, now: number, userAgent: string | null, ip: string | null = null,
+): Promise<{ token: string; session: SessionRecord }> {
   const { token, id } = newSessionToken();
   const session: SessionRecord = {
     id,
@@ -58,6 +64,8 @@ export async function createSession(db: Db, userId: string, now: number, userAge
     lastSeenAt: now,
     parentUnlockedUntil: null,
     userAgent,
+    ip,
+    deviceName: null,
   };
   await insertSession(db, session);
   return { token, session };
@@ -83,9 +91,11 @@ export async function resolveSession(
     return null;
   }
   if (now - session.lastSeenAt >= SESSION_RENEW_AFTER_MS) {
-    await renewSession(deps.db, id, now, now + TIMINGS.sessionTtlMs);
+    await renewSession(deps.db, id, now, now + TIMINGS.sessionTtlMs, req.ip ?? null);
     setSessionCookie(res, deps.config, token);
   }
-  const unlocked = session.parentUnlockedUntil !== null && session.parentUnlockedUntil > now ? session.parentUnlockedUntil : null;
-  return { userId: session.userId, sessionId: session.id, parentUnlockedUntil: unlocked };
+  const unlocked = !session.pinRequired
+    ? now + TIMINGS.parentUnlockMs
+    : session.parentUnlockedUntil !== null && session.parentUnlockedUntil > now ? session.parentUnlockedUntil : null;
+  return { userId: session.userId, sessionId: session.id, parentUnlockedUntil: unlocked, pinRequired: session.pinRequired };
 }

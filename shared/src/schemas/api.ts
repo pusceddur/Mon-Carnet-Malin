@@ -1,12 +1,12 @@
 import { z } from 'zod';
 import { LIMITS } from '../constants';
-import { AIOperationSchema, AIRouteSchema } from './ai';
+import { AIOperationSchema, AIRouteSchema, WritingChangeKindSchema, WritingChangeSchema } from './ai';
 import { AnnotationSchema } from './annotations';
 import { IdSchema, MillisSchema, PageIndexSchema } from './common';
 import {
-  ChildProfileSchema, DocumentMetaSchema, ExercisePreferencesSchema, ExplanationDifficultySchema, PageContentSchema,
-  PageWarningSchema, ParentUserSchema, ReadingLevelSchema, ReadingPreferencesSchema, ReadingProgressSchema,
-  ReadingSessionSchema, TextBlockSchema, TTSPreferencesSchema,
+  ChildProfileSchema, DocumentMetaSchema, DocumentTextModeSchema, ExercisePreferencesSchema, ExplanationDifficultySchema, PageContentSchema,
+  PageWarningSchema, ParentUserSchema, ReadingLevelSchema, ReadingPreferencesPatchSchema, ReadingProgressSchema,
+  ReadingSessionSchema, TextBlockSchema, TTSPreferencesPatchSchema,
 } from './domain';
 import { AnswerSchema, ExerciseSchema } from './exercises';
 
@@ -22,6 +22,10 @@ export const AuthStatusSchema = z.object({
   pinSet: z.boolean(),
   pinLockedUntil: MillisSchema.nullable(),
   registrationOpen: z.boolean(),
+  // Defaults: answers of servers older than §20.
+  pinRequired: z.boolean().default(true),
+  passwordResetAvailable: z.boolean().default(false),
+  aiReading: z.boolean().default(false),
 });
 
 export const InvitationConfigSchema = z.object({
@@ -104,6 +108,7 @@ export const ActivitySummarySchema = z.object({
   budget: z.object({
     monthToDateEur: z.number().nonnegative(),
     monthlyBudgetEur: z.number().nonnegative(),
+    workerEstimateEur: z.number().nonnegative().default(0),
   }),
 });
 
@@ -165,6 +170,40 @@ export type ChangePinRequest = z.infer<typeof ChangePinRequestSchema>;
 export const ChangePasswordRequestSchema = z.object({ currentPassword: z.string().min(1).max(200), newPassword: PasswordSchema });
 export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequestSchema>;
 
+// ---------- §20 account security ----------
+/** PUT /api/auth/pin-required: ask the code to open the Réglages, or not. The password confirms the change. */
+export const PinRequiredRequestSchema = z.object({ required: z.boolean(), password: z.string().min(1).max(200) }).strict();
+export type PinRequiredRequest = z.infer<typeof PinRequiredRequestSchema>;
+
+/** PUT /api/auth/device: name of this device in « Appareils connectés », sent by the app. */
+export const DeviceNameRequestSchema = z.object({ name: z.string().trim().min(1).max(60) }).strict();
+export type DeviceNameRequest = z.infer<typeof DeviceNameRequestSchema>;
+
+/** POST /api/auth/password-reset: always answers ok (nobody learns whether an e-mail has an account). */
+export const PasswordResetRequestSchema = z.object({ email: EmailSchema }).strict();
+export type PasswordResetRequest = z.infer<typeof PasswordResetRequestSchema>;
+
+/** POST /api/auth/password-reset/confirm: link of the e-mail + code of the Réglages + new password. */
+export const PasswordResetConfirmSchema = z.object({ token: z.string().min(20).max(200), pin: PinSchema, newPassword: PasswordSchema }).strict();
+export type PasswordResetConfirm = z.infer<typeof PasswordResetConfirmSchema>;
+
+/** POST /api/auth/continuity/confirm: link of the e-mail sent every 180 days. */
+export const ContinuityConfirmSchema = z.object({ token: z.string().min(20).max(200) }).strict();
+export type ContinuityConfirm = z.infer<typeof ContinuityConfirmSchema>;
+
+export const DeviceKindSchema = z.enum(['ipad', 'iphone', 'mac', 'windows', 'android', 'linux', 'other']);
+export const DeviceSessionSchema = z.object({
+  id: z.string().regex(/^[0-9a-f]{16}$/),
+  current: z.boolean(),
+  name: z.string().nullable(),
+  device: DeviceKindSchema,
+  browser: z.string(),
+  ip: z.string().nullable(),
+  createdAt: MillisSchema,
+  lastSeenAt: MillisSchema,
+});
+export const DeviceSessionsResponseSchema = z.object({ sessions: z.array(DeviceSessionSchema) });
+
 /** POST /api/children: partial profile, server applies defaults. */
 export const CreateChildRequestSchema = z.object({
   firstName: ChildProfileSchema.shape.firstName,
@@ -172,8 +211,8 @@ export const CreateChildRequestSchema = z.object({
   avatar: ChildProfileSchema.shape.avatar.optional(),
   readingLevel: ReadingLevelSchema.optional(),
   explanationDifficulty: ExplanationDifficultySchema.optional(),
-  reading: ReadingPreferencesSchema.partial().optional(),
-  tts: TTSPreferencesSchema.partial().optional(),
+  reading: ReadingPreferencesPatchSchema.optional(),
+  tts: TTSPreferencesPatchSchema.optional(),
   exercises: ExercisePreferencesSchema.partial().optional(),
 });
 export type CreateChildRequest = z.infer<typeof CreateChildRequestSchema>;
@@ -184,8 +223,8 @@ export type UpdateChildRequest = z.infer<typeof UpdateChildRequestSchema>;
 
 /** PATCH /api/children/:id/preferences */
 export const UpdatePreferencesRequestSchema = z.object({
-  reading: ReadingPreferencesSchema.partial().optional(),
-  tts: TTSPreferencesSchema.partial().optional(),
+  reading: ReadingPreferencesPatchSchema.optional(),
+  tts: TTSPreferencesPatchSchema.optional(),
 });
 export type UpdatePreferencesRequest = z.infer<typeof UpdatePreferencesRequestSchema>;
 
@@ -221,7 +260,31 @@ export const ClientDiagnosticsRequestSchema = z.object({
   reports: z.array(ClientDiagnosticReportSchema).min(1).max(DIAGNOSTIC_LIMITS.reportsMax),
 });
 
+export const DocumentTextModeRequestSchema = z.object({ textMode: DocumentTextModeSchema }).strict();
+export const DocumentTextModeResponseSchema = z.object({
+  document: DocumentMetaSchema,
+  queued: z.number().int().nonnegative(),
+});
+
 export const OkResponseSchema = z.object({ ok: z.literal(true) });
+
+export const FreeQuestionLogEntrySchema = z.object({
+  id: IdSchema,
+  childId: IdSchema,
+  question: z.string(),
+  outcome: z.enum(['answered', 'blocked', 'adult_redirect', 'unavailable']),
+  answer: z.string().nullable(),
+  createdAt: MillisSchema,
+});
+export const FreeQuestionHistorySchema = z.object({ entries: z.array(FreeQuestionLogEntrySchema) });
+
+export const SubscriptionUsageSchema = z.object({
+  status: z.enum(['allowed', 'allowed_warning', 'rejected']),
+  window: z.enum(['session', 'week', 'other']).nullable(),
+  utilization: z.number().min(0).max(100).nullable(),
+  resetsAt: MillisSchema.nullable(),
+  observedAt: MillisSchema.nullable(),
+});
 
 export const WorkerStatusSchema = z.object({
   configured: z.boolean(),
@@ -229,7 +292,10 @@ export const WorkerStatusSchema = z.object({
   lastSeenAt: MillisSchema.nullable(),
   limited: z.boolean(),
   limitResetsAt: MillisSchema.nullable(),
-  queued: z.object({ ai: z.number().int().nonnegative(), pageText: z.number().int().nonnegative() }),
+  queued: z.object({ ai: z.number().int().nonnegative(), pageText: z.number().int().nonnegative(), pageSpeech: z.number().int().nonnegative().default(0) }),
+  usage: SubscriptionUsageSchema.nullable().default(null),
+  estimate: z.object({ monthToDateEur: z.number().nonnegative(), allAccountsEur: z.number().nonnegative().nullable() })
+    .default({ monthToDateEur: 0, allAccountsEur: null }),
 });
 
 export const HealthStatusSchema = z.object({
@@ -237,4 +303,30 @@ export const HealthStatusSchema = z.object({
   db: z.boolean(),
   ai: z.object({ light: z.boolean(), complex: z.boolean() }),
   ocr: z.object({ available: z.boolean(), busy: z.boolean() }),
+});
+
+// §22 « Préparer la lecture »
+export const ReadingPreparationRequestSchema = z.object({
+  pageIndexes: z.array(PageIndexSchema).min(1).max(2000).optional(),
+  force: z.boolean().optional(),
+});
+export const ReadingPreparationResponseSchema = z.object({
+  queued: z.number().int().nonnegative(),
+  unavailable: z.enum(['not_configured', 'ai_disabled', 'text_not_synced']).nullable(),
+});
+
+// §24 texts corrected with « Corriger » (GET /api/activity/writing)
+export const WritingCorrectionEntrySchema = z.object({
+  id: IdSchema,
+  childId: IdSchema,
+  documentId: IdSchema.nullable(),
+  originalText: z.string(),
+  correctedText: z.string(),
+  changes: z.array(WritingChangeSchema),
+  createdAt: MillisSchema,
+});
+export const WritingCorrectionHistorySchema = z.object({
+  entries: z.array(WritingCorrectionEntrySchema),
+  counts: z.record(WritingChangeKindSchema, z.number().int().nonnegative()),
+  frequent: z.array(z.object({ from: z.string(), to: z.string(), kind: WritingChangeKindSchema, count: z.number().int().positive() })),
 });

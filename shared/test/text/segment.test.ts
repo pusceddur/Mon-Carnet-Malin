@@ -84,6 +84,26 @@ describe('segmentSentences', () => {
     expect(sentences('II. La Gaule romaine')).toEqual(['II. La Gaule romaine']);
   });
 
+  it('§22 makes every list item its own sentence, so that the voice pauses between them', () => {
+    // One line, as the « lecture intelligente » writes a paragraph.
+    expect(sentences("1: lis l'article 2: souligne les verbes 3: réponds aux questions")).toEqual(
+      ["1: lis l'article", '2: souligne les verbes', '3: réponds aux questions'],
+    );
+    expect(sentences('Consignes : 1) lis 2) écris 3) relis')).toEqual(['Consignes :', '1) lis', '2) écris', '3) relis']);
+    expect(sentences('a) le chat b) le chien')).toEqual(['a) le chat', 'b) le chien']);
+    // One item per line, with or without numbers.
+    expect(sentences('Matériel\n1 : un cahier\n2 : un crayon')).toEqual(['Matériel', '1 : un cahier', '2 : un crayon']);
+    expect(sentences('Il faut :\n• un cahier\n• un crayon')).toEqual(['Il faut :', '• un cahier', '• un crayon']);
+  });
+
+  it('§22 leaves numbers that are not a list alone', () => {
+    expect(sentences('Page 1 : le début. Page 2 : la suite.')).toEqual(['Page 1 : le début.', 'Page 2 : la suite.']);
+    expect(sentences('Exercice 1 : lis le texte et réponds à la question 2 : pourquoi ?')).toEqual(['Exercice 1 : lis le texte et réponds à la question 2 : pourquoi ?']);
+    expect(sentences('Il avait 2 : ses frères.')).toEqual(['Il avait 2 : ses frères.']);
+    expect(sentences('Il y a 3 ans, il a 1 chat.')).toEqual(['Il y a 3 ans, il a 1 chat.']);
+    expect(sentences('Le rendez-vous est à 10 : 30 le 1er mai.')).toEqual(['Le rendez-vous est à 10 : 30 le 1er mai.']);
+  });
+
   it('keeps closing quotes and parentheses in the sentence', () => {
     expect(sentences('Il a dit « oui. » Puis il est parti.')).toEqual(['Il a dit « oui. »', 'Puis il est parti.']);
     expect(sentences('(Voir plus haut.) Ensuite, lis.')).toEqual(['(Voir plus haut.)', 'Ensuite, lis.']);

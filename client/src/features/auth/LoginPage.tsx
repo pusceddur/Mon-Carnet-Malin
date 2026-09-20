@@ -20,6 +20,7 @@ export default function LoginPage(): JSX.Element {
   const navigate = useNavigate();
   const online = useOnlineStatus();
   const registrationOpen = useSessionStore((s) => s.authStatus?.registrationOpen === true);
+  const passwordResetAvailable = useSessionStore((s) => s.authStatus?.passwordResetAvailable === true);
   const [values, setValues] = useState<LoginFormValues>({ email: '', password: '' });
   const [errors, setErrors] = useState<FormErrors<keyof LoginFormValues>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -93,11 +94,18 @@ export default function LoginPage(): JSX.Element {
             {t.submit}
           </Button>
         </form>
-        {registrationOpen && (
+        {(registrationOpen || passwordResetAvailable) && (
           <div className="auth-links">
-            <Button variant="ghost" size="parent" onClick={() => navigate(PATHS.register)}>
-              {t.registerLink}
-            </Button>
+            {passwordResetAvailable && (
+              <Button variant="ghost" size="parent" onClick={() => navigate(PATHS.forgotPassword)}>
+                {t.forgotLink}
+              </Button>
+            )}
+            {registrationOpen && (
+              <Button variant="ghost" size="parent" onClick={() => navigate(PATHS.register)}>
+                {t.registerLink}
+              </Button>
+            )}
           </div>
         )}
       </div>

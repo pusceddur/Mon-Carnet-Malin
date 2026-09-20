@@ -4,7 +4,7 @@ import { useState, type JSX } from 'react';
 import { useNavigate } from 'react-router';
 import { db } from '../../db/localDb';
 import { Button, ConfirmDialog, EmptyState, IconButton, ProgressBar, Spinner, useToast } from '../../design/components';
-import { usePageImageUrl } from '../../documents/DocumentCache';
+import { documentPurpose, usePageImageUrl } from '../../documents/DocumentCache';
 import { deleteDocumentEverywhere } from '../../documents/deleteDocument';
 import { useDocumentProgress } from '../../documents/ProcessingQueue';
 import { DOCUMENT_STATUS_EMOJI } from '../../documents/ui/labels';
@@ -12,6 +12,7 @@ import '../../documents/ui/parentDocuments.css';
 import { format } from '../../i18n/fr';
 import { documents } from '../../i18n/fr/documents';
 import { useSessionStore } from '../../state/session';
+import { formatDay } from '../homework/homework';
 import { ParentPage } from './ParentPage';
 
 const t = documents.admin;
@@ -41,6 +42,12 @@ function DocumentRow({ doc, profiles, onDelete }: { doc: DocumentMeta; profiles:
           <span aria-hidden="true">{DOCUMENT_STATUS_EMOJI[doc.status]} </span>
           {documents.documentStatus[doc.status]}
         </span>
+        {documentPurpose(doc) === 'homework' && (
+          <span className="docs-badge docs-badge--homework">
+            <span aria-hidden="true">📝 </span>
+            {doc.homeworkDoneAt ? format(t.homeworkDone, { date: formatDay(doc.homeworkDoneAt) }) : t.homeworkTodo}
+          </span>
+        )}
         {processing && progress && (
           <ProgressBar
             className="docs-doc-row__progress"

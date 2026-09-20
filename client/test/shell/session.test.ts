@@ -12,7 +12,7 @@ const NOW = 1_000_000;
 function status(patch: Partial<AuthStatus> = {}): AuthStatus {
   return {
     setupRequired: false, authenticated: true, parent: { id: 'p1', email: 'parent@example.org', displayName: 'Parent', createdAt: 1, isOwner: true },
-    parentUnlockedUntil: null, pinSet: true, pinLockedUntil: null, registrationOpen: false, ...patch,
+    parentUnlockedUntil: null, pinSet: true, pinLockedUntil: null, registrationOpen: false, pinRequired: true, passwordResetAvailable: false, aiReading: false, ...patch,
   };
 }
 

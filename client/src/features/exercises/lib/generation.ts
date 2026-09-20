@@ -1,6 +1,4 @@
-import {
-  generateLocalQuestions, newId, QUESTION_TYPES, type AIPageInput, type Exercise, type Id, type Question, type QuestionType,
-} from '@aide/shared';
+import { KID_MESSAGES, newId, QUESTION_TYPES, type AIPageInput, type Exercise, type Id, type Question, type QuestionType } from '@aide/shared';
 import { requestAI } from '../../../ai/aiClient';
 import { saveEntity } from '../../../sync/SyncEngine';
 import { kidMessage } from './aiResults';
@@ -8,12 +6,11 @@ import { kidMessage } from './aiResults';
 export type QuestionCount = 3 | 5 | 10;
 export const QUESTION_COUNTS: readonly QuestionCount[] = [3, 5, 10];
 
-/** Types the deterministic local generator can build from the text. */
-export const LOCAL_QUESTION_TYPES: readonly QuestionType[] = ['qcm', 'vrai_faux', 'ordre'];
-
 export type GenerationOutcome =
   | { kind: 'ok'; exercise: Exercise }
   | { kind: 'blocked'; message: string }
+  /** The AI could not make the questions (off, offline, busy…): nothing is made on the device (2026-09-19). */
+  | { kind: 'unavailable'; message: string }
   | { kind: 'empty' }
   | { kind: 'aborted' };
 
@@ -70,43 +67,24 @@ export function cleanQuestions(questions: readonly Question[], types: readonly Q
   return kept;
 }
 
-function localQuestions(input: GenerationInput, seed: number): Question[] {
-  const wanted = input.types.filter((t) => LOCAL_QUESTION_TYPES.includes(t));
-  if (wanted.length > 0) {
-    const questions = cleanQuestions(generateLocalQuestions(input.pages, input.count, wanted, seed), wanted, input.count);
-    if (questions.length > 0) return questions;
-  }
-  // The profile only allows types the local generator cannot build: better some questions than none.
-  return cleanQuestions(generateLocalQuestions(input.pages, input.count, [...LOCAL_QUESTION_TYPES], seed), LOCAL_QUESTION_TYPES, input.count);
-}
-
-/** Online questions when possible, otherwise local ones; the exercise is saved (Dexie + sync outbox). */
+/** Questions made by the AI; the exercise is saved (Dexie + sync outbox). */
 export async function createExercise(input: GenerationInput): Promise<GenerationOutcome> {
   if (input.pages.length === 0 || input.types.length === 0) return { kind: 'empty' };
   const now = input.now ?? Date.now();
 
-  let questions: Question[] = [];
-  let origin: Exercise['origin'] = 'local';
-  if (input.aiAllowed) {
-    const result = await requestAI(
-      'generate_questions',
-      { childId: input.childId, documentId: input.documentId, documentHash: input.documentHash, count: input.count, types: input.types, pages: input.pages },
-      { signal: input.signal },
-    );
-    if (input.signal?.aborted) return { kind: 'aborted' };
-    if (result.status === 'ok') {
-      questions = cleanQuestions(result.data.questions, input.types, input.count);
-      origin = result.meta.route === 'local' ? 'local' : 'ai';
-    } else if (result.status === 'blocked' && result.reason !== 'validation') {
-      return { kind: 'blocked', message: kidMessage(result) };
-    }
-  }
+  if (!input.aiAllowed) return { kind: 'unavailable', message: KID_MESSAGES.unavailable };
 
-  if (questions.length === 0) {
-    questions = localQuestions(input, now % 2_147_483_647);
-    origin = 'local';
-  }
-  if (questions.length === 0) return { kind: 'empty' };
+  const result = await requestAI(
+    'generate_questions',
+    { childId: input.childId, documentId: input.documentId, documentHash: input.documentHash, count: input.count, types: input.types, pages: input.pages },
+    { signal: input.signal },
+  );
+  if (input.signal?.aborted) return { kind: 'aborted' };
+  if (result.status === 'unavailable') return { kind: 'unavailable', message: kidMessage(result) };
+  if (result.status === 'blocked' && result.reason !== 'validation') return { kind: 'blocked', message: kidMessage(result) };
+  const questions = result.status === 'ok' ? cleanQuestions(result.data.questions, input.types, input.count) : [];
+  if (result.status !== 'ok' || questions.length === 0) return { kind: 'empty' };
+  const origin: Exercise['origin'] = result.meta.route === 'local' ? 'local' : 'ai';
 
   const exercise: Exercise = {
     id: newId(),

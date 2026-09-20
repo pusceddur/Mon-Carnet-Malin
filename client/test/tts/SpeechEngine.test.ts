@@ -298,6 +298,21 @@ describe('SpeechEngine', () => {
     expect(text.slice(last(h).wordRange!.start, last(h).wordRange!.end)).toBe('siècle');
   });
 
+  it('§22 reads the prepared text when there is one, and highlights the displayed word', async () => {
+    const h = setup();
+    const text = "1: lis l'article";
+    h.engine.setQueue([{ id: '0:0:0', text, spoken: "1. Lis l'article." }, { id: '0:0:1', text: 'Fin', spoken: 'Autre chose.' }], 0);
+    h.engine.play();
+    await flush();
+    expect(h.synth.texts).toEqual(["1. Lis l'article."]);
+    h.synth.current?.onboundary?.({ charIndex: h.synth.texts[0]!.indexOf('Lis'), name: 'word' });
+    expect(text.slice(last(h).wordRange!.start, last(h).wordRange!.end)).toBe('lis');
+    h.synth.finishCurrent();
+    await vi.advanceTimersByTimeAsync(2_000);
+    // A preparation that lost its words is ignored.
+    expect(h.synth.texts.at(-1)).toBe('Fin');
+  });
+
   it('a system interruption settles in pause', async () => {
     const h = setup();
     h.engine.setQueue(items, 0);

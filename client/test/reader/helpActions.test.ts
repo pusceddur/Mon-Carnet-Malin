@@ -17,8 +17,6 @@ const meta = (overrides: Partial<AIMeta> = {}): AIMeta => ({ cached: false, rout
 function deps(overrides: Partial<HelpDeps> = {}): HelpDeps {
   return {
     requestAI: vi.fn(async () => ({ status: 'unavailable' as const, reason: 'offline' as const, message: KID_MESSAGES.offline, meta: null })) as unknown as HelpDeps['requestAI'],
-    lookupDefinition: vi.fn(async () => ({ status: 'not_found' as const })),
-    lookupLocalExplanation: vi.fn(async () => null),
     ...overrides,
   };
 }
@@ -29,44 +27,22 @@ const ctx: HelpTextContext = {
 };
 
 describe('help actions', () => {
-  it('definition: glossary/dictionary entry, default Wiktionnaire attribution, not found, unavailable', async () => {
-    const found = deps({
-      lookupDefinition: vi.fn(async () => ({
-        status: 'found' as const,
-        entry: { headword: 'volcan', lemma: 'volcan', partOfSpeech: 'nom', definition: 'Montagne.', example: null, source: 'wiktionnaire' as const, attribution: null, kidFriendly: false },
-      })),
+  it('definition: the AI defines the word in its sentence (explain_word), messages when it cannot', async () => {
+    const requestAI = vi.fn(async () => ({ status: 'ok' as const, data: { explanation: 'Une montagne qui crache du feu.', example: 'Le volcan fume.', sourceQuotes: [] }, meta: meta() }));
+    const outcome = await runDefinition({ ...ctx, text: 'volcans' }, {}, deps({ requestAI: requestAI as unknown as HelpDeps['requestAI'] }));
+    expect(outcome).toEqual({
+      kind: 'definition', headword: 'volcans', definition: 'Une montagne qui crache du feu.', example: 'Le volcan fume.', partOfSpeech: null, attribution: null, kidFriendly: true,
     });
-    expect(await runDefinition('volcans', found)).toEqual({
-      kind: 'definition', headword: 'volcan', definition: 'Montagne.', example: null, partOfSpeech: 'nom', attribution: help.wiktionnaireDefault, kidFriendly: false,
-    });
-    expect(await runDefinition('zz', deps())).toEqual({ kind: 'definition_not_found' });
-    expect(await runDefinition('zz', deps({ lookupDefinition: vi.fn(async () => ({ status: 'unavailable' as const })) })))
-      .toMatchObject({ kind: 'message', text: KID_MESSAGES.offline, canRetry: true });
+    expect(requestAI).toHaveBeenCalledWith('explain_word', expect.objectContaining({ word: 'volcans', sentence: ctx.sentence, paragraph: ctx.paragraph, pageIndex: 2 }), expect.anything());
+    expect(countsAsAiRequest('definition', outcome)).toBe(true);
+    expect(await runDefinition(ctx, {}, deps())).toMatchObject({ kind: 'message', text: KID_MESSAGES.offline, canRetry: true });
   });
 
-  it('explain: a single word uses the local glossary first, without calling the AI', async () => {
-    const d = deps({ lookupLocalExplanation: vi.fn(async () => ({ headword: 'photosynthèse', definition: 'La plante se nourrit.', example: 'Ex.' })) });
-    expect(await runExplain(ctx, {}, d)).toEqual({
-      kind: 'explanation', text: 'La plante se nourrit.', example: 'Ex.', quotes: [], sourceWarning: false, fromGlossary: true,
-    });
-    expect(d.requestAI).not.toHaveBeenCalled();
-  });
-
-  it('explain: a single word not in the glossary asks explain_word with sentence and paragraph', async () => {
-    const requestAI = vi.fn(async () => ({ status: 'ok' as const, data: { explanation: 'Explication.', example: null, sourceQuotes: ['La photosynthèse'] }, meta: meta() }));
-    const d = deps({ requestAI: requestAI as unknown as HelpDeps['requestAI'], lookupLocalExplanation: vi.fn(async () => null) });
-    const outcome = await runExplain(ctx, {}, d);
-    expect(outcome).toMatchObject({ kind: 'explanation', text: 'Explication.', fromGlossary: false });
-    expect(requestAI).toHaveBeenCalledWith('explain_word', expect.objectContaining({ word: 'photosynthèse', sentence: ctx.sentence, paragraph: ctx.paragraph, pageIndex: 2 }), expect.anything());
-  });
-
-  it('explain: « je ne comprends pas encore » skips the glossary and asks explain_text for the word in its paragraph', async () => {
+  it('explain: a single word is explained by the AI in its paragraph (explain_text), never from a local glossary', async () => {
     const requestAI = vi.fn(async () => ({ status: 'ok' as const, data: { explanation: 'Explication.', example: null, sourceQuotes: ['La photosynthèse'] }, meta: meta({ sourceWarning: true }) }));
-    const lookupLocalExplanation = vi.fn(async () => ({ headword: 'x', definition: 'y', example: null }));
-    const d = deps({ requestAI: requestAI as unknown as HelpDeps['requestAI'], lookupLocalExplanation });
-    const outcome = await runExplain(ctx, { skipLocal: true }, d);
-    expect(outcome).toMatchObject({ kind: 'explanation', text: 'Explication.', sourceWarning: true, fromGlossary: false });
-    expect(lookupLocalExplanation).not.toHaveBeenCalled();
+    const d = deps({ requestAI: requestAI as unknown as HelpDeps['requestAI'] });
+    const outcome = await runExplain(ctx, {}, d);
+    expect(outcome).toMatchObject({ kind: 'explanation', text: 'Explication.', sourceWarning: true });
     expect(requestAI).toHaveBeenCalledWith('explain_text', expect.objectContaining({ text: 'photosynthèse', paragraph: ctx.paragraph, pageIndex: 2 }), expect.anything());
     expect(countsAsAiRequest('explain', outcome)).toBe(true);
   });
@@ -105,6 +81,7 @@ describe('help actions', () => {
     expect(messageFor({ status: 'unavailable', reason: 'quota', message: '', meta: null })).toMatchObject({ text: KID_MESSAGES.quota, canRetry: false });
     expect(messageFor({ status: 'unavailable', reason: 'timeout', message: '', meta: null })).toMatchObject({ text: KID_MESSAGES.unavailable, canRetry: true });
     expect(messageFor({ status: 'unavailable', reason: 'offline', message: 'Serveur', meta: null })).toMatchObject({ text: 'Serveur', canRetry: true });
-    expect(countsAsAiRequest('definition', { kind: 'definition_not_found' })).toBe(false);
+    // Definitions come from the AI now (2026-09-19): they count as AI requests.
+    expect(countsAsAiRequest('definition', { kind: 'definition_not_found' })).toBe(true);
   });
 });

@@ -267,7 +267,7 @@ describe('EPUB import', () => {
     mocks.start.mockClear();
     useSessionStore.setState({
       authStatus: {
-        setupRequired: false, authenticated: true, parentUnlockedUntil: null, pinSet: true, pinLockedUntil: null, registrationOpen: false,
+        setupRequired: false, authenticated: true, parentUnlockedUntil: null, pinSet: true, pinLockedUntil: null, registrationOpen: false, pinRequired: true, passwordResetAvailable: false, aiReading: false,
         parent: { id: 'parent-1', email: 'parent', displayName: 'Parent', createdAt: 1, isOwner: true },
       },
       parentSettings: settings({ privacy: { uploadOriginals: true } }),
@@ -286,9 +286,12 @@ describe('EPUB import', () => {
     const book = readEpub(buildEpub());
     expect(analyzed).toMatchObject({ kind: 'epub', pageCount: book.pages.length, title: 'Le Renard & la Rivière' });
 
-    const id = await importFiles([epub], { title: '  ', childIds: ['c1', 'c1'] });
+    // An EPUB keeps the text of the book whatever the document type asked (§17.10).
+    const id = await importFiles([epub], { title: '  ', childIds: ['c1', 'c1'], textMode: 'punctuated' });
     const doc = await db.documents.get(id);
-    expect(doc).toMatchObject({ kind: 'epub', status: 'ready', title: 'Le Renard & la Rivière', pageCount: book.pages.length, childIds: ['c1'] });
+    expect(doc).toMatchObject({
+      kind: 'epub', textMode: 'faithful', status: 'ready', title: 'Le Renard & la Rivière', pageCount: book.pages.length, childIds: ['c1'],
+    });
     // What the sync pushes must pass the server validation.
     expect(DocumentMetaSchema.safeParse(doc).success).toBe(true);
 
@@ -306,7 +309,8 @@ describe('EPUB import', () => {
     expect(mocks.start).not.toHaveBeenCalled();
     const files = await db.documentFiles.where('documentId').equals(id).toArray();
     expect(files.map((f) => [f.index, f.name, f.mime])).toEqual([[0, 'renard.epub', 'application/epub+zip']]);
-    expect(await db.kv.get('pendingUploads')).toBeUndefined();
+    // §20: the original book is kept on the server when the parent allows it (like PDF and photos).
+    expect((await db.kv.get('pendingUploads'))?.value).toMatchObject([{ kind: 'original', documentId: id, index: 0 }]);
 
     const named = await importFiles([epub], { title: 'Lecture du soir', childIds: [] });
     expect((await db.documents.get(named))?.title).toBe('Lecture du soir');

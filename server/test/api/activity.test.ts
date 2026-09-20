@@ -59,7 +59,7 @@ describe('activity (parent area)', () => {
     expect(res.status).toBe(200);
     expect(res.body.sessions).toHaveLength(2);
     expect(res.body.aiRequests).toHaveLength(3); // default window: last 30 days
-    expect(res.body.budget).toEqual({ monthToDateEur: 1.5, monthlyBudgetEur: 7 });
+    expect(res.body.budget).toEqual({ monthToDateEur: 1.5, monthlyBudgetEur: 7, workerEstimateEur: 0 });
     expect(res.body.alerts).toEqual([{ id: alertId, createdAt: ctx.clock.now, childId: child.id, kind: 'adult_redirect', detail: 'question', seenAt: null }]);
     expect(res.body.ocrIssues).toHaveLength(2);
     expect(res.body.ocrIssues).toEqual(expect.arrayContaining([

@@ -1,4 +1,4 @@
-import type { AIPageInput, SummaryData, TextChunk } from '@aide/shared';
+import { extractiveSummary, type AIPageInput, type SummaryData, type TextChunk } from '@aide/shared';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { summarizeProgressively } from '../../src/ai/aiClient';
 import { db } from '../../src/db/localDb';
@@ -107,23 +107,24 @@ describe('summarizeProgressively', () => {
     expect(finals).toBe(2);
   });
 
-  it('offline → deterministic extractive summary with route local', async () => {
+  it('offline → unavailable, nothing is summarized on the device (decision 2026-09-19)', async () => {
     setOnline(false);
     const { fn } = mockFetch(() => json({}));
     const progress: [number, number][] = [];
     const result = await summarizeProgressively(request, (d, t) => progress.push([d, t]));
-    expect(result).toMatchObject({ status: 'ok', data: extractive, meta: { route: 'local', sourceWarning: true } });
+    expect(result).toMatchObject({ status: 'unavailable', reason: 'offline' });
     expect(fn).not.toHaveBeenCalled();
+    expect(extractiveSummary).not.toHaveBeenCalled();
     expect(progress.at(-1)).toEqual([4, 4]);
   });
 
-  it('a chunk the server cannot handle → local summary; a blocked chunk does not stop the summary', async () => {
+  it('a chunk the server cannot handle → unavailable; a blocked chunk does not stop the summary', async () => {
     mockFetch((call) => {
       const stage = stageOf(call);
       if (stage.kind === 'chunk' && stage.chunk.chunkIndex === 1) return json({ error: { code: 'internal', message: 'x' } }, 500);
       return chunkReply(call);
     });
-    expect(await summarizeProgressively(request, () => {})).toMatchObject({ status: 'ok', meta: { route: 'local' } });
+    expect(await summarizeProgressively(request, () => {})).toMatchObject({ status: 'unavailable' });
 
     await db.aiCache.clear();
     mockFetch((call) => {

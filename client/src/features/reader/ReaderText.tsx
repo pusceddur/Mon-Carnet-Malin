@@ -1,5 +1,6 @@
 import type { Id, LayoutMode, PageContent, ReadingPreferences, TextHighlight } from '@aide/shared';
 import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties, type JSX, type PointerEvent, type RefObject } from 'react';
+import { watchAiReading } from '../../documents/aiReadingWatch';
 import { PageStatusNotice, pageNoticeKind } from '../../documents/PageStatusNotice';
 import { readingFontClass, readingStyleVars } from '../../design/reading';
 import { format } from '../../i18n/fr';
@@ -17,6 +18,7 @@ import {
   wordElementFromPoint,
   wordPosition,
 } from './decorations';
+import { hasReadingAids, readingAidClasses, readingAidsOf } from './aids';
 import { ReaderBlock } from './ReaderBlock';
 import { highlightColorsForBlock, isReadable, resolveHighlights, type PageModel, type TextRange } from './model';
 
@@ -90,9 +92,11 @@ interface SectionProps {
   highlights: readonly TextHighlight[];
   layoutKey: string;
   contentVisibility: boolean;
+  /** §26: the letters carry the marks of the reading aids. */
+  coded: boolean;
 }
 
-const ReaderPageSection = memo(function ReaderPageSection({ documentId, childId, pageIndex, model, highlights, layoutKey, contentVisibility }: SectionProps): JSX.Element {
+const ReaderPageSection = memo(function ReaderPageSection({ documentId, childId, pageIndex, model, highlights, layoutKey, contentVisibility, coded }: SectionProps): JSX.Element {
   const sectionRef = useRef<HTMLElement | null>(null);
   const readable = model !== undefined && isReadable(model);
   const pageHighlights = useMemo(() => highlights.filter((h) => h.pageIndex === pageIndex), [highlights, pageIndex]);
@@ -111,12 +115,16 @@ const ReaderPageSection = memo(function ReaderPageSection({ documentId, childId,
   const className = ['rp-page', readable ? '' : 'rp-page--pending', contentVisibility ? 'rp-page--cv' : ''].filter(Boolean).join(' ');
   // PageStatusNotice shows nothing for a normal page; the reader only adds what it does not cover.
   const noticeKind = pageNoticeKind(page);
+  // §25: a page waiting for the home computer is looked for more often while it is on screen.
+  useEffect(() => {
+    if (noticeKind === 'awaiting_ai') watchAiReading(documentId, pageIndex);
+  }, [noticeKind, documentId, pageIndex]);
 
   return (
     <>
       <PageStatusNotice page={page} />
       <section ref={sectionRef} className={className} data-page-index={pageIndex} aria-label={format(reader.page.label, { page: pageIndex + 1 })}>
-        {readable && model.blocks.length > 0 && model.blocks.map((block) => <ReaderBlock key={`${block.blockIndex}:${block.hash}`} block={block} />)}
+        {readable && model.blocks.length > 0 && model.blocks.map((block) => <ReaderBlock key={`${block.blockIndex}:${block.hash}`} block={block} coded={coded} />)}
         {readable && model.blocks.length === 0 && noticeKind === null && <p className="rp-page__empty">{reader.page.noText}</p>}
         {!readable && noticeKind === null && <p className="rp-page__empty">{reader.page.notReady}</p>}
         {readable && model.blocks.length > 0 && (
@@ -264,8 +272,11 @@ export function ReaderText(props: ReaderTextProps): JSX.Element {
   };
 
   const style: CSSProperties = readingStyleVars(reading);
+  const aids = readingAidsOf(reading);
+  const coded = hasReadingAids(aids);
   const className = [
     'reader', 'reading', readingFontClass(reading.font), `reader--${layoutMode}`, `reader--${mode}`, freeSelection ? 'reader--free-selection' : '',
+    ...readingAidClasses(aids),
   ].filter(Boolean).join(' ');
 
   return (
@@ -295,6 +306,7 @@ export function ReaderText(props: ReaderTextProps): JSX.Element {
             highlights={highlights}
             layoutKey={layoutKey}
             contentVisibility={contentVisibility}
+            coded={coded}
           />
         </Fragment>
       ))}

@@ -36,7 +36,11 @@ describe('maintenance: retention (§15.3) and purge of deleted data', () => {
     };
   }
 
-  it('deletes old AI logs, seen alerts after 90 days, expired jobs, cache entries and sessions', async () => {
+  function freeQuestionRow(createdAt: number, childId = newId()) {
+    return { id: newId(), parent_id: parentId, child_id: childId, question: 'Pourquoi le ciel est bleu ?', outcome: 'answered', answer_text: 'La lumière.', created_at: createdAt };
+  }
+
+  it('deletes old AI logs, seen alerts after 90 days, expired jobs, cache entries, sessions and free questions after 30 days', async () => {
     const now = ctx.clock.now;
     await ctx.db('ai_requests').insert([aiRequestRow(now - RETENTION.aiRequestsMs - 1), aiRequestRow(now - RETENTION.aiRequestsMs + DAY)]);
     const alert = (seenAt: number | null, createdAt = now - 400 * DAY) => ({
@@ -54,12 +58,18 @@ describe('maintenance: retention (§15.3) and purge of deleted data', () => {
     });
     await ctx.db('sessions').update({ expires_at: now - 1 });
 
+    await ctx.db('free_questions').insert([
+      freeQuestionRow(now - RETENTION.freeQuestionsMs - 1),
+      freeQuestionRow(now - RETENTION.freeQuestionsMs + DAY),
+    ]);
+
     const report = await runRetention({ db: ctx.db, now, uploadsRoot: uploadsDir(ctx.config) });
-    expect(report).toMatchObject({ aiRequests: 1, safetyAlerts: 1, aiJobs: 1, expiredAiCache: 1, sessions: 1 });
+    expect(report).toMatchObject({ aiRequests: 1, safetyAlerts: 1, aiJobs: 1, expiredAiCache: 1, sessions: 1, freeQuestions: 1 });
     expect(await count(ctx, 'ai_requests')).toBe(1);
     expect(await count(ctx, 'safety_alerts')).toBe(2); // unseen alerts are kept whatever their age
     expect(await count(ctx, 'ai_jobs')).toBe(1);
-    expect(await runRetention({ db: ctx.db, now, uploadsRoot: uploadsDir(ctx.config) })).toMatchObject({ aiRequests: 0, safetyAlerts: 0, aiJobs: 0 });
+    expect(await count(ctx, 'free_questions')).toBe(1);
+    expect(await runRetention({ db: ctx.db, now, uploadsRoot: uploadsDir(ctx.config) })).toMatchObject({ aiRequests: 0, safetyAlerts: 0, aiJobs: 0, freeQuestions: 0 });
   });
 
   it('purges a child deleted for more than 30 days with its answers, annotations, exercises and logs', async () => {
@@ -76,6 +86,8 @@ describe('maintenance: retention (§15.3) and purge of deleted data', () => {
     });
     expect(res.rejected).toEqual([]);
     await ctx.db('ai_requests').insert(aiRequestRow(ctx.clock.now, child.id));
+    // Recent enough to survive the 30-day retention: removed by the purge of the child only.
+    await ctx.db('free_questions').insert([freeQuestionRow(ctx.clock.now + 29 * DAY, child.id), freeQuestionRow(ctx.clock.now + 29 * DAY, kept.id)]);
 
     await unlock(parentAgent);
     expect((await parentAgent.delete(`/api/children/${child.id}`).set(XRW).send()).status).toBe(200);
@@ -86,10 +98,11 @@ describe('maintenance: retention (§15.3) and purge of deleted data', () => {
 
     ctx.advance(2 * DAY);
     expect((await runRetention({ db: ctx.db, now: ctx.clock.now, uploadsRoot })).purgedChildren).toBe(1);
-    for (const table of ['answers', 'annotations', 'exercises', 'reading_progress', 'reading_sessions', 'ai_requests']) {
+    for (const table of ['answers', 'annotations', 'exercises', 'reading_progress', 'reading_sessions', 'ai_requests', 'free_questions']) {
       expect(await count(ctx, table, { child_id: child.id }), table).toBe(0);
     }
     expect(await count(ctx, 'children', { id: child.id })).toBe(0);
+    expect(await count(ctx, 'free_questions', { child_id: kept.id })).toBe(1);
     expect(await count(ctx, 'annotations', { child_id: kept.id })).toBe(1);
     expect(await count(ctx, 'exercises', { child_id: kept.id })).toBe(1);
   });

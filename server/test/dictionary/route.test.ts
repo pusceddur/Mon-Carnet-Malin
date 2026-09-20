@@ -19,7 +19,7 @@ vi.mock('../../src/auth/middleware', async (importOriginal) => {
       res.status(401).json({ error: { code: 'not_authenticated', message: 'Tu dois te connecter.' } });
       return;
     }
-    req.auth = { userId: parent, sessionId: 'session-test', parentUnlockedUntil: null };
+    req.auth = { userId: parent, sessionId: 'session-test', parentUnlockedUntil: null, pinRequired: true };
     next();
   };
   return { ...actual, requireAuth };
