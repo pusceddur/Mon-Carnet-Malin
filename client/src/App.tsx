@@ -3,9 +3,11 @@ import { setDeviceName } from './api/auth';
 import { RouterProvider } from 'react-router';
 import { useToast } from './design/components';
 import { applyTheme } from './design/reading';
+import { pushIncomingDocument } from './documents/incomingFiles';
 import { processingQueue } from './documents/ProcessingQueue';
 import { home } from './i18n/fr/home';
 import { describeThisDevice } from './platform/deviceName';
+import { onIncomingFile } from './platform/native/fileImport';
 import { isStandalonePwa, requestPersistentStorage } from './platform/support';
 import { router } from './routes';
 import { purgeStaleOfflineCaches } from './state/offlineAssets';
@@ -57,6 +59,18 @@ function ThemeSync(): null {
   return null;
 }
 
+/**
+ * §29: a document opened in Carnet Malin from Mail, Safari or Fichiers. It is queued and the import page is opened;
+ * the queue survives a file arriving before that page exists. Does nothing outside the native app.
+ */
+function IncomingFileSync(): null {
+  useEffect(() => onIncomingFile((incoming) => {
+    pushIncomingDocument(incoming);
+    void router.navigate('/parent/importer');
+  }), []);
+  return null;
+}
+
 /** §20: names this device in « Appareils connectés » once per start and account (best effort). */
 function DeviceNameSync(): null {
   const parentId = useSessionStore((s) => (s.authStatus?.authenticated ? (s.authStatus.parent?.id ?? null) : null));
@@ -77,6 +91,7 @@ export default function App(): JSX.Element {
     <>
       <ThemeSync />
       <DeviceNameSync />
+      <IncomingFileSync />
       <UpdateNotice />
       <RouterProvider router={router} />
     </>

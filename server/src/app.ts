@@ -6,6 +6,7 @@ import express, { type Express, type RequestHandler } from 'express';
 import helmet from 'helmet';
 import { requireXRequestedWith } from './auth/middleware';
 import { createAuthRouter } from './auth/routes';
+import { appCors } from './cors';
 import { errorHandler, notFound } from './errors';
 import { clientDistDir } from './paths';
 import { createActivityRouter } from './routes/activity';
@@ -86,6 +87,8 @@ export function createApp(deps: AppDeps): Express {
   );
 
   app.use(cookieParser());
+  // §29: before the mutation guard, so that the preflight of the bundled app is answered instead of refused.
+  if (config.appOrigins.length > 0) app.use('/api', appCors(config.appOrigins));
   // API: mutations require `X-Requested-With: aide` (checked before any body is read).
   app.use('/api', mutationGuard());
   app.use(jsonBodies());

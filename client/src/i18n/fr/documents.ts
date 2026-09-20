@@ -97,6 +97,8 @@ export const documents = {
     childrenLabel: 'Pour qui ?',
     noChildren: 'Aucun profil enfant pour le moment. Vous pourrez attribuer ce document plus tard.',
     pagesTitle: 'Pages',
+    scanPages: 'Scanner des pages',
+    scanFailed: 'Le scanner n’a pas pu s’ouvrir.',
     takePhoto: 'Prendre en photo',
     takeNextPhoto: 'Photo suivante',
     chooseFiles: 'Choisir des fichiers',

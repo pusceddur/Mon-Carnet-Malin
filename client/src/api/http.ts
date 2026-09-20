@@ -1,4 +1,5 @@
 import { KID_MESSAGES, type ApiErrorBody } from '@aide/shared';
+import { apiUrl, authHeaders, credentialsMode } from './endpoint';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -53,7 +54,7 @@ export async function api<T>(method: HttpMethod, path: string, body?: unknown, o
   const onExternalAbort = (): void => controller.abort();
   opts.signal?.addEventListener('abort', onExternalAbort, { once: true });
 
-  const headers: Record<string, string> = { 'X-Requested-With': 'aide', Accept: 'application/json' };
+  const headers: Record<string, string> = { 'X-Requested-With': 'aide', Accept: 'application/json', ...authHeaders() };
   let payload: BodyInit | undefined;
   if (opts.form) {
     payload = opts.form;
@@ -68,7 +69,7 @@ export async function api<T>(method: HttpMethod, path: string, body?: unknown, o
   try {
     let res: Response;
     try {
-      res = await fetch(path, { method, headers, body: payload, credentials: 'include', signal: controller.signal });
+      res = await fetch(apiUrl(path), { method, headers, body: payload, credentials: credentialsMode(), signal: controller.signal });
     } catch {
       // fetch only rejects on abort or network failure (TypeError).
       if (controller.signal.aborted) throw abortError();

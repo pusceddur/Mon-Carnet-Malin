@@ -5,11 +5,14 @@ import { Button, Field, IconButton, Segmented, TextInput, Toggle, useToast } fro
 import { detectFileKind, isHeic, titleFromFileName } from '../../documents/DocumentParser';
 import { analyzeFile, ImportError, importFiles } from '../../documents/ImportService';
 import { usePagesReadByAi } from '../../documents/ProcessingQueue';
+import { onIncomingDocuments, takeIncomingDocuments } from '../../documents/incomingFiles';
 import { draftProblem, isMixedEpub, moveItem, removeItem, totalPages, updateItem, type DraftItem } from '../../documents/ui/importDraft';
 import '../../documents/ui/parentDocuments.css';
 import { format } from '../../i18n/fr';
 import { documents } from '../../i18n/fr/documents';
 import { decodeToRgba, encodeRgbaJpeg } from '../../ocr/preprocess/canvas';
+import { isScannerAvailable, scanPages } from '../../platform/native/documentScanner';
+import { discardIncomingFile } from '../../platform/native/fileImport';
 import { isIPad, isStandalonePwa } from '../../platform/support';
 import { useSessionStore } from '../../state/session';
 import { ParentPage, ParentSection } from './ParentPage';
@@ -77,6 +80,43 @@ export default function ImportPage(): JSX.Element {
       owned.clear();
     };
   }, []);
+
+  // §29 The document camera of iPadOS: only inside the App Store app, and only when the device has one.
+  const [scannerReady, setScannerReady] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void isScannerAvailable().then((ready) => {
+      if (!cancelled) setScannerReady(ready);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // §29 Documents handed over by another app: they are added like chosen files, then the copy iOS left is removed.
+  useEffect(() => {
+    const drain = (): void => {
+      const incoming = takeIncomingDocuments();
+      if (incoming.length === 0) return;
+      addFiles(incoming.map((item) => item.file), false);
+      for (const item of incoming) void discardIncomingFile(item.url);
+    };
+    drain();
+    return onIncomingDocuments(drain);
+    // addFiles reads the current photo count; draining again on every render would duplicate the files.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onScan = async (): Promise<void> => {
+    try {
+      const pages = await scanPages();
+      if (!pages || pages.length === 0) return;
+      // Scanned pages are photos of a page: they are named and counted like the ones taken with the camera.
+      addFiles(pages.map((blob, index) => new File([blob], `scan-${index + 1}.jpg`, { type: blob.type })), true);
+    } catch {
+      toast.error(t.scanFailed);
+    }
+  };
 
   const addFiles = (files: File[], fromCamera: boolean): void => {
     let photoNumber = photoCount;
@@ -267,6 +307,11 @@ export default function ImportPage(): JSX.Element {
 
       <ParentSection title={t.pagesTitle} hint={t.filesHint}>
         <div className="parent-actions">
+          {scannerReady && (
+            <Button size="parent" variant="secondary" icon="🖨️" onClick={() => void onScan()}>
+              {t.scanPages}
+            </Button>
+          )}
           <Button size="parent" variant="secondary" icon="📷" onClick={() => cameraInput.current?.click()}>
             {photoCount > 0 ? t.takeNextPhoto : t.takePhoto}
           </Button>

@@ -14,6 +14,12 @@ export interface AuthStatus {
   pinRequired: boolean;            // §20: false = the Réglages open without the code (the PIN still exists)
   passwordResetAvailable: boolean; // §20: « Mot de passe oublié » works (e-mails configured on the server)
   aiReading: boolean;              // §25: the home computer reads the page images (worker configured on the server)
+  /**
+   * §29: session token of a freshly opened session, sent only to a client that asked for it (`X-Aide-Client: native`).
+   * The bundled app is not same-origin with the server, so it has no cookie jar: it keeps this token itself and sends it
+   * back as `Authorization: Bearer …`. The browser app never receives it and keeps using its httpOnly cookie.
+   */
+  sessionToken?: string;
 }
 
 // ---------- §20 account security ----------

@@ -1,5 +1,6 @@
 // Thin wrapper over POST /api/ocr (contract §7, §15.6). Uses fetch directly to read `Retry-After` on 503.
 import type { OcrServerResult, TextBlock } from '@aide/shared';
+import { apiUrl, authHeaders, credentialsMode } from './endpoint';
 
 export const OCR_REQUEST_TIMEOUT_MS = 120_000;
 
@@ -41,11 +42,11 @@ export async function postOcr(image: Blob, fileName: string, signal?: AbortSigna
   try {
     const form = new FormData();
     form.append('image', image, fileName);
-    const res = await fetch('/api/ocr', {
+    const res = await fetch(apiUrl('/api/ocr'), {
       method: 'POST',
       body: form,
-      credentials: 'include',
-      headers: { 'X-Requested-With': 'aide', Accept: 'application/json' },
+      credentials: credentialsMode(),
+      headers: { 'X-Requested-With': 'aide', Accept: 'application/json', ...authHeaders() },
       signal: controller.signal,
     });
     let body: unknown = null;

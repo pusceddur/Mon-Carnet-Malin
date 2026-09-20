@@ -1,0 +1,16 @@
+{
+  "name": "carnet-file-import",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reads a file another app opened in Carnet Malin (\u00ab Ouvrir dans\u2026 \u00bb).",
+  "main": "index.js",
+  "license": "UNLICENSED",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=8.0.0"
+  }
+}

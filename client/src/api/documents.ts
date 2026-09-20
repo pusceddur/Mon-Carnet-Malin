@@ -3,6 +3,7 @@ import {
   DocumentTextModeResponseSchema, type DocumentTextMode, type DocumentTextModeResponse, type Id, type OkResponse, type ReadingPreparationRequest,
   type ReadingPreparationResponse, ReadingPreparationResponseSchema,
 } from '@aide/shared';
+import { apiUrl, authHeaders, credentialsMode } from './endpoint';
 import { ApiError, api } from './http';
 
 const path = (id: Id): string => `/api/documents/${encodeURIComponent(id)}`;
@@ -54,10 +55,10 @@ export async function fetchPageImage(documentId: Id, pageIndex: number, signal?:
   const missingSince = missingPageImages.get(key);
   if (missingSince !== undefined && Date.now() - missingSince < MISSING_PAGE_IMAGE_TTL_MS) return null;
   try {
-    const res = await fetch(pageImagePath(documentId, pageIndex), {
+    const res = await fetch(apiUrl(pageImagePath(documentId, pageIndex)), {
       method: 'GET',
-      credentials: 'include',
-      headers: { 'X-Requested-With': 'aide' },
+      credentials: credentialsMode(),
+      headers: { 'X-Requested-With': 'aide', ...authHeaders() },
       signal,
     });
     if (res.status === 404) missingPageImages.set(key, Date.now());

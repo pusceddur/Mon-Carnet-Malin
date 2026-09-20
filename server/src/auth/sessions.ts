@@ -46,10 +46,23 @@ export function clearSessionCookie(res: Response, config: AppConfig): void {
   res.clearCookie(SESSION_COOKIE, options);
 }
 
+/** Session token of `Authorization: Bearer …` (§29: the bundled app has no cookie jar), or null. */
+function readBearerToken(req: Request): string | null {
+  const match = /^Bearer ([A-Za-z0-9._~+/=-]{1,128})$/.exec(req.get('authorization') ?? '');
+  return match?.[1] ?? null;
+}
+
+/** Session token of the request: the `aide_sid` cookie (browser), else a bearer token (native app). */
 export function readSessionToken(req: Request): string | null {
   const cookies = req.cookies as Record<string, unknown> | undefined;
   const value = cookies?.[SESSION_COOKIE];
-  return typeof value === 'string' && value.length > 0 && value.length <= 128 ? value : null;
+  if (typeof value === 'string' && value.length > 0 && value.length <= 128) return value;
+  return readBearerToken(req);
+}
+
+/** True when the caller keeps the session token itself instead of a cookie (bundled app). */
+export function wantsSessionToken(req: Request): boolean {
+  return req.get('x-aide-client') === 'native';
 }
 
 export async function createSession(

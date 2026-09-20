@@ -69,3 +69,11 @@ deploy/
 
 # iPad app: Xcode project generated on the Mac (contains the signing team)
 ipad/ios/
+# App Store build: Xcode project and the copy of the web app, both generated
+ios-app/ios/
+ios-app/www/
+# Native app: Swift build products and the Xcode project generated on the Mac
+ios-native/**/.build/
+ios-native/**/.swiftpm/
+ios-native/**/*.xcodeproj/
+ios-native/**/*.xcworkspace/

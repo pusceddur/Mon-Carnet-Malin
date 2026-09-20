@@ -1,0 +1,16 @@
+{
+  "name": "carnet-document-scanner",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Scanner de pages: the iPadOS document camera (edge detection and perspective correction).",
+  "main": "index.js",
+  "license": "UNLICENSED",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=8.0.0"
+  }
+}

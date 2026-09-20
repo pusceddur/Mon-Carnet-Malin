@@ -10,7 +10,8 @@ import {
 import { liveQuery } from 'dexie';
 import { useEffect, useState } from 'react';
 import { db, type PageImageRecord } from '../db/localDb';
-import { browserOcr, OcrUnavailableError, type OcrEngine } from '../ocr/BrowserOCR';
+import { OcrUnavailableError, type OcrEngine } from '../ocr/BrowserOCR';
+import { pageOcr } from '../ocr/pageEngine';
 import { canDecodeImage } from '../ocr/preprocess/canvas';
 import {
   binarizeImage,
@@ -124,7 +125,7 @@ export interface QueueDeps {
 
 function defaultDeps(): QueueDeps {
   return {
-    ocr: browserOcr,
+    ocr: pageOcr,
     aiReading: () => useSessionStore.getState().authStatus?.aiReading === true,
     watchAiReading,
     openPdf: (blob) => openPdf(blob),

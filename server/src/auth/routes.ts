@@ -25,7 +25,10 @@ import {
 import { isLocked, LOCKOUT, LOGIN_LOCKOUT, lockUntilAfterFailure } from './lockout';
 import { rateLimiter, requireAuth, requireParentUnlock, ipKey } from './middleware';
 import { dummyHash, hashSecret, timingSafeEqualString, verifySecret } from './passwords';
-import { type AuthContext, clearSessionCookie, createSession, readSessionToken, hashSessionToken, resolveSession, setSessionCookie } from './sessions';
+import {
+  type AuthContext, clearSessionCookie, createSession, readSessionToken, hashSessionToken, resolveSession, setSessionCookie,
+  wantsSessionToken,
+} from './sessions';
 
 const FIFTEEN_MINUTES = 15 * 60_000;
 const HOUR = 60 * 60_000;
@@ -99,7 +102,7 @@ async function checkPassword(deps: AppDeps, user: UserRecord, password: string):
 }
 
 /** New session after a password (setup, sign-up, login): it also confirms that the account is in use (§20). */
-async function startSession(deps: AppDeps, req: Request, res: Response, userId: string): Promise<AuthContext> {
+async function startSession(deps: AppDeps, req: Request, res: Response, userId: string): Promise<{ ctx: AuthContext; token: string }> {
   const previous = readSessionToken(req);
   if (previous) await deleteSession(deps.db, hashSessionToken(previous));
   const now = deps.now();
@@ -107,7 +110,19 @@ async function startSession(deps: AppDeps, req: Request, res: Response, userId: 
   setSessionCookie(res, deps.config, token);
   await confirmContinuity(deps.db, userId, now);
   const pinRequired = (await findUserById(deps.db, userId))?.pinRequired ?? true;
-  return { userId, sessionId: session.id, parentUnlockedUntil: pinRequired ? null : now + TIMINGS.parentUnlockMs, pinRequired };
+  const ctx: AuthContext = {
+    userId, sessionId: session.id, parentUnlockedUntil: pinRequired ? null : now + TIMINGS.parentUnlockMs, pinRequired,
+  };
+  return { ctx, token };
+}
+
+/**
+ * §29: the bundled app is not same-origin with the server, so the session cookie never reaches it. When it asks
+ * (`X-Aide-Client: native`) it receives the session token once, at the moment the session opens, and sends it back as
+ * `Authorization: Bearer …`. A browser never asks, so its token stays in the httpOnly cookie and out of reach of scripts.
+ */
+function withSessionToken(req: Request, status: AuthStatus, token: string): AuthStatus {
+  return wantsSessionToken(req) ? { ...status, sessionToken: token } : status;
 }
 
 /** Mounted by app.ts at `/api/auth`: declare paths relative to that prefix. */
@@ -151,8 +166,8 @@ export function createAuthRouter(deps: AppDeps): Router {
       );
     });
     deps.logger.info('parent_setup_done', { userId: parent.id });
-    const ctx = await startSession(deps, req, res, parent.id);
-    res.json(await buildAuthStatus(deps, ctx));
+    const { ctx, token } = await startSession(deps, req, res, parent.id);
+    res.json(withSessionToken(req, await buildAuthStatus(deps, ctx), token));
   });
 
   // Invitation-only sign-up: the code is checked before anything else (no e-mail enumeration without it).
@@ -173,8 +188,8 @@ export function createAuthRouter(deps: AppDeps): Router {
     );
     await resetInvitationFailures(deps.db, now);
     deps.logger.info('parent_registered', { userId: parent.id });
-    const ctx = await startSession(deps, req, res, parent.id);
-    res.status(201).json(await buildAuthStatus(deps, ctx));
+    const { ctx, token } = await startSession(deps, req, res, parent.id);
+    res.status(201).json(withSessionToken(req, await buildAuthStatus(deps, ctx), token));
   });
 
   router.post('/login', loginAllLimiter, loginIpLimiter, loginLimiter, async (req, res) => {
@@ -190,8 +205,8 @@ export function createAuthRouter(deps: AppDeps): Router {
       throw appError(401, 'invalid_credentials');
     }
     await resetAttempts(deps.db, user.id, ['login', 'pin']);
-    const ctx = await startSession(deps, req, res, user.id);
-    res.json(await buildAuthStatus(deps, ctx));
+    const { ctx, token } = await startSession(deps, req, res, user.id);
+    res.json(withSessionToken(req, await buildAuthStatus(deps, ctx), token));
   });
 
   router.post('/logout', auth, unlocked, async (req, res) => {

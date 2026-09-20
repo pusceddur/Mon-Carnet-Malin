@@ -4,14 +4,34 @@ import {
   type DeviceNameRequest, type DeviceSession, type LoginRequest, type OkResponse, type PasswordResetConfirm, type PasswordResetRequest,
   type PinRequiredRequest, type RegisterRequest, type SetupRequest, type UnlockRequest,
 } from '@aide/shared';
+import { setSessionToken } from './endpoint';
 import { ApiError, api } from './http';
 
-export const getAuthStatus = (): Promise<AuthStatus> => api<AuthStatus>('GET', '/api/auth/status');
-export const setup = (body: SetupRequest): Promise<AuthStatus> => api<AuthStatus>('POST', '/api/auth/setup', body);
+/**
+ * §29 The bundled app receives the session token once, when the session opens, and keeps it itself: it has no cookie
+ * jar of its own. In the browser the field is absent and the httpOnly cookie keeps doing the work.
+ */
+function keepSession(status: AuthStatus): AuthStatus {
+  if (typeof status.sessionToken === 'string' && status.sessionToken !== '') setSessionToken(status.sessionToken);
+  return status;
+}
+
+/** A session that is no longer open leaves no token behind. */
+function forgetIfSignedOut(status: AuthStatus): AuthStatus {
+  if (!status.authenticated) setSessionToken(null);
+  return status;
+}
+
+export const getAuthStatus = async (): Promise<AuthStatus> => forgetIfSignedOut(await api<AuthStatus>('GET', '/api/auth/status'));
+export const setup = async (body: SetupRequest): Promise<AuthStatus> => keepSession(await api<AuthStatus>('POST', '/api/auth/setup', body));
 /** Invitation-only sign-up (201): opens the session like login. */
-export const register = (body: RegisterRequest): Promise<AuthStatus> => api<AuthStatus>('POST', '/api/auth/register', body);
-export const login = (body: LoginRequest): Promise<AuthStatus> => api<AuthStatus>('POST', '/api/auth/login', body);
-export const logout = (): Promise<OkResponse> => api<OkResponse>('POST', '/api/auth/logout');
+export const register = async (body: RegisterRequest): Promise<AuthStatus> => keepSession(await api<AuthStatus>('POST', '/api/auth/register', body));
+export const login = async (body: LoginRequest): Promise<AuthStatus> => keepSession(await api<AuthStatus>('POST', '/api/auth/login', body));
+export const logout = async (): Promise<OkResponse> => {
+  const done = await api<OkResponse>('POST', '/api/auth/logout');
+  setSessionToken(null);
+  return done;
+};
 export const unlock = (body: UnlockRequest): Promise<AuthStatus> => api<AuthStatus>('POST', '/api/auth/unlock', body);
 export const lock = (): Promise<AuthStatus> => api<AuthStatus>('POST', '/api/auth/lock');
 export const changePin = (body: ChangePinRequest): Promise<OkResponse> => api<OkResponse>('PUT', '/api/auth/pin', body);

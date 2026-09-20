@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { isNativeApp } from '../platform/nativeApp';
 
 export interface RegisterSwOptions {
   immediate?: boolean;
@@ -30,9 +31,12 @@ export const usePwaStore = create<PwaState>()((set) => ({
   dismissUpdate: () => set({ needRefresh: false }),
 }));
 
-/** Registers the service worker once (prompt mode: never reloads the page by itself, e.g. during OCR or reading). */
+/**
+ * Registers the service worker once (prompt mode: never reloads the page by itself, e.g. during OCR or reading).
+ * §29: the bundled app carries its own copy of the web app and is updated through the App Store, so it registers none.
+ */
 export function registerPwa(register: RegisterSw): void {
-  if (registered || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+  if (registered || isNativeApp() || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
   registered = true;
   try {
     updateServiceWorker = register({

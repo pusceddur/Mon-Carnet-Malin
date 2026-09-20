@@ -1,6 +1,7 @@
 // Technical problem reports sent to the server (/api/diagnostics) so that device-only failures (iPad Safari) can be understood.
 // Never includes document text: only error names/messages, the processing stage and capability flags.
 import { DIAGNOSTIC_LIMITS, type ClientDiagnosticKind, type ClientDiagnosticReport, type DiagnosticValue } from '@aide/shared';
+import { apiUrl, authHeaders, credentialsMode } from '../api/endpoint';
 import { isIPad, isStandalonePwa } from './support';
 
 export type DiagnosticContext = Record<string, DiagnosticValue | undefined>;
@@ -18,10 +19,10 @@ type Sender = (reports: ClientDiagnosticReport[]) => Promise<boolean>;
 async function defaultSender(reports: ClientDiagnosticReport[]): Promise<boolean> {
   if (typeof fetch !== 'function') return false;
   try {
-    const res = await fetch('/api/diagnostics', {
+    const res = await fetch(apiUrl('/api/diagnostics'), {
       method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'aide' },
+      credentials: credentialsMode(),
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'aide', ...authHeaders() },
       body: JSON.stringify({ reports }),
       keepalive: true,
     });

@@ -1,0 +1,24 @@
+{
+  "name": "carnet-malin-ios",
+  "version": "0.1.0",
+  "private": true,
+  "description": "App Store build: the web app is bundled inside the app, with native iPadOS features on top.",
+  "scripts": {
+    "build": "node scripts/build-web.mjs",
+    "setup": "npm run build && cap add ios && node scripts/configure-ios.mjs",
+    "sync": "npm run build && cap sync ios && node scripts/configure-ios.mjs",
+    "open": "cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/app": "8.5.2",
+    "@capacitor/core": "8.5.2",
+    "@capacitor/ios": "8.5.2",
+    "carnet-document-scanner": "file:./plugins/document-scanner",
+    "carnet-file-import": "file:./plugins/file-import",
+    "carnet-native-speech": "file:./plugins/native-speech",
+    "carnet-text-recognizer": "file:./plugins/text-recognizer"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2"
+  }
+}

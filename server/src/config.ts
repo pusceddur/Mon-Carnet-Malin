@@ -45,6 +45,11 @@ export interface AppConfig {
   wiktionaryEnabled: boolean;
   /** Express `trust proxy` hop count (TRUST_PROXY); false = disabled (default). */
   trustProxy: number | false;
+  /**
+   * §29 origins of the bundled native app allowed to call the API across origins (APP_ORIGINS, comma separated, e.g.
+   * `capacitor://localhost`). Empty by default: the browser app is same-origin and needs no CORS at all.
+   */
+  appOrigins: readonly string[];
   /** Per-parent storage quota for uploaded originals and page images (UPLOAD_QUOTA_MB, default 2000). */
   uploadQuotaBytes: number;
   /** bcrypt cost factor (fast in tests). */
@@ -94,6 +99,7 @@ const EnvSchema = z.object({
   TESSDATA_BEST_DIR: z.string().min(1).optional(),
   WIKTIONARY_ENABLED: BoolSchema.default(true),
   TRUST_PROXY: z.union([z.enum(['false', 'off']), z.string().regex(/^\d{1,2}$/)]).optional(),
+  APP_ORIGINS: z.string().max(500).optional(),
   UPLOAD_QUOTA_MB: z.string().regex(/^\d{1,7}$/).optional(),
   WORKER_TOKEN_SHA256: z.string().regex(/^[0-9a-fA-F]{64}$/).optional(),
   WORKER_SELF_REFERENCE_TERMS: z.string().max(2000).optional(),
@@ -126,6 +132,13 @@ export const WORKER_DEFAULT_DEADLINES = { light: 90_000, complex: 240_000 } as c
 function parseTerms(raw: string | undefined): string[] {
   if (raw === undefined) return [];
   return [...new Set(raw.split(',').map((t) => t.trim()).filter((t) => t.length > 0 && t.length <= 100))];
+}
+
+/** §29 origins of the native app: `scheme://host[:port]`, no path and no trailing slash. Anything else is dropped. */
+function parseOrigins(raw: string | undefined): string[] {
+  if (raw === undefined) return [];
+  const origin = /^[a-z][a-z0-9+.-]*:\/\/[^\s/]+$/i;
+  return [...new Set(raw.split(',').map((o) => o.trim()).filter((o) => origin.test(o)))];
 }
 
 function parseTrustProxy(raw: string | undefined): number | false {
@@ -210,6 +223,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     tessdataBestDir: e.TESSDATA_BEST_DIR ?? null,
     wiktionaryEnabled: e.WIKTIONARY_ENABLED,
     trustProxy: parseTrustProxy(e.TRUST_PROXY),
+    appOrigins: parseOrigins(e.APP_ORIGINS),
     uploadQuotaBytes: Number(e.UPLOAD_QUOTA_MB ?? DEFAULT_UPLOAD_QUOTA_MB) * 1024 * 1024,
     passwordHashRounds: isTest ? 4 : 12,
     mail: parseMail(e),
