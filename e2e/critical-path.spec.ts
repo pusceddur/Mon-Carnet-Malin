@@ -72,22 +72,22 @@ test('parent prepares a book, the child reads, gets help, annotates and answers 
     await expect(toolbar).toBeVisible();
     await toolbar.getByRole('button', { name: /Définition/ }).click();
     const sheet = page.getByRole('dialog');
-    await expect(sheet).toContainText('Montagne d’où peuvent sortir de la lave');
+    // Section 25.1: the answer comes from the help, never from a dictionary on the device.
+    await expect(sheet).toContainText('volcan');
+    await expect(sheet.getByRole('button', { name: /Écouter/ })).toBeVisible();
     await sheet.getByRole('button', { name: 'Fermer' }).first().click();
     await expect(sheet).toBeHidden();
   });
 
-  await test.step('💡 Explique: glossary first, then the help service', async () => {
+  await test.step('💡 Explique goes straight to the help service', async () => {
+    // Section 25.1 (2026-09-19): there is no glossary answer to step past any more. One press, one answer.
+    const aiResponse = page.waitForResponse((r) => r.url().includes('/api/ai/explain_text') && r.request().method() === 'POST');
     await page.getByRole('button', { name: /Explique/ }).click();
     const sheet = page.getByRole('dialog');
-    await expect(sheet).toContainText('Montagne d’où peuvent sortir de la lave');
-    const aiResponse = page.waitForResponse((r) => r.url().includes('/api/ai/explain_text') && r.request().method() === 'POST');
-    await sheet.getByRole('button', { name: /Je ne comprends pas encore/ }).click();
     const response = await aiResponse;
     expect(response.status()).toBe(200);
     const body = (await response.json()) as { status: string };
     expect(body.status).toBe('ok');
-    await expect(sheet.getByRole('button', { name: /Je ne comprends pas encore/ })).toBeHidden();
     await expect(sheet.getByText('Je réfléchis pour t’aider…')).toBeHidden();
     await sheet.getByRole('button', { name: 'Fermer' }).first().click();
     await expect(sheet).toBeHidden();
@@ -136,33 +136,19 @@ test('parent prepares a book, the child reads, gets help, annotates and answers 
       .toBe(1);
   });
 
-  await test.step('🧠 local quiz when the help service cannot be reached, answered correctly', async () => {
+  await test.step('🧠 without the help service there are no questions, and the child is told so', async () => {
+    // Section 25.1 (2026-09-19): the local question generator was removed from the client. When the help cannot be
+    // reached the child is told plainly and offered « Réessayer » — never a quiz invented on the device.
     await page.route('**/api/ai/**', (route) => route.abort('internetdisconnected'));
     await page.goto('/exercices');
     await page.getByRole('button', { name: new RegExp(BOOK) }).first().click();
     await page.getByRole('link', { name: /Fais-moi des questions/ }).or(page.getByRole('button', { name: /Fais-moi des questions/ })).first().click();
     await expect(page.getByRole('heading', { name: /Fais-moi des questions/ })).toBeVisible();
-    for (const type of ['Vrai ou faux', 'Réponse écrite', 'Relier', 'Remettre dans l’ordre']) {
-      await page.getByRole('button', { name: type }).click();
-    }
     await page.getByRole('radio', { name: '3', exact: true }).click();
     await page.getByRole('button', { name: /C’est parti/ }).click();
-    await page.waitForURL(/\/exercices\/quiz\//);
-    await expect(page.getByText('Questions préparées sans aide en ligne')).toBeVisible();
 
-    const exerciseId = decodeURIComponent(new URL(page.url()).pathname.split('/').pop() ?? '');
-    const exercise = (await readLocalTable<Exercise>(page, 'exercises')).find((e) => e.id === exerciseId);
-    expect(exercise?.origin).toBe('local');
-    expect(exercise?.questions.length).toBe(3);
-    const first = exercise!.questions[0]!;
-    expect(first.type).toBe('qcm');
-    if (first.type !== 'qcm') return;
-
-    await expect(page.getByText('Question 1 sur 3')).toBeVisible();
-    const choices = page.getByRole('group', { name: 'Choisis une réponse' });
-    await choices.getByRole('button', { name: first.choices[first.correctIndex]!, exact: true }).click();
-    await page.getByRole('button', { name: 'Valider' }).click();
-    await expect(page.getByText('Exact !')).toBeVisible();
+    await expect(page.getByText('Les questions ne sont pas disponibles pour le moment')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Réessayer' }).first()).toBeVisible();
     await page.unroute('**/api/ai/**');
   });
 

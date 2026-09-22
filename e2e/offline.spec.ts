@@ -35,10 +35,11 @@ test('offline: the installed app restarts without network and the child reads an
     await expect(page.locator('.rp-page[data-page-index="0"]')).toContainText(PAGE_ONE.title);
     await expect(page.locator('.rp-page[data-page-index="0"]')).toContainText('La lave coulait lentement sur la pente nord');
 
-    // Local help still works offline: the definition comes from the glossary on the device.
+    // Section 25.1: nothing is answered on the device any more, so offline the child is told so plainly and
+    // goes on reading. What matters here is that the app stays usable, not that it invents an answer.
     await page.locator('.rp-page[data-page-index="0"] .rp-w', { hasText: /^volcan$/ }).first().tap();
     await page.getByRole('button', { name: /Définition/ }).click();
-    await expect(page.getByRole('dialog')).toContainText('Montagne d’où peuvent sortir de la lave');
+    await expect(page.getByRole('dialog')).toContainText('Pas de connexion');
   } finally {
     await context.setOffline(false);
   }

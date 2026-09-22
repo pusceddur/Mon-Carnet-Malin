@@ -48,10 +48,10 @@ export async function openParentArea(page: Page, subPath: string): Promise<void>
 /** Creates the child profile unless it already exists (parent area must be unlocked). */
 export async function ensureChild(page: Page, nickname: string): Promise<void> {
   await openParentArea(page, 'enfants');
-  await expect(page.getByRole('heading', { name: 'Enfants' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Les lecteurs' })).toBeVisible();
   const existing = page.locator('.parent-list__title', { hasText: nickname });
   if ((await existing.count()) > 0) return;
-  await page.getByRole('button', { name: 'Ajouter un enfant' }).first().click();
+  await page.getByRole('button', { name: 'Ajouter un lecteur' }).first().click();
   await page.getByLabel('Surnom du lecteur').fill(nickname);
   await page.getByRole('button', { name: 'Enregistrer' }).click();
   await expect(page.locator('.parent-list__title', { hasText: nickname })).toBeVisible();

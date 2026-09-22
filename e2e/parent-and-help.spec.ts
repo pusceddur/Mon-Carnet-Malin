@@ -12,6 +12,8 @@ test('parent area: every page opens, settings persist on the server, a glossary 
 
   await test.step('AI and privacy settings are saved on the server', async () => {
     await openParentArea(page, 'ia');
+    // Section 27: the settings one by one live behind « Réglages avancés », folded by default.
+    await page.getByRole('button', { name: /Réglages avancés/ }).click();
     const deep = page.getByRole('switch', { name: /Réponses approfondies aux questions sur le texte/ });
     await expect(deep).toHaveAttribute('aria-checked', 'false');
     await deep.click();
@@ -20,6 +22,7 @@ test('parent area: every page opens, settings persist on the server, a glossary 
     const res = await page.request.get('/api/settings');
     expect(((await res.json()) as { ai: { deepQuestions: boolean } }).ai.deepQuestions).toBe(true);
     await page.reload();
+    await page.getByRole('button', { name: /Réglages avancés/ }).click();
     await expect(page.getByRole('switch', { name: /Réponses approfondies aux questions sur le texte/ })).toHaveAttribute('aria-checked', 'true');
   });
 
