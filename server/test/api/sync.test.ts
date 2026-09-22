@@ -271,8 +271,7 @@ describe('sync: parent-only rules', () => {
     ctx.advance(1000);
     const incoming: ChildProfile = {
       ...child,
-      firstName: 'Pirate',
-      age: 15,
+      nickname: 'Pirate',
       reading: { ...child.reading, fontSizePx: 32 },
       tts: { ...child.tts, rate: 1.1 },
       updatedAt: ctx.clock.now,
@@ -280,7 +279,7 @@ describe('sync: parent-only rules', () => {
     const res = await sync(device, { changes: { children: [incoming] } });
     expect(res.rejected).toEqual([{ table: 'children', entityKey: child.id, reason: 'forbidden' }]);
     const serverChild = res.changes.children.find((c) => c.id === child.id);
-    expect(serverChild).toMatchObject({ firstName: child.firstName, age: child.age, reading: { fontSizePx: 32 }, tts: { rate: 1.1 } });
+    expect(serverChild).toMatchObject({ nickname: child.nickname, reading: { fontSizePx: 32 }, tts: { rate: 1.1 } });
 
     const prefsOnly = await sync(device, { changes: { children: [{ ...child, reading: { ...child.reading, theme: 'sombre' }, updatedAt: ctx.clock.now + 1 }] } });
     expect(prefsOnly.rejected).toEqual([]);

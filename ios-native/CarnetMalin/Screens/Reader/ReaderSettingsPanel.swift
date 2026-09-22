@@ -47,6 +47,7 @@ struct ReaderSettingsPanel: View {
 
                     section(FR.Reader.sectionDisplay) {
                         themePicker
+                        palettePicker
                         ExplainedToggle(
                             title: FR.Reader.sentenceHighlight,
                             hint: FR.Reader.sentenceHighlightHint,
@@ -202,6 +203,23 @@ struct ReaderSettingsPanel: View {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+        }
+    }
+
+    /// §31 The set of colours, chosen apart from the paper colour: the two answer different needs.
+    private var palettePicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(FR.Reader.palette).font(AppFont.ui(18, weight: .medium)).foregroundStyle(Palette.ink)
+            Picker(FR.Reader.palette, selection: $reader.reading.palette) {
+                ForEach(ReadingPalette.allCases, id: \.self) { palette in
+                    Text(FR.Palettes.name(palette)).tag(palette)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            Text(FR.Palettes.hint(reader.reading.palette))
+                .font(AppFont.ui(15)).foregroundStyle(Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

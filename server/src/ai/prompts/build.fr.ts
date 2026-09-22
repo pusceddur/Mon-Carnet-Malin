@@ -28,7 +28,9 @@ const DIFFICULTY_FR: Record<ExplanationDifficulty, string> = {
 
 export function learnerLine(learner: AILearner): string {
   const target = Math.max(8, AGE_THRESHOLDS[learner.explanationDifficulty].avgWordsPerSentence - 4);
-  return `Profil de l'enfant : ${learner.age} ans, ${READING_LEVEL_FR[learner.readingLevel]}. Explications ${DIFFICULTY_FR[learner.explanationDifficulty]} : environ ${target} mots par phrase au maximum.`;
+  // §32: how they read and how much explaining they want. Never an age, never a name: the provider is told what
+  // the answer has to look like, not who is going to read it.
+  return `Profil du lecteur : ${READING_LEVEL_FR[learner.readingLevel]}. Explications ${DIFFICULTY_FR[learner.explanationDifficulty]} : environ ${target} mots par phrase au maximum.`;
 }
 
 const SUMMARY_LEVEL_FR: Record<SummaryLevel, string> = { bref: 'bref', normal: 'normal', detaille: 'détaillé' };

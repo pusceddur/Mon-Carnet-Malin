@@ -42,7 +42,7 @@ export function createAIStore(deps: AppDeps): AIStore {
   return {
     async getLearner(parentId, childId) {
       const child = await getChild(deps.db, parentId, childId);
-      return child ? { age: child.age, readingLevel: child.readingLevel, explanationDifficulty: child.explanationDifficulty } : null;
+      return child ? { readingLevel: child.readingLevel, explanationDifficulty: child.explanationDifficulty } : null;
     },
     getSettings: (parentId) => getParentSettings(deps.db, parentId),
   };

@@ -55,10 +55,13 @@ final class AIServiceTests: XCTestCase {
         super.tearDown()
     }
 
-    private func child(age: Int = 9) -> ChildProfile {
+    private func child(
+        readingLevel: ReadingLevel = .intermediaire,
+        explanationDifficulty: ExplanationDifficulty = .simple
+    ) -> ChildProfile {
         ChildProfile(
-            id: "c1", parentId: "p1", firstName: "Léa", age: age, avatar: "🦊",
-            readingLevel: .intermediaire, explanationDifficulty: .simple,
+            id: "c1", parentId: "p1", nickname: "Léa", avatar: "🦊",
+            readingLevel: readingLevel, explanationDifficulty: explanationDifficulty,
             reading: .standard, tts: .standard, exercises: .standard, createdAt: 0, updatedAt: 0
         )
     }
@@ -164,15 +167,18 @@ final class AIServiceTests: XCTestCase {
         XCTAssertEqual(transport.postCount, 2)
     }
 
-    func testAnAnswerForAnOlderChildIsNotHandedToAYoungerOne() async {
+    /// §32: the cache is keyed by how the reader reads, not by how old they are — there is no age any more.
+    func testAnAnswerForOneReadingLevelIsNotHandedToAnother() async {
         let transport = StubAITransport(posts: [
-            ok(#"{"explanation":"Pour 12 ans.","example":null,"sourceQuotes":[]}"#),
-            ok(#"{"explanation":"Pour 8 ans.","example":null,"sourceQuotes":[]}"#),
+            ok(#"{"explanation":"Pour un lecteur avancé.","example":null,"sourceQuotes":[]}"#),
+            ok(#"{"explanation":"Pour un lecteur débutant.","example":null,"sourceQuotes":[]}"#),
         ])
         let ai = service(transport)
-        _ = await ai.request(explainWord(), for: child(age: 12))
-        let younger = await ai.request(explainWord(), for: child(age: 8))
-        XCTAssertEqual(younger.value?.explanation, "Pour 8 ans.")
+        _ = await ai.request(explainWord(), for: child(readingLevel: .avance, explanationDifficulty: .normal))
+        let beginner = await ai.request(
+            explainWord(), for: child(readingLevel: .debutant, explanationDifficulty: .tresSimple)
+        )
+        XCTAssertEqual(beginner.value?.explanation, "Pour un lecteur débutant.")
     }
 
     func testAFreeQuestionIsAskedEveryTime() async {
@@ -467,7 +473,7 @@ final class NullCodableTests: XCTestCase {
         }
 
         let child = ChildProfile(
-            id: "c1", parentId: "p1", firstName: "Léa", age: 9, avatar: "🦊", readingLevel: .intermediaire,
+            id: "c1", parentId: "p1", nickname: "Léa", avatar: "🦊", readingLevel: .intermediaire,
             explanationDifficulty: .simple, reading: .standard, tts: .standard, exercises: .standard,
             createdAt: 0, updatedAt: 0
         )

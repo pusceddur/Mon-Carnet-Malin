@@ -1,5 +1,6 @@
 // Thin wrappers over §7 /api/auth (§15.8).
 import {
+  type AccountDeleteRequest,
   DeviceSessionsResponseSchema, type AuthStatus, type ChangePasswordRequest, type ChangePinRequest, type ContinuityConfirm,
   type DeviceNameRequest, type DeviceSession, type LoginRequest, type OkResponse, type PasswordResetConfirm, type PasswordResetRequest,
   type PinRequiredRequest, type RegisterRequest, type SetupRequest, type UnlockRequest,
@@ -51,6 +52,14 @@ export async function listDeviceSessions(): Promise<DeviceSession[]> {
   if (!parsed.success) throw new ApiError(200, 'invalid_response', 'Invalid device list');
   return parsed.data.sessions;
 }
+
+/**
+ * §30 « Supprimer le compte »: immediate and final, on every device.
+ *
+ * The password again, and the Réglages already open. What comes back is `ok`; what is gone is gone.
+ */
+export const deleteAccount = (body: AccountDeleteRequest): Promise<OkResponse> =>
+  api<OkResponse>('POST', '/api/auth/account/delete', body);
 
 export const signOutDevice = (id: string): Promise<OkResponse> => api<OkResponse>('DELETE', `/api/auth/sessions/${encodeURIComponent(id)}`);
 export const signOutOtherDevices = (): Promise<OkResponse> => api<OkResponse>('POST', '/api/auth/sessions/revoke-others');

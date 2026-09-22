@@ -52,16 +52,8 @@ struct ParentHomeView: View {
             // One after the other when several arrived at once.
             if file == nil { DispatchQueue.main.async(execute: takeIncoming) }
         }
-        .confirmationDialog(
-            FR.SignIn.signOutConfirm, isPresented: $showingSignOut, titleVisibility: .visible
-        ) {
-            Button(FR.SignIn.signOut, role: .destructive) {
-                Task {
-                    await model.signOut()
-                    dismiss()
-                }
-            }
-            Button(FR.Common.cancel, role: .cancel) {}
+        .sheet(isPresented: $showingSignOut) {
+            SignOutSheet { dismiss() }
         }
     }
 
@@ -88,12 +80,9 @@ struct ParentHomeView: View {
                     HStack(spacing: 14) {
                         Text(child.avatar.isEmpty ? "🙂" : child.avatar).font(.system(size: 34))
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(child.firstName)
+                            Text(child.nickname)
                                 .font(AppFont.ui(19, weight: .semibold))
                                 .foregroundStyle(Palette.ink)
-                            Text(FR.format("{age} ans", ["age": String(child.age)]))
-                                .font(AppFont.ui(15))
-                                .foregroundStyle(Palette.muted)
                         }
                         Spacer()
                         Image(systemName: "chevron.right").foregroundStyle(Palette.muted)

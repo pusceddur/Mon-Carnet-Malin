@@ -95,6 +95,11 @@ struct TextBoxEditor: View {
         }
     }
 
+    /// How many sentences were built differently (§24), rather than simply written better.
+    private func rebuiltSentences(_ data: CorrectWritingData) -> Int {
+        data.changes.filter { $0.kind == .construction }.count
+    }
+
     private func correctionView(_ data: CorrectWritingData) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             if data.changes.isEmpty {
@@ -103,6 +108,13 @@ struct TextBoxEditor: View {
             } else {
                 Text(FR.TextBox.changes(data.changes.count))
                     .font(AppFont.ui(17, weight: .semibold)).foregroundStyle(Palette.ink)
+                // §24: a word written better is one thing, a sentence built differently is another. The child is
+                // told which of the two happened to their own text, before they decide whether to keep it.
+                if rebuiltSentences(data) > 0 {
+                    Label(FR.TextBox.rebuilt(rebuiltSentences(data)), systemImage: "text.badge.checkmark")
+                        .font(AppFont.ui(16)).foregroundStyle(Palette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 Text(data.correctedText)
                     .font(.system(size: 20))
                     .padding(12)

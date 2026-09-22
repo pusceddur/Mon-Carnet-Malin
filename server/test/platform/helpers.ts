@@ -94,9 +94,9 @@ export async function lock(agent: Agent): Promise<void> {
 }
 
 /** Creates a child through the API (unlocks then locks again). */
-export async function newChild(agent: Agent, firstName = 'Lou'): Promise<ChildProfile> {
+export async function newChild(agent: Agent, nickname = 'Lou'): Promise<ChildProfile> {
   await unlock(agent);
-  const res = await agent.post('/api/children').set(XRW).send({ firstName });
+  const res = await agent.post('/api/children').set(XRW).send({ nickname });
   if (res.status !== 201) throw new Error(`child creation failed: ${res.status}`);
   await lock(agent);
   return res.body as ChildProfile;

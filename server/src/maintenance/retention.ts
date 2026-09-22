@@ -6,6 +6,7 @@ import { type Row, toStr } from '../db/repositories/common';
 import { deleteDiagnosticsBefore } from '../db/repositories/diagnostics';
 import { deleteStaleEmailTokens } from '../db/repositories/emailTokens';
 import { deleteStoredFiles, type FileKind, listStoredFiles } from '../db/repositories/files';
+import { DELETED_ACCOUNT_TOKENS_RETENTION_MS, purgeDeletedAccountTokens } from '../db/repositories/accountDeletion';
 import { deleteFreeQuestionsBefore, FREE_QUESTIONS_RETENTION_MS } from '../db/repositories/freeQuestions';
 import { deleteExpiredSessions } from '../db/repositories/sessions';
 import { deleteDocumentWorkerJobs, purgeWorkerJobs } from '../db/repositories/workerJobs';
@@ -34,6 +35,8 @@ export const RETENTION = {
   workerUsageMs: WORKER_USAGE_RETENTION_MS,
   /** §24: texts corrected with « Corriger » (one year). */
   writingCorrectionsMs: WRITING_CORRECTIONS_RETENTION_MS,
+  /** §30: hashes of the session tokens of deleted accounts, kept as long as a session could have lived. */
+  deletedAccountTokensMs: DELETED_ACCOUNT_TOKENS_RETENTION_MS,
 } as const;
 
 export interface RetentionReport {
@@ -60,6 +63,8 @@ export interface RetentionReport {
   workerUsage: number;
   /** §24 corrected texts older than one year (those of purged children are counted in purgedChildren). */
   writingCorrections: number;
+  /** §30 session hashes of deleted accounts, once no device can still be carrying one. */
+  deletedAccountTokens: number;
 }
 
 /** Tables holding per-child data removed with a purged child. */
@@ -125,6 +130,7 @@ export async function runRetention(opts: { db: Knex; now: number; uploadsRoot: s
   const worker = await runWorkerJobsRetention(db, now);
   const workerUsage = await purgeWorkerUsage(db, now - RETENTION.workerUsageMs);
   const writingCorrections = await deleteWritingCorrectionsBefore(db, now - RETENTION.writingCorrectionsMs);
+  const deletedAccountTokens = await purgeDeletedAccountTokens(db, now - RETENTION.deletedAccountTokensMs);
   return {
     aiRequests,
     safetyAlerts,
@@ -142,6 +148,7 @@ export async function runRetention(opts: { db: Knex; now: number; uploadsRoot: s
     freeQuestions,
     workerUsage,
     writingCorrections,
+    deletedAccountTokens,
   };
 }
 

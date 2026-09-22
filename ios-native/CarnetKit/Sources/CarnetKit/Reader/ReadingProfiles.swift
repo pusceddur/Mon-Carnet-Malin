@@ -30,6 +30,13 @@ public struct ReadingProfile: Equatable, Sendable, Identifiable {
         syllables: true, silentLetters: true, sounds: true, changedLetters: true, liaisons: true
     )
 
+    /// §31 The three a new reader is offered.
+    ///
+    /// A parent setting up a reader for the first time should not have to weigh five cards and a dozen sliders.
+    /// Three are shown, as unlike each other as the five allow — plain text, text in colour, big and spaced — so the
+    /// first choice is quick and obviously reversible. The rest is one tap away.
+    public static let quickStart: [ID] = [.confort, .couleurs, .grandesLettres]
+
     public static let all: [ReadingProfile] = [
         // The settings of a new profile.
         ReadingProfile(

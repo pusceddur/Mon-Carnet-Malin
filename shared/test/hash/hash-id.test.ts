@@ -78,11 +78,11 @@ describe('newId', () => {
 describe('cache keys', () => {
   const parts: AICacheKeyParts = {
     documentHash: 'a'.repeat(64), scope: 'p3', operation: 'explain_word', inputHash: 'b'.repeat(64),
-    profileSignature: '10|intermediaire|simple', promptVersion: '2026-09-16.1', model: 'light',
+    profileSignature: 'intermediaire|simple', promptVersion: '2026-09-16.1', model: 'light',
   };
 
-  it('profileSignature follows "age|level|difficulty"', () => {
-    expect(profileSignature({ age: 10, readingLevel: 'intermediaire', explanationDifficulty: 'simple' })).toBe('10|intermediaire|simple');
+  it('profileSignature follows "level|difficulty", with no age in it', () => {
+    expect(profileSignature({ readingLevel: 'intermediaire', explanationDifficulty: 'simple' })).toBe('intermediaire|simple');
   });
 
   it('aiCacheKey is a stable sha256 hex that depends on every part', async () => {

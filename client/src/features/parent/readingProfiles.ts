@@ -68,6 +68,16 @@ export const READING_PROFILES: readonly ReadingProfile[] = [
   },
 ];
 
+/**
+ * §31 The three the app opens with.
+ *
+ * A parent setting up a reader for the first time should not have to weigh five cards and a dozen sliders. Three
+ * are offered, chosen to be as unlike each other as the five allow — plain text, text in colour, big and spaced —
+ * so the first choice is quick and obviously reversible. The other two, and every setting one by one, are a tap
+ * away for whoever wants them.
+ */
+export const QUICK_START_PROFILES: readonly ReadingProfileId[] = ['confort', 'couleurs', 'grandes_lettres'];
+
 export function applyReadingProfile(
   values: { reading: ReadingPreferences; tts: TTSPreferences }, profile: ReadingProfile,
 ): { reading: ReadingPreferences; tts: TTSPreferences } {

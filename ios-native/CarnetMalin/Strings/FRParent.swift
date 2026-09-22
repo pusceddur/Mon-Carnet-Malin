@@ -7,8 +7,8 @@ import Foundation
 extension FR {
     enum Activity {
         static let title = "Activité"
-        static let child = "Enfant"
-        static let allChildren = "Tous les enfants"
+        static let child = "Lecteur"
+        static let allChildren = "Tous les lecteurs"
         static let period = "Période"
         static let periodWeek = "7 jours"
         static let periodMonth = "30 jours"
@@ -87,6 +87,7 @@ extension FR {
                 case .accent: return "Accents"
                 case .spelling: return "Orthographe"
                 case .grammar: return "Grammaire"
+                case .construction: return "Construction de la phrase"
                 case .punctuation: return "Ponctuation"
                 case .capital: return "Majuscules"
                 case .space: return "Espaces et mots collés"
@@ -174,6 +175,12 @@ extension FR {
             "Choisissez ce qui ressemble le plus à votre enfant : tout se règle d’un coup, et reste modifiable "
             + "un par un ci-dessous."
         static let custom = "Personnalisé : les réglages ont été ajustés un par un."
+        // §31 quick start.
+        static let quickHint = "Trois façons de lire pour commencer tout de suite. Vous pourrez changer quand vous voulez."
+        static let showAll = "Voir les autres profils"
+        static let specialist =
+            "Ces réglages sont personnels : ce qui aide un lecteur en gêne un autre. "
+            + "Le mieux est de les choisir, puis de les ajuster, avec un·e orthophoniste."
         static func name(_ id: ReadingProfile.ID) -> String {
             switch id {
             case .confort: return "Lecture confortable"

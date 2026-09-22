@@ -49,6 +49,15 @@ public enum APIError: Error, Equatable, Sendable {
         default: return false
         }
     }
+
+    /// §30: the account this device is signed into was deleted, from here or from somewhere else.
+    ///
+    /// Told apart from « your session expired » on purpose: a session comes back with a password, an account does
+    /// not come back at all, and the books on this iPad have to go.
+    public var isAccountDeleted: Bool {
+        if case let .api(status, code, _) = self { return status == 410 || code == "account_deleted" }
+        return false
+    }
 }
 
 /// Client of the API the web app already talks to. Nothing here is specific to the interface: it is the whole contract

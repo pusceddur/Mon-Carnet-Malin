@@ -98,6 +98,7 @@ export const reader = {
     wordSpacing: 'Espace entre les mots',
     columnWidth: 'Largeur du texte',
     theme: 'Couleur du fond',
+    palette: 'Couleurs de l’app',
     layout: 'Façon de lire',
     layoutPage: 'Page par page',
     layoutContinu: 'Texte continu',

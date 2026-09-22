@@ -75,7 +75,7 @@ enum Payloads {
     """
 
     static let children = """
-    [{"id":"c1","parentId":"p1","firstName":"Léa","age":9,"avatar":"🦊",
+    [{"id":"c1","parentId":"p1","nickname":"Léa","avatar":"🦊",
       "readingLevel":"intermediaire","explanationDifficulty":"tres_simple",
       "reading":{"font":"lexend","fontSizePx":24,"lineHeight":1.8,"letterSpacingEm":0.04,"wordSpacingEm":0.16,
                  "columnWidthEm":30,"theme":"creme","layoutMode":"page","sentenceHighlight":true,"readingGuide":false,
@@ -127,8 +127,7 @@ final class APIClientTests: XCTestCase {
         let children = try await client.children()
 
         XCTAssertEqual(children.count, 1)
-        XCTAssertEqual(children[0].firstName, "Léa")
-        XCTAssertEqual(children[0].age, 9)
+        XCTAssertEqual(children[0].nickname, "Léa")
         XCTAssertEqual(children[0].explanationDifficulty, .tresSimple)
         XCTAssertTrue(children[0].reading.aids.syllables)
         XCTAssertFalse(children[0].isDeleted)

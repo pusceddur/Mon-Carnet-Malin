@@ -50,6 +50,13 @@ extension FR {
         static func changes(_ count: Int) -> String {
             count == 1 ? "1 correction" : format("{count} corrections", ["count": String(count)])
         }
+        /// §24: said on its own line, because it is the only change that touches how the sentence is built.
+        static func rebuilt(_ count: Int) -> String {
+            count == 1
+                ? "J’ai aussi changé la construction d’une phrase pour que la grammaire soit juste."
+                : format("J’ai aussi changé la construction de {count} phrases pour que la grammaire soit juste.",
+                         ["count": String(count)])
+        }
         static let keepCorrection = "Garder la correction"
         static let keepMine = "Garder mon texte"
         static let delete = "Supprimer la zone"

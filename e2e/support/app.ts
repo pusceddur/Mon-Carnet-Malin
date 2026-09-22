@@ -46,15 +46,15 @@ export async function openParentArea(page: Page, subPath: string): Promise<void>
 }
 
 /** Creates the child profile unless it already exists (parent area must be unlocked). */
-export async function ensureChild(page: Page, firstName: string): Promise<void> {
+export async function ensureChild(page: Page, nickname: string): Promise<void> {
   await openParentArea(page, 'enfants');
   await expect(page.getByRole('heading', { name: 'Enfants' })).toBeVisible();
-  const existing = page.locator('.parent-list__title', { hasText: firstName });
+  const existing = page.locator('.parent-list__title', { hasText: nickname });
   if ((await existing.count()) > 0) return;
   await page.getByRole('button', { name: 'Ajouter un enfant' }).first().click();
-  await page.getByLabel('Prénom ou surnom').fill(firstName);
+  await page.getByLabel('Surnom du lecteur').fill(nickname);
   await page.getByRole('button', { name: 'Enregistrer' }).click();
-  await expect(page.locator('.parent-list__title', { hasText: firstName })).toBeVisible();
+  await expect(page.locator('.parent-list__title', { hasText: nickname })).toBeVisible();
 }
 
 export interface UploadFile {
@@ -75,11 +75,11 @@ export async function importDocument(page: Page, title: string, files: UploadFil
 }
 
 /** Leaves the parent area as the given child and opens « Mes livres ». */
-export async function openBooksAs(page: Page, firstName: string): Promise<void> {
+export async function openBooksAs(page: Page, nickname: string): Promise<void> {
   await page.goto('/enfant');
-  await page.getByRole('button', { name: `C’est moi, ${firstName}` }).click();
+  await page.getByRole('button', { name: `C’est moi, ${nickname}` }).click();
   await page.waitForURL(/\/accueil$/);
-  await expect(page.getByRole('heading', { name: new RegExp(`Bonjour ${firstName}`) })).toBeVisible();
+  await expect(page.getByRole('heading', { name: new RegExp(`Bonjour ${nickname}`) })).toBeVisible();
   await page.getByRole('button', { name: /Mes livres/ }).click();
   await page.waitForURL(/\/livres$/);
 }

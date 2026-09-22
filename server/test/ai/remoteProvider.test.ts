@@ -28,7 +28,8 @@ describe('RemoteProvider prompts', () => {
       expect(a!.system).toContain(rule);
     }
     expect(b!.userText).toContain('Fais plus court.');
-    expect(a!.userText).toContain('10 ans');
+    expect(a!.userText).toContain('Profil du lecteur');
+    expect(a!.userText).not.toMatch(/Profil du lecteur[^\n]*ans/); // 32: no age about the reader
   });
 
   it('puts untrusted text inside <texte_du_document> with < and > neutralized', async () => {

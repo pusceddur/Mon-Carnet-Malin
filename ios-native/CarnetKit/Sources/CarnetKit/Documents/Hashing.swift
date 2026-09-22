@@ -36,6 +36,6 @@ public enum Hashing {
     /// The cache key carries it because the same page explained to an eight-year-old and to a twelve-year-old are two
     /// different answers, and handing one child the other's would be worse than a slow answer.
     public static func profileSignature(_ child: ChildProfile) -> String {
-        "\(child.age)|\(child.readingLevel.rawValue)|\(child.explanationDifficulty.rawValue)"
+        "\(child.readingLevel.rawValue)|\(child.explanationDifficulty.rawValue)"
     }
 }

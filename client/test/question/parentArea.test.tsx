@@ -37,9 +37,9 @@ const tq = parent.activity.questions;
 
 const SUMMARY: ActivitySummary = { sessions: [], aiRequests: [], alerts: [], ocrIssues: [], budget: { monthToDateEur: 0, monthlyBudgetEur: 10, workerEstimateEur: 0 } };
 
-function makeChild(id: string, firstName: string): ChildProfile {
+function makeChild(id: string, nickname: string): ChildProfile {
   return {
-    id, parentId: 'p1', firstName, age: 9, avatar: '🦊', readingLevel: 'intermediaire', explanationDifficulty: 'simple',
+    id, parentId: 'p1', nickname, avatar: '🦊', readingLevel: 'intermediaire', explanationDifficulty: 'simple',
     reading: { ...DEFAULT_READING_PREFERENCES }, tts: { ...DEFAULT_TTS_PREFERENCES }, exercises: { ...DEFAULT_EXERCISE_PREFERENCES },
     createdAt: id === 'c1' ? 1 : 2, updatedAt: 1, deletedAt: null,
   };

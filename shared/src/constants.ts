@@ -7,7 +7,9 @@ import type { SummaryLevel } from './types/ai';
 export const APP_NAME = 'Mon Carnet Malin';
 export const APP_SHORT_NAME = 'Carnet Malin';
 
-export const PROMPT_VERSION = '2026-09-16.1';
+// Bumped on 2026-09-22 with the auxiliary rule of §24 (« je suis été » → « j'ai été »). The version is written on
+// every AI request, so it has to mean what it says; the caches it invalidates are rebuilt on demand.
+export const PROMPT_VERSION = '2026-09-22.1';
 
 export const QUESTION_TYPES: readonly QuestionType[] = ['qcm', 'vrai_faux', 'reponse_libre', 'association', 'ordre'];
 
@@ -21,6 +23,7 @@ export const DEFAULT_READING_PREFERENCES: ReadingPreferences = {
   wordSpacingEm: 0.16,
   columnWidthEm: 30,
   theme: 'creme',
+  palette: 'standard',
   layoutMode: 'page',
   sentenceHighlight: true,
   readingGuide: false,
@@ -77,8 +80,8 @@ export const PREFERENCE_RANGES = {
   ttsPitch: { min: 0.8, max: 1.2 },
   ttsSentencePauseMs: { min: 0, max: 1500 },
   ttsParagraphPauseMs: { min: 0, max: 3000 },
-  childAge: { min: 5, max: 15 },
-  firstNameLength: { min: 1, max: 40 },
+  /** §32 the reader's nickname. No age: the app does not ask for one. */
+  nicknameLength: { min: 1, max: 40 },
 } as const;
 
 /** §8.6 limits + §8.4/§15.5 length limits (words) + request/transport limits (§15.2, §15.6, §15.8). */

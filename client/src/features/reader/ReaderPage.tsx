@@ -3,6 +3,7 @@ import { DEFAULT_TTS_PREFERENCES,
   HIGHLIGHTER_COLORS,
   LIMITS,
   type Annotation,
+  type ReadingPalette,
   type ReadingTheme,
   type SourceRef,
   type TextHighlight,
@@ -13,7 +14,7 @@ import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from '
 import { db } from '../../db/localDb';
 import { ProcessingBanner } from '../../documents/ProcessingBanner';
 import { ArrowLeftIcon, Button, EmptyState, IconButton, OfflineBadge, Segmented, Spinner, useToast } from '../../design/components';
-import { applyTheme } from '../../design/reading';
+import { applyPalette, applyTheme } from '../../design/reading';
 import { format } from '../../i18n/fr';
 import { reader } from '../../i18n/fr/reader';
 import { tts as ttsStrings } from '../../i18n/fr/tts';
@@ -142,15 +143,22 @@ function ReaderScreen({ documentId }: { documentId: string }): JSX.Element {
     };
   }, [doc]);
 
-  // Reading theme for the whole screen (sheets included) while the reader is open.
+  // Reading theme and §31 palette for the whole screen (sheets included) while the reader is open.
   const initialTheme = useRef<string | null | undefined>(undefined);
+  const initialPalette = useRef<string | null | undefined>(undefined);
   useLayoutEffect(() => {
     if (initialTheme.current === undefined) initialTheme.current = document.documentElement.getAttribute('data-theme');
     applyTheme(reading.theme);
   }, [reading.theme]);
+  useLayoutEffect(() => {
+    if (initialPalette.current === undefined) initialPalette.current = document.documentElement.getAttribute('data-palette');
+    applyPalette(reading.palette);
+  }, [reading.palette]);
   useEffect(() => () => {
     const previous = initialTheme.current;
     applyTheme(previous === 'creme' || previous === 'clair' || previous === 'sombre' ? (previous as ReadingTheme) : null);
+    const palette = initialPalette.current;
+    applyPalette(palette === 'separees' || palette === 'contraste' ? (palette as ReadingPalette) : null);
   }, []);
 
   useEffect(() => {

@@ -6,8 +6,14 @@ extension AccountForm.Mode: Identifiable {
     public var id: String { self == .setup ? "setup" : "register" }
 }
 
-/// Creating the family's account on the iPad: the first account of a new server, or one joining with an invitation
-/// code. Addressed to the adult.
+/// Creating the family's account on the iPad, with the invitation code given by whoever runs the server. Addressed
+/// to the adult.
+///
+/// It can also make the first account of a brand-new server (`.setup`, with the server's installation code), and the
+/// form knows how; nothing in the app opens it that way any more. That step is done in a browser at
+/// « /installation », as it is on the web since 2026-09-17: the person installing a server is at a computer, and the
+/// code is theirs and not the family's. The mode stays because the route and the checks are a faithful port, and
+/// because a server installed from an iPad is a thing that may come back.
 struct AccountCreationView: View {
     let mode: AccountForm.Mode
 

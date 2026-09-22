@@ -38,7 +38,7 @@ final class HashingTests: XCTestCase {
         // The same page explained to an eight-year-old and to a twelve-year-old are two different answers, and the
         // cache key has to be able to tell them apart.
         let child = ChildProfile(
-            id: "c1", parentId: "p1", firstName: "Léa", age: 10, avatar: "🦊",
+            id: "c1", parentId: "p1", nickname: "Léa", avatar: "🦊",
             readingLevel: .intermediaire, explanationDifficulty: .simple,
             reading: .standard, tts: .standard, exercises: .standard,
             createdAt: 0, updatedAt: 0

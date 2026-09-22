@@ -36,5 +36,8 @@ export async function reportSessionError(error: unknown): Promise<void> {
   if (!(error instanceof ApiError)) return;
   const session = useSessionStore.getState();
   if (error.code === 'parent_locked') await session.markParentLocked();
+  // §30: the account was deleted from another device. This one is carrying books and notes that no longer exist
+  // anywhere, so it empties itself rather than showing a sign-in screen next to a library it should not have.
+  else if (error.code === 'account_deleted') await session.forgetThisDevice();
   else if (error.code === 'not_authenticated') await session.markSignedOut();
 }

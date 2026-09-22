@@ -86,6 +86,45 @@ public struct ReaderTheme: Equatable, Sendable {
         case .sombre: return .sombre
         }
     }
+
+    /// §31 The same theme, in the set of colours the family chose.
+    ///
+    /// Only the marks change. The paper stays the paper: a child who picked cream picked cream, and a palette is
+    /// about telling the marks apart, not about repainting the page — except under `contraste`, where the point is
+    /// precisely to push the page and the ink apart.
+    public static func of(_ theme: ReadingTheme, _ palette: ReadingPalette) -> ReaderTheme {
+        let base = of(theme)
+        switch palette {
+        case .standard:
+            return base
+        case .separees:
+            // Blue against vermillion, and a bluish green for the liaison arc: three hues that stay apart for every
+            // kind of colour blindness, and in greyscale too (Okabe–Ito).
+            let dark = theme == .sombre
+            return ReaderTheme(
+                paper: base.paper,
+                ink: base.ink,
+                sentenceHighlight: base.sentenceHighlight,
+                wordHighlight: base.wordHighlight,
+                silentInk: base.silentInk,
+                markA: ReaderColor(hex: dark ? "#7FBFF2" : "#0060A8")!,
+                markB: ReaderColor(hex: dark ? "#FF9E5E" : "#C24400")!,
+                guideLine: base.guideLine
+            )
+        case .contraste:
+            let dark = theme == .sombre
+            return ReaderTheme(
+                paper: ReaderColor(hex: dark ? "#000000" : "#FFFFFF")!,
+                ink: ReaderColor(hex: dark ? "#FFFFFF" : "#000000")!,
+                sentenceHighlight: ReaderColor(hex: dark ? "#574E22" : "#FFE680")!,
+                wordHighlight: ReaderColor(hex: dark ? "#6B5820" : "#FFC94D")!,
+                silentInk: ReaderColor(hex: dark ? "#8A857E" : "#6E6A63")!,
+                markA: ReaderColor(hex: dark ? "#9CC8FF" : "#00308F")!,
+                markB: ReaderColor(hex: dark ? "#FFB48C" : "#8C1400")!,
+                guideLine: ReaderColor(hex: dark ? "#6A6A6A" : "#9A9A9A")!
+            )
+        }
+    }
 }
 
 /// How the text is laid out for one child.
@@ -131,7 +170,7 @@ public struct ReaderTypography: Equatable, Sendable {
             letterSpacing: size * clamp(reading.letterSpacingEm, 0, 0.3),
             wordSpacing: size * clamp(reading.wordSpacingEm, 0, 0.8),
             columnWidth: size * clamp(reading.columnWidthEm, 18, 48),
-            theme: ReaderTheme.of(reading.theme),
+            theme: ReaderTheme.of(reading.theme, reading.palette),
             showsSentenceHighlight: reading.sentenceHighlight,
             showsReadingGuide: reading.readingGuide
         )

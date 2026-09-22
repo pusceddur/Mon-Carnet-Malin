@@ -121,7 +121,7 @@ struct ImportView: View {
                             if isOn { selectedChildren.insert(child.id) } else { selectedChildren.remove(child.id) }
                         }
                     )) {
-                        Text("\(child.avatar) \(child.firstName)").font(AppFont.ui(17))
+                        Text("\(child.avatar) \(child.nickname)").font(AppFont.ui(17))
                     }
                     .tint(Palette.accent)
                 }

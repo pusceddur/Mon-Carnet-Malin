@@ -24,6 +24,8 @@ describe('worker queue: migration and retention (§17.2)', () => {
       '008_account_security',
       '009_worker_usage',
       '010_writing_corrections',
+      '011_account_deletion',
+      '012_reader_nickname',
     ]);
     for (const table of WORKER_TABLES) expect(await ctx.db.schema.hasTable(table), table).toBe(true);
     expect(await runMigrations(ctx.db)).toEqual([]);

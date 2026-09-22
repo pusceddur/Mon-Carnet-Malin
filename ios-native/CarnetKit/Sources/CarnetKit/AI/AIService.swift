@@ -165,7 +165,7 @@ public actor AIService {
         guard let data = try? encoder.encode(request),
               var object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else { return nil }
-        // The child is left out on purpose: two children of the same age and level asking the same thing about the
+        // The child is left out on purpose: two readers of the same level asking the same thing about the
         // same page get the same answer, and the family pays for it once.
         object.removeValue(forKey: "childId")
         guard let stable = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]) else { return nil }

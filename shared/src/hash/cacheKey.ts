@@ -19,7 +19,7 @@ export async function aiCacheKey(parts: AICacheKeyParts): Promise<string> {
   return sha256Hex(JSON.stringify(ordered));
 }
 
-/** "10|intermediaire|simple" */
-export function profileSignature(p: Pick<ChildProfile, 'age' | 'readingLevel' | 'explanationDifficulty'>): string {
-  return `${p.age}|${p.readingLevel}|${p.explanationDifficulty}`;
+/** "intermediaire|simple" — §32: what the answer was written for, never who for. */
+export function profileSignature(p: Pick<ChildProfile, 'readingLevel' | 'explanationDifficulty'>): string {
+  return `${p.readingLevel}|${p.explanationDifficulty}`;
 }

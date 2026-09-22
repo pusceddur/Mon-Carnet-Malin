@@ -2,10 +2,12 @@ import { createHash, randomBytes } from 'node:crypto';
 import { TIMINGS } from '@aide/shared';
 import type { CookieOptions, Request, Response } from 'express';
 import type { AppConfig } from '../config';
+import { wasDeleted } from '../db/repositories/accountDeletion';
 import type { Db } from '../db/repositories/common';
 import {
   deleteSession, findSession, insertSession, renewSession, type SessionRecord,
 } from '../db/repositories/sessions';
+import { appError } from '../errors';
 
 export const SESSION_COOKIE = 'aide_sid';
 /** Sliding renewal is written at most once per hour per session. */
@@ -101,6 +103,10 @@ export async function resolveSession(
   if (!session || session.expiresAt <= now) {
     if (session) await deleteSession(deps.db, id);
     clearSessionCookie(res, deps.config);
+    // §30: an iPad that was switched off while the account was being deleted still holds books, notes and a token
+    // that looks fine. Told that the account is gone, it empties itself; left to guess, it would show a sign-in
+    // screen next to a library that should no longer exist.
+    if (!session && (await wasDeleted(deps.db, id))) throw appError(410, 'account_deleted');
     return null;
   }
   if (now - session.lastSeenAt >= SESSION_RENEW_AFTER_MS) {

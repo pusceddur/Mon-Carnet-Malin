@@ -402,8 +402,9 @@ enum HomeworkExport {
         let bounds = CGRect(origin: .zero, size: first.image.size)
         let renderer = UIGraphicsPDFRenderer(bounds: bounds)
         let safeTitle = title.filter { $0.isLetter || $0.isNumber || $0 == " " || $0 == "-" }
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent((safeTitle.isEmpty ? "devoir" : safeTitle) + ".pdf")
+        // In the exports folder, which a sign-out empties: this PDF is the child's handwriting, with the name of
+        // their homework on it (§28).
+        let url = Exports.url(named: (safeTitle.isEmpty ? "devoir" : safeTitle) + ".pdf")
 
         do {
             try renderer.writePDF(to: url) { context in

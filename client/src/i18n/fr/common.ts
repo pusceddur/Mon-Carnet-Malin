@@ -61,6 +61,18 @@ export const common = {
     sombre: 'Sombre',
   },
 
+  // §31: named for what they do. Never for who they are for.
+  palettes: {
+    standard: 'Habituelles',
+    separees: 'Bien séparées',
+    contraste: 'Contraste fort',
+  },
+  paletteHints: {
+    standard: 'Les couleurs de toujours.',
+    separees: 'Du bleu et de l’orange à la place du rouge et du vert, qui restent différents pour tout le monde.',
+    contraste: 'Texte très foncé, traits plus épais, couleurs plus franches.',
+  },
+
   unsupported: {
     documentTitle: 'Navigateur non pris en charge',
     title: 'Ce navigateur n’est pas pris en charge',

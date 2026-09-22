@@ -10,6 +10,17 @@ export type ReadingLevel = 'debutant' | 'intermediaire' | 'avance';
 export type ExplanationDifficulty = 'tres_simple' | 'simple' | 'normal';
 export type ReadingFont = 'lexend' | 'andika' | 'atkinson' | 'opendyslexic' | 'systeme';
 export type ReadingTheme = 'creme' | 'clair' | 'sombre';
+/**
+ * §31 the set of colours the app draws with, on top of the paper colour.
+ *
+ * `standard` is the one the app has always had. `separees` replaces every pair that relies on telling red from green
+ * with blue and orange, which stay different for everyone: about one boy in twelve does not see those two apart, and
+ * the reading marks of §26 lean on colour more than anything else in the app. `contraste` darkens the text and the
+ * lines instead, for eyes that need more edge than hue.
+ *
+ * Named for what they do, never for who they are for.
+ */
+export type ReadingPalette = 'standard' | 'separees' | 'contraste';
 export type LayoutMode = 'page' | 'continu';
 
 /** §26 « Couleurs de lecture »: marks drawn on the text, each one on or off (codeFrenchText). */
@@ -28,6 +39,7 @@ export interface ReadingPreferences {
   wordSpacingEm: number;        // 0..0.8, default 0.16
   columnWidthEm: number;        // 18..48, default 30
   theme: ReadingTheme;          // default 'creme'
+  palette: ReadingPalette;      // §31, default 'standard'
   layoutMode: LayoutMode;       // default 'page'
   sentenceHighlight: boolean;   // default true
   readingGuide: boolean;        // reading ruler, default false
@@ -46,8 +58,14 @@ export interface ExercisePreferences { defaultQuestionCount: 3 | 5 | 10; enabled
 
 export interface ChildProfile {
   id: Id; parentId: Id;
-  firstName: string;            // first name or nickname, 1..40
-  age: number;                  // 5..15
+  /**
+   * §32 What the reader is called in the app: a nickname, chosen freely, 1..40 characters.
+   *
+   * Not a first name, and no date of birth beside it. A reading app does not need to know who a child is to help
+   * them read, and what it does not hold cannot leak, be asked for, or be sent to anybody. « Titou », « Le chat »
+   * and « Moi » are all perfectly good answers.
+   */
+  nickname: string;
   avatar: string;               // emoji
   readingLevel: ReadingLevel;
   explanationDifficulty: ExplanationDifficulty;

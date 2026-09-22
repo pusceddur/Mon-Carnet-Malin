@@ -6,6 +6,12 @@ export type AICacheStatus = 'ok' | 'not_in_text' | 'readability_warning' | 'bloc
 
 export interface AICacheEntry {
   cacheKey: string;
+  /**
+   * The family the answer was written for (§28, §30). The key already carries the parent, but it is a hash and
+   * cannot be searched by it; without this column a deleted family's answers about their own books would sit on the
+   * server until they expired. Null for rows written before the column existed.
+   */
+  parentId: string | null;
   operation: AIOperation;
   provider: string;
   model: string;
@@ -30,6 +36,7 @@ function fromRow(row: Row): AICacheEntry {
   const status = toStr(row.validation_status);
   return {
     cacheKey: toStr(row.cache_key),
+    parentId: row.parent_id === null || row.parent_id === undefined ? null : toStr(row.parent_id),
     operation: toStr(row.operation) as AIOperation,
     provider: toStr(row.provider),
     model: toStr(row.model),
@@ -57,6 +64,7 @@ export function createAICacheRepository(db: Db): AICacheRepository {
         .insert({
           id: newId(),
           cache_key: entry.cacheKey,
+          parent_id: entry.parentId,
           document_hash: entry.documentHash,
           content_hash: entry.contentHash,
           operation: entry.operation,
@@ -70,7 +78,7 @@ export function createAICacheRepository(db: Db): AICacheRepository {
           expires_at: entry.expiresAt,
         })
         .onConflict('cache_key')
-        .merge(['provider', 'model', 'output_json', 'validation_status', 'created_at', 'expires_at', 'document_hash', 'content_hash']);
+        .merge(['provider', 'model', 'output_json', 'validation_status', 'created_at', 'expires_at', 'document_hash', 'content_hash', 'parent_id']);
     },
   };
 }

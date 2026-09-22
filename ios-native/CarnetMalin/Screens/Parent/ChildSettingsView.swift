@@ -21,12 +21,15 @@ struct ChildSettingsView: View {
     @State private var message: String?
     @State private var confirmingDelete = false
     @State private var showProblems = false
+    /// §31: a reader being created sees three ways to read; an existing one sees them all.
+    @State private var allProfiles: Bool
 
     init(child: ChildProfile?) {
         self.child = child
+        _allProfiles = State(initialValue: child != nil)
         if let child {
             _draft = State(initialValue: NewChild(
-                firstName: child.firstName, age: child.age, avatar: child.avatar, readingLevel: child.readingLevel,
+                nickname: child.nickname, avatar: child.avatar, readingLevel: child.readingLevel,
                 explanationDifficulty: child.explanationDifficulty, reading: child.reading, tts: child.tts,
                 exercises: child.exercises
             ))
@@ -58,7 +61,7 @@ struct ChildSettingsView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Palette.paper)
-        .navigationTitle(child == nil ? FR.Parent.addChild : draft.firstName)
+        .navigationTitle(child == nil ? FR.Parent.addChild : draft.nickname)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
@@ -82,23 +85,22 @@ struct ChildSettingsView: View {
     private var identity: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(FR.Parent.childName).font(AppFont.ui(18, weight: .medium)).foregroundStyle(Palette.ink)
-            TextField("", text: $draft.firstName)
+            // §32: a nickname, and nothing else. No first name, no age: the app has no use for either, and the
+            // keyboard is not told to offer a real one.
+            Text(FR.Parent.childNameHint)
+                .font(AppFont.ui(15)).foregroundStyle(Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            TextField("", text: $draft.nickname)
                 .textFieldStyle(.plain)
-                .textContentType(.givenName)
+                .textContentType(.nickname)
                 .font(AppFont.ui(20))
                 .padding(14)
                 .background(Palette.card)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .strokeBorder(problems.contains(.firstName) ? Palette.warning : .clear, lineWidth: 2)
+                        .strokeBorder(problems.contains(.nickname) ? Palette.warning : .clear, lineWidth: 2)
                 )
-
-            Stepper(
-                FR.format("{label} : {age} ans", ["label": FR.Parent.childAge, "age": String(draft.age)]),
-                value: $draft.age, in: 5...15
-            )
-            .font(AppFont.ui(18))
 
             Text(FR.Parent.childAvatar).font(AppFont.ui(18, weight: .medium)).foregroundStyle(Palette.ink)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 56))], spacing: 10) {
@@ -117,12 +119,17 @@ struct ChildSettingsView: View {
     }
 
     /// §27: one tap sets everything; each value stays adjustable below, and the profile then shows as personal.
+    ///
+    /// §31: a reader being created is offered three of them, not five. The other two, and every setting one by one,
+    /// are behind « Voir les autres profils » — the first choice should take a moment, not an evening.
     private var profiles: some View {
         let current = ReadingProfile.matching(draft.reading, draft.tts)?.id
+        let shown = allProfiles ? ReadingProfile.all : ReadingProfile.all.filter { ReadingProfile.quickStart.contains($0.id) }
         return VStack(alignment: .leading, spacing: 10) {
             Text(FR.Profiles.title).font(AppFont.ui(18, weight: .medium)).foregroundStyle(Palette.ink)
-            Text(FR.Profiles.hint).font(AppFont.ui(14)).foregroundStyle(Palette.muted)
-            ForEach(ReadingProfile.all) { profile in
+            Text(allProfiles ? FR.Profiles.hint : FR.Profiles.quickHint)
+                .font(AppFont.ui(14)).foregroundStyle(Palette.muted)
+            ForEach(shown) { profile in
                 Button {
                     let (reading, tts) = profile.applied(to: draft.reading, draft.tts)
                     draft.reading = reading
@@ -150,9 +157,17 @@ struct ChildSettingsView: View {
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(current == profile.id ? .isSelected : [])
             }
+            if !allProfiles {
+                Button(FR.Profiles.showAll) { allProfiles = true }
+                    .font(AppFont.ui(16, weight: .medium)).foregroundStyle(Palette.accent)
+            }
             if current == nil {
                 Text(FR.Profiles.custom).font(AppFont.ui(14)).foregroundStyle(Palette.muted)
             }
+            // §31: said once, where the choice is made. These settings are not decoration.
+            Text(FR.Profiles.specialist)
+                .font(AppFont.ui(14)).foregroundStyle(Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -263,8 +278,7 @@ struct ChildSettingsView: View {
         do {
             let saved: ChildProfile
             if var existing = child {
-                existing.firstName = draft.firstName.trimmingCharacters(in: .whitespacesAndNewlines)
-                existing.age = draft.age
+                existing.nickname = draft.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
                 existing.avatar = draft.avatar
                 existing.readingLevel = draft.readingLevel
                 existing.explanationDifficulty = draft.explanationDifficulty
@@ -302,8 +316,7 @@ struct ChildSettingsView: View {
     private func problemNames(_ problems: Set<NewChild.Field>) -> String {
         problems.map { field -> String in
             switch field {
-            case .firstName: return FR.Parent.childName
-            case .age: return FR.Parent.childAge
+            case .nickname: return FR.Parent.childName
             case .avatar: return FR.Parent.childAvatar
             case .questionTypes: return FR.Parent.exerciseTypes
             }

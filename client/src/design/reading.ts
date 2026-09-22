@@ -1,8 +1,12 @@
-import { DEFAULT_READING_PREFERENCES, PREFERENCE_RANGES, type ReadingFont, type ReadingPreferences, type ReadingTheme } from '@aide/shared';
+import {
+  DEFAULT_READING_PREFERENCES, PREFERENCE_RANGES, type ReadingFont, type ReadingPalette, type ReadingPreferences, type ReadingTheme,
+} from '@aide/shared';
 import type { CSSProperties } from 'react';
 
 export const READING_FONTS: readonly ReadingFont[] = ['lexend', 'andika', 'atkinson', 'opendyslexic', 'systeme'];
 export const READING_THEMES: readonly ReadingTheme[] = ['creme', 'clair', 'sombre'];
+/** §31 the sets of colours, on top of the paper colour. */
+export const READING_PALETTES: readonly ReadingPalette[] = ['standard', 'separees', 'contraste'];
 
 /** Paper colour of each theme (for `<meta name="theme-color">`). Mirrors tokens.css. */
 export const THEME_PAPER: Readonly<Record<ReadingTheme, string>> = {
@@ -63,4 +67,16 @@ export function applyTheme(theme: ReadingTheme | null, root: HTMLElement = docum
   if (!meta) return;
   const prefersDark = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches;
   meta.content = THEME_PAPER[theme ?? (prefersDark ? 'sombre' : 'creme')];
+}
+
+/**
+ * §31 Applies a palette to the same element as the theme (default: `<html>`).
+ *
+ * « standard » removes the attribute rather than setting it: the palette file then matches nothing at all, and the
+ * app is exactly what tokens.css says it is. One dial, and no colour of the default look ever passes through a
+ * second set of rules.
+ */
+export function applyPalette(palette: ReadingPalette | null, root: HTMLElement = document.documentElement): void {
+  if (palette && palette !== 'standard' && READING_PALETTES.includes(palette)) root.setAttribute('data-palette', palette);
+  else root.removeAttribute('data-palette');
 }

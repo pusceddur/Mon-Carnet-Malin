@@ -78,7 +78,7 @@ export function isParentUnlocked(status: AuthStatus | null, now: Millis): boolea
 }
 
 function sortChildren(children: ChildProfile[]): ChildProfile[] {
-  return children.filter((c) => c.deletedAt === null).sort((a, b) => a.createdAt - b.createdAt || a.firstName.localeCompare(b.firstName, 'fr'));
+  return children.filter((c) => c.deletedAt === null).sort((a, b) => a.createdAt - b.createdAt || a.nickname.localeCompare(b.nickname, 'fr'));
 }
 
 export function createSessionStore(deps: SessionDeps): UseBoundStore<StoreApi<SessionState>> {

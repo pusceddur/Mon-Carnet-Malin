@@ -15,6 +15,7 @@ export const ReadingLevelSchema = z.enum(['debutant', 'intermediaire', 'avance']
 export const ExplanationDifficultySchema = z.enum(['tres_simple', 'simple', 'normal']);
 export const ReadingFontSchema = z.enum(['lexend', 'andika', 'atkinson', 'opendyslexic', 'systeme']);
 export const ReadingThemeSchema = z.enum(['creme', 'clair', 'sombre']);
+export const ReadingPaletteSchema = z.enum(['standard', 'separees', 'contraste']);
 export const LayoutModeSchema = z.enum(['page', 'continu']);
 
 export const ReadingAidsSchema = z.object({
@@ -33,6 +34,8 @@ export const ReadingPreferencesSchema = z.object({
   wordSpacingEm: z.number().min(R.wordSpacingEm.min).max(R.wordSpacingEm.max),
   columnWidthEm: z.number().min(R.columnWidthEm.min).max(R.columnWidthEm.max),
   theme: ReadingThemeSchema,
+  // §31: profiles saved before the palettes existed use the colours the app has always had.
+  palette: ReadingPaletteSchema.default('standard'),
   layoutMode: LayoutModeSchema,
   sentenceHighlight: z.boolean(),
   readingGuide: z.boolean(),
@@ -68,8 +71,7 @@ export const ExercisePreferencesSchema = z.object({
 export const ChildProfileSchema = z.object({
   id: IdSchema,
   parentId: IdSchema,
-  firstName: z.string().trim().min(R.firstNameLength.min).max(R.firstNameLength.max),
-  age: z.number().int().min(R.childAge.min).max(R.childAge.max),
+  nickname: z.string().trim().min(R.nicknameLength.min).max(R.nicknameLength.max),
   avatar: z.string().min(1).max(32),
   readingLevel: ReadingLevelSchema,
   explanationDifficulty: ExplanationDifficultySchema,

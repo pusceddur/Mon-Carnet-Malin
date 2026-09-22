@@ -97,6 +97,19 @@ public final class InMemoryStore: LocalStore, @unchecked Sendable {
         }
     }
 
+    // MARK: - Leaving the device
+
+    public func removeEverything(keepingValues keys: Set<String>) throws {
+        locked {
+            rows = [:]
+            pending = [:]
+            pendingPlace = [:]
+            values = values.filter { keys.contains($0.key) }
+            // `nextSequence` keeps climbing: a row queued after the wipe must never land behind one that was
+            // already sent, and nothing outside this class reads the number itself.
+        }
+    }
+
     // MARK: - Tests
 
     /// Empties everything, as a fresh install would be.

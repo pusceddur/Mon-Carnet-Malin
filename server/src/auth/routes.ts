@@ -1,9 +1,11 @@
 import {
+  AccountDeleteRequestSchema,
   type AuthStatus, ChangePasswordRequestSchema, ChangePinRequestSchema, ContinuityConfirmSchema, DeviceNameRequestSchema,
   type DeviceSessionsResponse, LoginRequestSchema, type OkResponse, PasswordResetConfirmSchema, PasswordResetRequestSchema,
   PinRequiredRequestSchema, RegisterRequestSchema, SetupRequestSchema, TIMINGS, UnlockRequestSchema,
 } from '@aide/shared';
 import { type Request, type Response, Router } from 'express';
+import { deleteAccount, isOwnerOfSharedServer } from '../db/repositories/accountDeletion';
 import { isMysql } from '../db/repositories/common';
 import { consumeEmailToken, createEmailToken, findValidEmailToken } from '../db/repositories/emailTokens';
 import {
@@ -16,6 +18,7 @@ import {
 import { mailerFor } from '../email/mailer';
 import { passwordResetEmail } from '../email/templates.fr';
 import { appError, parseOrThrow } from '../errors';
+import { uploadsDir } from '../paths';
 import type { AppDeps } from '../types';
 import { createParentAccount } from './createParent';
 import { publicSessionId, toDeviceSession } from './devices';
@@ -285,6 +288,31 @@ export function createAuthRouter(deps: AppDeps): Router {
   router.put('/device', auth, async (req, res) => {
     const body = parseOrThrow(DeviceNameRequestSchema, req.body);
     await setSessionDeviceName(deps.db, authOf(req).sessionId, body.name);
+    const ok: OkResponse = { ok: true };
+    res.json(ok);
+  });
+
+  /**
+   * §30 « Supprimer le compte ». Behind the code of the Réglages, and the password once more.
+   *
+   * Apple asks an app that lets people create an account to let them delete it from the app itself (guideline
+   * 5.1.1(v)); the GDPR asks for it everywhere (art. 17). What it does is immediate and final: no grace period, no
+   * account left disabled in a corner. Fewer states to get wrong, and a child's work kept for no longer than the
+   * moment their parent decided it should go.
+   */
+  router.post('/account/delete', auth, unlocked, async (req, res) => {
+    const ctx = authOf(req);
+    const body = parseOrThrow(AccountDeleteRequestSchema, req.body);
+    const user = await findUserById(deps.db, ctx.userId);
+    if (!user) throw appError(401, 'not_authenticated');
+    await checkPassword(deps, user, body.password);
+    // The account that installed the server cannot leave while other families are still on it.
+    if (await isOwnerOfSharedServer(deps.db, user.id)) throw appError(409, 'owner_account');
+
+    const report = await deleteAccount(deps.db, uploadsDir(deps.config), user.id, deps.now());
+    // Counts only: what was deleted must not be described in a log that outlives it.
+    deps.logger.info('account_deleted', { rows: report.rows, files: report.files, sessions: report.sessions });
+    clearSessionCookie(res, deps.config);
     const ok: OkResponse = { ok: true };
     res.json(ok);
   });

@@ -32,9 +32,9 @@ function status(patch: Partial<AuthStatus> = {}): AuthStatus {
   };
 }
 
-function child(id: string, firstName: string, avatar = '🦊'): ChildProfile {
+function child(id: string, nickname: string, avatar = '🦊'): ChildProfile {
   return {
-    id, parentId: 'p1', firstName, age: 10, avatar, readingLevel: 'intermediaire', explanationDifficulty: 'simple',
+    id, parentId: 'p1', nickname, avatar, readingLevel: 'intermediaire', explanationDifficulty: 'simple',
     reading: { ...DEFAULT_READING_PREFERENCES }, tts: { ...DEFAULT_TTS_PREFERENCES }, exercises: { ...DEFAULT_EXERCISE_PREFERENCES },
     createdAt: 1, updatedAt: 1, deletedAt: null,
   };

@@ -35,7 +35,7 @@ function highlight(id: string, updatedAt: number): TextHighlight {
 
 function child(id: string, updatedAt: number): ChildProfile {
   return {
-    id, parentId: PARENT, firstName: 'Léa', age: 10, avatar: '🦊', readingLevel: 'intermediaire', explanationDifficulty: 'simple',
+    id, parentId: PARENT, nickname: 'Léa', avatar: '🦊', readingLevel: 'intermediaire', explanationDifficulty: 'simple',
     reading: { ...DEFAULT_READING_PREFERENCES }, tts: { ...DEFAULT_TTS_PREFERENCES }, exercises: { ...DEFAULT_EXERCISE_PREFERENCES },
     createdAt: 1, updatedAt, deletedAt: null,
   };

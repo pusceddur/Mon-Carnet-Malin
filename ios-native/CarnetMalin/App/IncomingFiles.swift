@@ -51,6 +51,12 @@ enum IncomingFiles {
         try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
     }
 
+    /// Every file still waiting, for when the family leaves this iPad (§28): a document opened in Carnet Malin and
+    /// never added is still a page of their book.
+    static func discardAll() {
+        try? FileManager.default.removeItem(at: folder)
+    }
+
     /// Only the Inbox iOS fills, never a file opened in place from somewhere else.
     private static func discardInboxCopy(_ url: URL) {
         let inbox = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)

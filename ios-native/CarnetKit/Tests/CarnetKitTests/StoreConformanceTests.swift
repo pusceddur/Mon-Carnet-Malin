@@ -70,6 +70,41 @@ private func assertStoreBehaves(
     XCTAssertEqual(try values.value(forKey: StoreKeys.syncCursor), "43", file: file, line: line)
     try values.setValue(nil, forKey: StoreKeys.syncCursor)
     XCTAssertNil(try values.value(forKey: StoreKeys.syncCursor), file: file, line: line)
+
+    // Signing out (§20, §28): the family's things go, the iPad's own stay.
+    let leaving = try make()
+    try leaving.put(entity(.documents, .id("d1"), 5, #"{"title":"Le petit prince"}"#))
+    try leaving.put(entity(.pages, .page(documentId: "d1", pageIndex: 0), 5, #"{"text":"Il était une fois"}"#))
+    try leaving.put(entity(.annotations, .id("a1"), 5, "{}"))
+    try leaving.enqueue(.annotations, .id("a1"))
+    try leaving.setValue("cursor-12", forKey: StoreKeys.syncCursor)
+    try leaving.setValue("2 pages", forKey: "images.pendingUploads")
+    try leaving.setValue("this-ipad", forKey: StoreKeys.deviceId)
+    try leaving.setValue("https://maison.example", forKey: "app.serverURL")
+
+    try leaving.removeEverything(keepingValues: [StoreKeys.deviceId, "app.serverURL"])
+
+    for table in SyncTable.allCases {
+        XCTAssertEqual(try leaving.entities(table).count, 0, "\(table) still holds rows", file: file, line: line)
+    }
+    XCTAssertEqual(try leaving.outboxCount(), 0, "changes of a family that left", file: file, line: line)
+    XCTAssertNil(try leaving.value(forKey: StoreKeys.syncCursor), file: file, line: line)
+    XCTAssertNil(try leaving.value(forKey: "images.pendingUploads"),
+                 "pages waiting to go up belonged to the family too", file: file, line: line)
+    XCTAssertEqual(try leaving.value(forKey: StoreKeys.deviceId), "this-ipad",
+                   "the device keeps its name in « Appareils connectés »", file: file, line: line)
+    XCTAssertEqual(try leaving.value(forKey: "app.serverURL"), "https://maison.example",
+                   "the address of the server is the iPad's, not the family's", file: file, line: line)
+
+    // And it is a store again afterwards, not a ruin: the next family writes into it.
+    try leaving.put(entity(.children, .id("c9"), 9, "{}"))
+    try leaving.enqueue(.children, .id("c9"))
+    XCTAssertEqual(try leaving.entities(.children).count, 1, file: file, line: line)
+    XCTAssertEqual(try leaving.outbox(limit: 10).map(\.key), [.id("c9")], file: file, line: line)
+
+    // Nothing named, nothing kept.
+    try leaving.removeEverything(keepingValues: [])
+    XCTAssertNil(try leaving.value(forKey: StoreKeys.deviceId), file: file, line: line)
 }
 
 final class InMemoryStoreConformanceTests: XCTestCase {

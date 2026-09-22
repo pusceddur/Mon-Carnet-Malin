@@ -95,7 +95,7 @@ export const parent = {
     nav: {
       documents: 'Livres',
       importer: 'Importer',
-      enfants: 'Enfants',
+      enfants: 'Lecteurs',
       ia: 'Options',
       activite: 'Activité',
       glossaire: 'Glossaire',
@@ -116,14 +116,13 @@ export const parent = {
   },
 
   children: {
-    title: 'Enfants',
+    title: 'Les lecteurs',
     intro: 'Chaque enfant a son profil de lecture sur cet iPad.',
-    add: 'Ajouter un enfant',
+    add: 'Ajouter un lecteur',
     edit: 'Modifier',
     editChild: 'Modifier le profil de {prenom}',
-    ageYears: '{age} ans',
     emptyTitle: 'Aucun profil',
-    emptyMessage: 'Créez le profil de votre enfant pour commencer.',
+    emptyMessage: 'Créez un lecteur pour commencer.',
   },
   childEdit: {
     titleNew: 'Nouveau profil',
@@ -141,6 +140,10 @@ export const parent = {
     profiles: {
       hint: 'Choisissez ce qui ressemble le plus à votre enfant : tout se règle d’un coup, et reste modifiable dans les réglages avancés.',
       custom: 'Personnalisé : les réglages ont été ajustés un par un.',
+      // §31 quick start.
+      quickHint: 'Trois façons de lire pour commencer tout de suite. Vous pourrez changer quand vous voulez.',
+      showAll: 'Voir les autres profils',
+      specialist: 'Ces réglages sont personnels : ce qui aide un lecteur en gêne un autre. Le mieux est de les choisir, puis de les ajuster, avec un·e orthophoniste.',
       items: {
         confort: { name: 'Lecture confortable', description: 'Les réglages de départ : texte aéré, phrase lue colorée.' },
         couleurs: { name: 'Lecture en couleurs', description: 'Syllabes en couleurs, lettres muettes en gris, sons et liaisons marqués, texte plus espacé, voix plus lente.' },
@@ -152,8 +155,8 @@ export const parent = {
     advanced: 'Réglages avancés',
     advancedHint: 'Police, espaces, couleurs de lecture, voix et exercices, un par un.',
     privacyNote: 'Seules les informations utiles à la lecture sont enregistrées.',
-    firstName: 'Prénom ou surnom',
-    age: 'Âge',
+    nickname: 'Surnom du lecteur',
+    nicknameHint: 'Le petit nom qui s’affichera dans l’app. Pas besoin du vrai prénom : « Titou », « Le chat » ou « Moi » font très bien l’affaire.',
     ageOption: '{age} ans',
     avatar: 'Avatar',
     readingLevel: 'Niveau de lecture',
@@ -188,8 +191,7 @@ export const parent = {
       ordre: 'Remettre dans l’ordre',
     },
     errors: {
-      firstName: 'Entre 1 et 40 caractères.',
-      age: 'Âge entre {min} et {max} ans.',
+      nickname: 'Entre 1 et 40 caractères.',
       avatar: 'Choisissez un avatar.',
       questionTypes: 'Gardez au moins un type de question.',
     },
@@ -315,8 +317,8 @@ export const parent = {
 
   activity: {
     title: 'Activité',
-    childFilter: 'Enfant',
-    allChildren: 'Tous les enfants',
+    childFilter: 'Lecteur',
+    allChildren: 'Tous les lecteurs',
     period: 'Période',
     periods: { week: '7 jours', month: '30 jours', calendarMonth: 'Ce mois-ci' },
     refresh: 'Actualiser',
@@ -384,7 +386,7 @@ export const parent = {
     questions: {
       title: 'Questions posées',
       intro: 'Les questions libres (« Pose ta question ») et leur réponse. Elles sont conservées 30 jours.',
-      child: 'Enfant',
+      child: 'Lecteur',
       noChildren: 'Aucun profil enfant.',
       empty: 'Aucune question posée ces 30 derniers jours.',
       loadFailed: 'Impossible de charger les questions posées.',
@@ -403,7 +405,7 @@ export const parent = {
     writing: {
       title: 'Écriture corrigée',
       intro: 'Les textes corrigés avec « Corriger » dans les zones de texte, conservés un an : de quoi travailler l’écriture avec votre enfant.',
-      child: 'Enfant',
+      child: 'Lecteur',
       noChildren: 'Aucun profil enfant.',
       empty: 'Aucun texte corrigé pour le moment.',
       loadFailed: 'Impossible de charger les textes corrigés.',
@@ -421,6 +423,7 @@ export const parent = {
         accent: 'Accents',
         orthographe: 'Orthographe',
         grammaire: 'Grammaire',
+        construction: 'Construction de la phrase',
         ponctuation: 'Ponctuation',
         majuscule: 'Majuscules',
         espace: 'Espaces et mots collés',
@@ -621,6 +624,20 @@ export const parent = {
       wipeHint: 'Conseillé si l’appareil est prêté ou donné. Ce qui est synchronisé revient à la prochaine connexion ; les fichiers d’origine non sauvegardés sur le serveur sont perdus.',
       pendingWarning: 'Attention : {count} éléments ne sont pas encore synchronisés.',
       confirm: 'Se déconnecter',
+    },
+
+    /** §30 « Supprimer le compte ». */
+    deleteAccount: {
+      title: 'Supprimer le compte',
+      intro: 'Efface définitivement le compte et tout ce qu’il contient.',
+      button: 'Supprimer le compte',
+      confirmTitle: 'Supprimer le compte pour de bon ?',
+      confirmMessage: 'Cette action est immédiate et définitive. Elle ne peut pas être annulée.',
+      whatGoes: 'Tout disparaît, sur cet appareil et sur tous les autres : les lecteurs, les livres, les pages photographiées, les notes, les devoirs, les exercices et l’historique.',
+      password: 'Votre mot de passe, pour confirmer',
+      confirm: 'Supprimer définitivement',
+      working: 'Suppression…',
+      done: 'Le compte a été supprimé.',
     },
   },
 

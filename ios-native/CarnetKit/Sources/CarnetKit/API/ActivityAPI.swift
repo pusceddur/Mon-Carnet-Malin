@@ -116,7 +116,7 @@ public struct WritingCorrectionHistory: Decodable, Equatable, Sendable {
     public func count(of kind: WritingChangeKind) -> Int { counts[kind.rawValue] ?? 0 }
 
     /// The order the adult reads them in: what matters most for a child's writing first.
-    public static let kindOrder: [WritingChangeKind] = [.spelling, .accent, .grammar, .space, .punctuation, .capital]
+    public static let kindOrder: [WritingChangeKind] = [.construction, .spelling, .accent, .grammar, .space, .punctuation, .capital]
 }
 
 extension APIClient {

@@ -1,5 +1,7 @@
 /* Global styles: iPad-first reset, typography rules for dyslexic readers (contract §12), reading utilities. */
 @import './tokens.css';
+/* §31: loaded after the tokens, so a palette overrides the colours the theme declared. */
+@import './palettes.css';
 
 *,
 *::before,

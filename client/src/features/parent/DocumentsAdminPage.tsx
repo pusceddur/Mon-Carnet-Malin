@@ -24,7 +24,7 @@ function DocumentRow({ doc, profiles, onDelete }: { doc: DocumentMeta; profiles:
   const names = doc.childIds
     .map((id) => profiles.find((c) => c.id === id))
     .filter((c): c is ChildProfile => c !== undefined)
-    .map((c) => c.firstName);
+    .map((c) => c.nickname);
   const processing = doc.status === 'processing';
   const done = progress ? progress.ready + progress.lowConfidence + progress.failed : 0;
 

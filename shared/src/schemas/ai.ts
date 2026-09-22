@@ -137,7 +137,6 @@ export const AIRequestSchemaByOperation = {
 
 /** Learner profile sent to providers (never the child's name or id). */
 export const AILearnerSchema = z.object({
-  age: z.number().int().min(PREFERENCE_RANGES.childAge.min).max(PREFERENCE_RANGES.childAge.max),
   readingLevel: ReadingLevelSchema,
   explanationDifficulty: ExplanationDifficultySchema,
 });
@@ -175,7 +174,7 @@ export const FreeQuestionDataSchema = z.object({
   suggestions: z.array(z.string()).max(3),
 });
 
-export const WritingChangeKindSchema = z.enum(['accent', 'orthographe', 'grammaire', 'ponctuation', 'majuscule', 'espace']);
+export const WritingChangeKindSchema = z.enum(['accent', 'orthographe', 'grammaire', 'construction', 'ponctuation', 'majuscule', 'espace']);
 export const WritingChangeSchema = z.object({
   line: z.number().int().nonnegative(),
   from: z.string(),

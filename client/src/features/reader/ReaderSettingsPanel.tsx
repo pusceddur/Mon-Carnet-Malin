@@ -1,7 +1,7 @@
-import { DEFAULT_TTS_PREFERENCES, PREFERENCE_RANGES, type LayoutMode, type ReadingFont, type ReadingPreferences, type ReadingTheme, type TTSPreferences } from '@aide/shared';
+import { DEFAULT_TTS_PREFERENCES, PREFERENCE_RANGES, type LayoutMode, type ReadingFont, type ReadingPreferences, type ReadingTheme, type TTSPreferences , type ReadingPalette } from '@aide/shared';
 import { useEffect, useId, useState, type JSX } from 'react';
 import { BottomSheet, Button, Segmented, Select, Slider, Toggle } from '../../design/components';
-import { READING_FONTS, READING_THEMES, readingFontClass } from '../../design/reading';
+import { READING_FONTS, READING_PALETTES, READING_THEMES, readingFontClass } from '../../design/reading';
 import { format } from '../../i18n/fr';
 import { aids as aidStrings } from '../../i18n/fr/aids';
 import { common } from '../../i18n/fr/common';
@@ -114,6 +114,13 @@ export function ReaderSettingsPanel({ open, onClose, reading, tts, onChange, onR
             options={READING_THEMES.map((theme) => ({ value: theme, label: common.themes[theme] }))}
             onChange={(theme) => setReading({ theme })}
           />
+          <Segmented<ReadingPalette>
+            label={s.palette}
+            value={reading.palette}
+            options={READING_PALETTES.map((palette) => ({ value: palette, label: common.palettes[palette] }))}
+            onChange={(palette) => setReading({ palette })}
+          />
+          <p className="rd-settings__hint">{common.paletteHints[reading.palette]}</p>
           <Segmented<LayoutMode>
             label={s.layout}
             value={reading.layoutMode}

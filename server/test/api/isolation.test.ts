@@ -51,7 +51,7 @@ describe('isolation between two parents', () => {
   it('REST: children, settings, glossary, documents and activity of A are invisible to B', async () => {
     const children = (await b.agent.get('/api/children')).body as ChildProfile[];
     expect(children.map((c) => c.id)).toEqual([b.child.id]);
-    expect((await b.agent.put(`/api/children/${a.child.id}`).set(XRW).send({ ...a.child, firstName: 'Volé' })).status).toBe(404);
+    expect((await b.agent.put(`/api/children/${a.child.id}`).set(XRW).send({ ...a.child, nickname: 'Volé' })).status).toBe(404);
     expect((await b.agent.patch(`/api/children/${a.child.id}/preferences`).set(XRW).send({ reading: { fontSizePx: 40 } })).status).toBe(404);
     expect((await b.agent.delete(`/api/children/${a.child.id}`).set(XRW).send()).status).toBe(404);
     expect((await b.agent.delete(`/api/documents/${a.doc.id}`).set(XRW).send()).status).toBe(404);
@@ -66,7 +66,7 @@ describe('isolation between two parents', () => {
     expect((await b.agent.post(`/api/activity/alerts/${a.alertId}/seen`).set(XRW).send()).status).toBe(404);
 
     expect(await getChild(ctx.db, b.id, a.child.id)).toBeNull();
-    expect((await getChild(ctx.db, a.id, a.child.id))?.firstName).toBe('Alice');
+    expect((await getChild(ctx.db, a.id, a.child.id))?.nickname).toBe('Alice');
     expect((await getParentSettings(ctx.db, a.id)).ai.monthlyBudgetEur).toBe(3);
     expect((await getParentSettings(ctx.db, b.id)).ai.monthlyBudgetEur).toBe(DEFAULT_PARENT_SETTINGS.ai.monthlyBudgetEur);
   });

@@ -133,6 +133,12 @@ final class AppModel: ObservableObject {
             } else {
                 screen = .signIn
             }
+        } catch let error as APIError where error.isAccountDeleted {
+            // §30: the account was deleted, here or from another device. This iPad still holds the books and a token
+            // that looks fine; it empties itself rather than offering a sign-in screen next to a library that no
+            // longer exists anywhere.
+            forgetEverything()
+            show(FR.SignIn.accountDeleted, tone: .warning)
         } catch let error as APIError where !error.isAuthenticationFailure {
             // No network. The session token is still there and the books are on the iPad: the child reads anyway.
             if await services.api.hasSession {
@@ -147,6 +153,7 @@ final class AppModel: ObservableObject {
 
     private func afterSignIn() async {
         guard let services else { return }
+        await forgetPreviousFamily()
         await reloadChildren()
         await startHelp()
 
@@ -163,6 +170,28 @@ final class AppModel: ObservableObject {
             screen = .chooseChild
         }
         await syncInBackground()
+    }
+
+    /// §28: a second family signing in on this iPad never finds the first one's books.
+    ///
+    /// The check belongs on every sign-in and not only in `signOut`, because a family can be replaced without any
+    /// sign-out happening at all — an app killed halfway through one, a session the server ended, an iPad handed
+    /// over with somebody still signed in. What is compared is the parent the device last belonged to against the
+    /// one who just arrived.
+    private func forgetPreviousFamily() async {
+        guard let services, let current = status?.parent?.id else { return }
+        let previous = (try? await services.library.value(forKey: AppKeys.parentId)) ?? nil
+        guard let previous, !previous.isEmpty, previous != current else { return }
+
+        // Not the session: the token belongs to the family that has just signed in, and the app is about to use it.
+        LocalWipe.family(store: services.store)
+        await services.sync.forgetSyncState()
+        incomingFiles = []
+        children = []
+        child = nil
+        syncStatus = nil
+        try? await services.library.setValue(current, forKey: AppKeys.parentId)
+        show(FR.SignIn.previousFamilyCleared)
     }
 
     /// Sets up the help for this family and reads what the parent allows.
@@ -259,19 +288,63 @@ final class AppModel: ObservableObject {
         await afterSignIn()
     }
 
-    func signOut() async {
+    /// Signs the family out and, unless they ask otherwise, takes their books off this iPad with them (§20, §28).
+    ///
+    /// Forgetting the device is the default, as it is on the web, and it is the honest one: an iPad is lent, sold
+    /// and shared, and a child's homework is not something to leave on it out of convenience. The family that wants
+    /// their books to stay — their own iPad, a sign-out only to swap accounts for a minute — says so in the dialog.
+    ///
+    /// Whatever is still waiting goes up first when there is a connection. A mark made on the bus this morning
+    /// would otherwise be the one thing the sync never carried, and it is about to be erased.
+    func signOut(forgettingThisDevice forget: Bool = true) async {
         guard let services else { return }
+        if forget { await syncInBackground() }
         try? await services.api.logOut()
-        // Nothing of this family's reading stays behind for whoever signs in next on this iPad.
-        AICache.standard()?.removeAll()
+
+        if forget {
+            LocalWipe.family(store: services.store, tokens: services.tokens)
+            await services.sync.forgetSyncState()
+            incomingFiles = []
+            children = []
+            syncStatus = nil
+        } else {
+            // The books stay, the help's answers never do: they are the cheapest thing to ask for again and the
+            // most personal to leave lying about (§28).
+            AICache.standard()?.removeAll()
+            try? await services.library.setValue(nil, forKey: AppKeys.parentSettings)
+        }
+
         ai = nil
         parentId = nil
         settings = .standard
-        try? await services.library.setValue(nil, forKey: AppKeys.parentSettings)
-        // The books stay on the iPad: signing out is not the same as giving them up, and the family may well sign
-        // back in on the same device in a minute.
         child = nil
         status = nil
+        screen = .signIn
+    }
+
+    /// §30 « Supprimer le compte »: the family leaves the server for good, and this iPad with them.
+    ///
+    /// The password is checked by the server, which then removes everything it holds. Whatever it answers, what is
+    /// on this device goes: a deletion that left the books on the iPad would not be one.
+    func deleteAccount(password: String) async throws {
+        guard let services else { throw APIError.offline }
+        try await services.api.deleteAccount(password: password)
+        forgetEverything()
+    }
+
+    /// Takes the family off this iPad and goes back to the sign-in screen. Used by §30 and by a 410.
+    private func forgetEverything() {
+        guard let services else { return }
+        LocalWipe.family(store: services.store, tokens: services.tokens)
+        Task { await services.sync.forgetSyncState() }
+        incomingFiles = []
+        children = []
+        ai = nil
+        parentId = nil
+        settings = .standard
+        child = nil
+        status = nil
+        syncStatus = nil
         screen = .signIn
     }
 

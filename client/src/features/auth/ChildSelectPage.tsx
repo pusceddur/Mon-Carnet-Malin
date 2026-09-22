@@ -48,14 +48,14 @@ export default function ChildSelectPage(): JSX.Element {
                 <button
                   type="button"
                   className="child-card"
-                  aria-label={format(t.choose, { prenom: child.firstName })}
+                  aria-label={format(t.choose, { prenom: child.nickname })}
                   aria-current={child.id === selectedChildId ? 'true' : undefined}
                   onClick={() => choose(child.id)}
                 >
                   <span className="child-card__avatar" aria-hidden="true">
                     {child.avatar}
                   </span>
-                  <span className="child-card__name">{child.firstName}</span>
+                  <span className="child-card__name">{child.nickname}</span>
                 </button>
               </li>
             ))}

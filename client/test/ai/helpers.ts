@@ -15,8 +15,7 @@ export function makeChild(overrides: Partial<ChildProfile> = {}): ChildProfile {
   return {
     id: 'child-1',
     parentId: 'parent-1',
-    firstName: 'Léo',
-    age: 10,
+    nickname: 'Léo',
     avatar: '🦊',
     readingLevel: 'intermediaire',
     explanationDifficulty: 'simple',

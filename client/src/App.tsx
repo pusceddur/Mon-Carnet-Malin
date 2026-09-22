@@ -2,7 +2,7 @@ import { useEffect, type JSX } from 'react';
 import { setDeviceName } from './api/auth';
 import { RouterProvider } from 'react-router';
 import { useToast } from './design/components';
-import { applyTheme } from './design/reading';
+import { applyPalette, applyTheme } from './design/reading';
 import { pushIncomingDocument } from './documents/incomingFiles';
 import { processingQueue } from './documents/ProcessingQueue';
 import { home } from './i18n/fr/home';
@@ -52,10 +52,16 @@ function UpdateNotice(): null {
 
 /** The selected child's paper colour applies to the whole app (system preference otherwise). */
 function ThemeSync(): null {
-  const theme = useSelectedChild()?.reading.theme ?? null;
+  const reading = useSelectedChild()?.reading;
+  const theme = reading?.theme ?? null;
+  const palette = reading?.palette ?? null;
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
+  // §31: the palette rides on the same element as the theme, and changes on its own.
+  useEffect(() => {
+    applyPalette(palette);
+  }, [palette]);
   return null;
 }
 

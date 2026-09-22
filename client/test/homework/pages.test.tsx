@@ -45,7 +45,7 @@ vi.mock('../../src/sync/SyncEngine', async (importOriginal) => ({
 const HomeworkListPage = (await import('../../src/features/homework/HomeworkListPage')).default;
 const HomeworkPage = (await import('../../src/features/homework/HomeworkPage')).default;
 
-const CHILD = { id: 'c1', firstName: 'Léo', avatar: '🦊', deletedAt: null } as unknown as ChildProfile;
+const CHILD = { id: 'c1', nickname: 'Léo', avatar: '🦊', deletedAt: null } as unknown as ChildProfile;
 
 function sheet(patch: Partial<DocumentMeta> = {}): DocumentMeta {
   return {

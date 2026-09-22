@@ -1,0 +1,231 @@
+/*
+ * §31 Palettes: the colours the app draws with, on top of the paper colour of tokens.css.
+ *
+ * A palette is a second dial, not a fourth theme. Someone who needs colours that stay apart still wants to choose
+ * crème, clair or sombre, so the two are independent: [data-palette] sits on the same element as [data-theme] and
+ * overrides only the tokens whose *meaning* is carried by hue.
+ *
+ * Loaded after tokens.css, and every rule names both attributes, so a palette always wins over the theme that
+ * declared the token — and « standard » declares nothing at all, which is why the app looks unchanged without one.
+ *
+ * ---- separees ----
+ * Every pair that asked you to tell red from green is now blue against orange. About one boy in twelve cannot see
+ * the first pair apart, and §26 leans on colour more than anything else in the app: syllables alternate by colour
+ * alone, sounds sit on a coloured background, a liaison is a coloured arc. The hues come from the Okabe–Ito set,
+ * which was built to stay distinct under every kind of colour blindness and in greyscale.
+ *
+ * ---- contraste ----
+ * Hue is not the problem here, edge is. The text goes darker, the lines stronger, the marks heavier. It is the
+ * palette for a child reading on a bus in the sun, or for eyes that want more separation than colour can give.
+ */
+
+/* ============================================================ separees ============================================================ */
+
+[data-theme='creme'][data-palette='separees'],
+[data-theme='clair'][data-palette='separees'],
+:root:not([data-theme])[data-palette='separees'] {
+  /* §26 reading marks */
+  --aid-syl-a: #0060A8;             /* blue */
+  --aid-syl-b: #C24400;             /* vermillion: reads darker than red for protanopia, and apart from blue */
+  --aid-mute: #8A857E;
+  --aid-sound: rgba(0, 158, 115, 0.22);    /* bluish green, told apart from the text by being a background */
+  --aid-sound-2: rgba(0, 158, 115, 0.38);
+  --aid-changed: #9B4F96;           /* reddish purple, dotted underline */
+  --aid-liaison: #0072B2;
+
+  /* Status: never green against red on its own. */
+  --ok: #007A5E;
+  --ok-ink: #00664E;
+  --ok-soft: #DCF0EA;
+  --warn: #9A6400;
+  --warn-ink: #7A4F00;
+  --warn-soft: #F7EBD4;
+  --danger: #C24400;
+  --danger-strong: #A03800;
+  --danger-ink: #A03800;
+  --danger-soft: #FAE4DA;
+
+  /* Reading highlights: yellow stays visible whatever the eye does with hue. */
+  --speaking: #FFEFA8;
+  --selection: #FFD978;
+}
+
+[data-theme='sombre'][data-palette='separees'] {
+  --aid-syl-a: #7FBFF2;
+  --aid-syl-b: #FF9E5E;
+  --aid-mute: #767068;
+  --aid-sound: rgba(64, 214, 168, 0.22);
+  --aid-sound-2: rgba(64, 214, 168, 0.38);
+  --aid-changed: #E4A3DE;
+  --aid-liaison: #7FBFF2;
+
+  --ok: #009E73;
+  --ok-ink: #5FD7B0;
+  --ok-soft: #10382E;
+  --warn: #C98A00;
+  --warn-ink: #F0B94E;
+  --warn-soft: #3E3116;
+  --danger: #E05A14;
+  --danger-strong: #C24400;
+  --danger-ink: #FF9E5E;
+  --danger-soft: #45261A;
+
+  --speaking: #4A4326;
+  --selection: #5C4B1E;
+}
+
+@media (prefers-color-scheme: dark) {
+  /* No theme chosen: the palette follows the system, exactly as the tokens do. */
+  :root:not([data-theme])[data-palette='separees'] {
+  --aid-syl-a: #7FBFF2;
+  --aid-syl-b: #FF9E5E;
+  --aid-mute: #767068;
+  --aid-sound: rgba(64, 214, 168, 0.22);
+  --aid-sound-2: rgba(64, 214, 168, 0.38);
+  --aid-changed: #E4A3DE;
+  --aid-liaison: #7FBFF2;
+
+  --ok: #009E73;
+  --ok-ink: #5FD7B0;
+  --ok-soft: #10382E;
+  --warn: #C98A00;
+  --warn-ink: #F0B94E;
+  --warn-soft: #3E3116;
+  --danger: #E05A14;
+  --danger-strong: #C24400;
+  --danger-ink: #FF9E5E;
+  --danger-soft: #45261A;
+
+  --speaking: #4A4326;
+  --selection: #5C4B1E;
+  }
+}
+
+/* ============================================================ contraste ============================================================ */
+
+[data-theme='creme'][data-palette='contraste'],
+[data-theme='clair'][data-palette='contraste'],
+:root:not([data-theme])[data-palette='contraste'] {
+  --paper: #FFFFFF;
+  --paper-clair: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-sunken: #ECECEC;
+  --surface-press: #DADADA;
+  --line: #9A9A9A;
+  --line-strong: #1A1A1A;
+  --ink: #000000;
+  --ink-soft: #2A2A2A;
+  --ink-placeholder: #444444;
+
+  --accent: #0B4FB5;
+  --accent-strong: #073B8A;
+  --accent-ink: #073B8A;
+  --accent-soft: #DCE7F9;
+
+  --aid-syl-a: #00308F;
+  --aid-syl-b: #8C1400;
+  --aid-mute: #6E6A63;
+  --aid-sound: rgba(0, 110, 82, 0.28);
+  --aid-sound-2: rgba(0, 110, 82, 0.46);
+  --aid-changed: #5B1E8F;
+  --aid-liaison: #00308F;
+
+  --ok: #006244;
+  --ok-ink: #004E36;
+  --ok-soft: #D6EDE4;
+  --warn: #7A4400;
+  --warn-ink: #613600;
+  --warn-soft: #F6E6CE;
+  --danger: #8C1400;
+  --danger-strong: #6E1000;
+  --danger-ink: #6E1000;
+  --danger-soft: #F8DDD7;
+
+  --speaking: #FFE680;
+  --selection: #FFC94D;
+  --focus: #00308F;
+}
+
+[data-theme='sombre'][data-palette='contraste'] {
+  --paper: #000000;
+  --paper-clair: #121212;
+  --surface: #121212;
+  --surface-sunken: #000000;
+  --surface-press: #2A2A2A;
+  --line: #6A6A6A;
+  --line-strong: #F2F2F2;
+  --ink: #FFFFFF;
+  --ink-soft: #E4E4E4;
+  --ink-placeholder: #BFBFBF;
+
+  --accent: #7FB2FF;
+  --accent-strong: #A8CBFF;
+  --accent-ink: #A8CBFF;
+  --accent-soft: #10243F;
+
+  --aid-syl-a: #9CC8FF;
+  --aid-syl-b: #FFB48C;
+  --aid-mute: #8A857E;
+  --aid-sound: rgba(94, 232, 186, 0.26);
+  --aid-sound-2: rgba(94, 232, 186, 0.44);
+  --aid-changed: #E8B6FF;
+  --aid-liaison: #9CC8FF;
+
+  --ok: #3FD7A6;
+  --ok-ink: #7BE8C4;
+  --ok-soft: #0C3428;
+  --warn: #F0B94E;
+  --warn-ink: #FFD48A;
+  --warn-soft: #3A2C12;
+  --danger: #FF8A6B;
+  --danger-strong: #FF6B45;
+  --danger-ink: #FFB09A;
+  --danger-soft: #401C13;
+
+  --speaking: #574E22;
+  --selection: #6B5820;
+  --focus: #A8CBFF;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme])[data-palette='contraste'] {
+  --paper: #000000;
+  --paper-clair: #121212;
+  --surface: #121212;
+  --surface-sunken: #000000;
+  --surface-press: #2A2A2A;
+  --line: #6A6A6A;
+  --line-strong: #F2F2F2;
+  --ink: #FFFFFF;
+  --ink-soft: #E4E4E4;
+  --ink-placeholder: #BFBFBF;
+
+  --accent: #7FB2FF;
+  --accent-strong: #A8CBFF;
+  --accent-ink: #A8CBFF;
+  --accent-soft: #10243F;
+
+  --aid-syl-a: #9CC8FF;
+  --aid-syl-b: #FFB48C;
+  --aid-mute: #8A857E;
+  --aid-sound: rgba(94, 232, 186, 0.26);
+  --aid-sound-2: rgba(94, 232, 186, 0.44);
+  --aid-changed: #E8B6FF;
+  --aid-liaison: #9CC8FF;
+
+  --ok: #3FD7A6;
+  --ok-ink: #7BE8C4;
+  --ok-soft: #0C3428;
+  --warn: #F0B94E;
+  --warn-ink: #FFD48A;
+  --warn-soft: #3A2C12;
+  --danger: #FF8A6B;
+  --danger-strong: #FF6B45;
+  --danger-ink: #FFB09A;
+  --danger-soft: #401C13;
+
+  --speaking: #574E22;
+  --selection: #6B5820;
+  --focus: #A8CBFF;
+  }
+}

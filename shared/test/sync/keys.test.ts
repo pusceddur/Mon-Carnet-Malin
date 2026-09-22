@@ -36,7 +36,7 @@ describe('syncEntityKey', () => {
       createdAt: 1, updatedAt: 1, deletedAt: null,
     })).toBe('doc-1');
     expect(syncEntityKey('children', {
-      id: 'child-1', parentId: 'p', firstName: 'Léo', age: 10, avatar: '🦊', readingLevel: 'intermediaire', explanationDifficulty: 'simple',
+      id: 'child-1', parentId: 'p', nickname: 'Léo', avatar: '🦊', readingLevel: 'intermediaire', explanationDifficulty: 'simple',
       reading: DEFAULT_READING_PREFERENCES, tts: DEFAULT_TTS_PREFERENCES, exercises: DEFAULT_EXERCISE_PREFERENCES, createdAt: 1, updatedAt: 1, deletedAt: null,
     })).toBe('child-1');
   });

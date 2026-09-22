@@ -31,13 +31,13 @@ describe('ai_cache repository', () => {
   it('stores, upserts on the cache key and honours expiry', async () => {
     const repo = createAICacheRepository(db);
     const entry = {
-      cacheKey: 'k'.repeat(64), operation: 'explain_text' as const, provider: 'plugin', model: 'm1', promptVersion: 'v1', inputHash: 'i'.repeat(64),
+      cacheKey: 'k'.repeat(64), parentId: 'p1', operation: 'explain_text' as const, provider: 'plugin', model: 'm1', promptVersion: 'v1', inputHash: 'i'.repeat(64),
       documentHash: null, contentHash: null, output: { status: 'ok', data: { explanation: 'a' } }, validationStatus: 'ok' as const, createdAt: T0, expiresAt: T0 + 1000,
     };
     await repo.put(entry);
     await repo.put({ ...entry, model: 'm2', output: { status: 'ok', data: { explanation: 'b' } } });
     expect(await db('ai_cache').count({ n: '*' }).first()).toMatchObject({ n: 1 });
-    expect(await repo.get(entry.cacheKey, T0 + 10)).toMatchObject({ model: 'm2', output: { data: { explanation: 'b' } } });
+    expect(await repo.get(entry.cacheKey, T0 + 10)).toMatchObject({ model: 'm2', parentId: 'p1', output: { data: { explanation: 'b' } } });
     expect(await repo.get(entry.cacheKey, T0 + 1000)).toBeNull();
     expect(await repo.get('x'.repeat(64), T0)).toBeNull();
   });

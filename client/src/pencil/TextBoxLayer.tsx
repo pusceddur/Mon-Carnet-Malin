@@ -37,12 +37,25 @@ const LINE_HEIGHT = 1.3;
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
-/** « J'ai corrigé 3 petites fautes (accents, ponctuation). » */
+/**
+ * « J'ai corrigé 3 petites fautes (accents, ponctuation). »
+ *
+ * §24: when the construction of a sentence changed — the wrong auxiliary put right — the child is told so in a
+ * sentence of its own. Everything else is a word written better; this one is a sentence built differently, and a
+ * child rereading their own text should know which of the two happened.
+ */
 export function correctionMessage(changes: readonly WritingChange[]): string {
   const kinds: WritingChangeKind[] = [];
   for (const change of changes) if (!kinds.includes(change.kind)) kinds.push(change.kind);
   const list = kinds.map((k) => s.kinds[k]).join(', ');
-  return changes.length === 1 ? format(s.correctedOne, { kinds: list }) : format(s.correctedMany, { count: changes.length, kinds: list });
+  const counted = changes.length === 1
+    ? format(s.correctedOne, { kinds: list })
+    : format(s.correctedMany, { count: changes.length, kinds: list });
+
+  const rebuilt = changes.filter((change) => change.kind === 'construction').length;
+  if (rebuilt === 0) return counted;
+  const said = rebuilt === 1 ? s.correctedConstruction : format(s.correctedConstructionMany, { count: rebuilt });
+  return `${counted} ${said}`;
 }
 
 /** §24 « Corriger »: switched on in the Options (default on) and the help of the AI on. */

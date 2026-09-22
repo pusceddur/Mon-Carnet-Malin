@@ -13,29 +13,29 @@ describe('children routes', () => {
   afterEach(async () => ctx.close());
 
   it('creation needs the unlock and applies defaults', async () => {
-    expect((await agent.post('/api/children').set(XRW).send({ firstName: 'Zoé' })).status).toBe(403);
+    expect((await agent.post('/api/children').set(XRW).send({ nickname: 'Zoé' })).status).toBe(403);
     await unlock(agent);
-    const res = await agent.post('/api/children').set(XRW).send({ firstName: '  Zoé ', reading: { fontSizePx: 28 }, tts: { rate: 0.7 } });
+    const res = await agent.post('/api/children').set(XRW).send({ nickname: '  Zoé ', reading: { fontSizePx: 28 }, tts: { rate: 0.7 } });
     expect(res.status).toBe(201);
     const child = res.body as ChildProfile;
     expect(child).toMatchObject({
-      firstName: 'Zoé', age: 10, readingLevel: 'intermediaire', explanationDifficulty: 'simple', deletedAt: null,
+      nickname: 'Zoé', readingLevel: 'intermediaire', explanationDifficulty: 'simple', deletedAt: null,
       reading: { ...DEFAULT_READING_PREFERENCES, fontSizePx: 28 }, tts: { ...DEFAULT_TTS_PREFERENCES, rate: 0.7 },
       createdAt: ctx.clock.now, updatedAt: ctx.clock.now,
     });
-    expect((await agent.post('/api/children').set(XRW).send({ firstName: '' })).status).toBe(400);
-    expect((await agent.post('/api/children').set(XRW).send({ firstName: 'Max', age: 30 })).status).toBe(400);
+    expect((await agent.post('/api/children').set(XRW).send({ nickname: '' })).status).toBe(400);
+    expect((await agent.post('/api/children').set(XRW).send({ nickname: 'M'.repeat(41) })).status).toBe(400);
     expect((await agent.get('/api/children')).body).toEqual([child]);
   });
 
   it('PUT replaces the profile (unlock), PATCH preferences works for the child without unlock, DELETE is soft', async () => {
     await unlock(agent);
-    const child = (await agent.post('/api/children').set(XRW).send({ firstName: 'Noé' })).body as ChildProfile;
+    const child = (await agent.post('/api/children').set(XRW).send({ nickname: 'Noé' })).body as ChildProfile;
 
     ctx.advance(1000);
-    const put = await agent.put(`/api/children/${child.id}`).set(XRW).send({ ...child, age: 9, avatar: '🐢', createdAt: 1, parentId: 'x' });
+    const put = await agent.put(`/api/children/${child.id}`).set(XRW).send({ ...child, avatar: '🐢', createdAt: 1, parentId: 'x' });
     expect(put.status).toBe(200);
-    expect(put.body).toMatchObject({ age: 9, avatar: '🐢', createdAt: child.createdAt, parentId: child.parentId, updatedAt: ctx.clock.now });
+    expect(put.body).toMatchObject({ avatar: '🐢', createdAt: child.createdAt, parentId: child.parentId, updatedAt: ctx.clock.now });
     expect((await agent.put(`/api/children/${child.id}`).set(XRW).send({ ...child, id: 'autre' })).status).toBe(400);
 
     await lock(agent);
@@ -45,7 +45,8 @@ describe('children routes', () => {
     expect(patch.status).toBe(200);
     expect(patch.body.reading).toMatchObject({ theme: 'sombre', lineHeight: 2, fontSizePx: DEFAULT_READING_PREFERENCES.fontSizePx });
     expect(patch.body.tts.rate).toBe(1.2);
-    expect(patch.body.age).toBe(9);
+    // §32: the nickname is the only thing about the reader, and a preferences patch never touches it.
+    expect(patch.body.nickname).toBe('Noé');
     expect((await agent.patch(`/api/children/${child.id}/preferences`).set(XRW).send({ reading: { fontSizePx: 100 } })).status).toBe(400);
     // §26 couleurs de lecture: saved, and kept when another preference changes.
     const aids = { syllables: true, silentLetters: true, sounds: false, changedLetters: false, liaisons: true };
@@ -58,7 +59,7 @@ describe('children routes', () => {
 
     // Profile edits reach devices through sync.
     const pulled = await sync(agent);
-    expect(pulled.changes.children[0]).toMatchObject({ age: 9, reading: { theme: 'sombre' } });
+    expect(pulled.changes.children[0]).toMatchObject({ reading: { theme: 'sombre' } });
 
     expect((await agent.delete(`/api/children/${child.id}`).set(XRW).send()).status).toBe(403);
     await unlock(agent);

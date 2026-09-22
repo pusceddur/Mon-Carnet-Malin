@@ -2,7 +2,7 @@ import { LIMITS, type InvitationConfig, type UpdateInvitationRequest } from '@ai
 import { useEffect, useRef, useState, type FormEvent, type JSX } from 'react';
 import { useNavigate } from 'react-router';
 import { getInvitation, updateInvitation } from '../../api/admin';
-import { changePassword, changePin, logout } from '../../api/auth';
+import { changePassword, changePin, deleteAccount, logout } from '../../api/auth';
 import { Button, ConfirmDialog, Field, ProgressBar, Spinner, TextInput, Toggle, useToast } from '../../design/components';
 import { format } from '../../i18n/fr';
 import { parent } from '../../i18n/fr/parent';
@@ -438,6 +438,72 @@ function LogoutSection(): JSX.Element {
 }
 
 /**
+ * §30 « Supprimer le compte »: the family leaves for good.
+ *
+ * Last on the page, behind the password, and it says what goes before it asks: every reader, every book, every note
+ * and every piece of homework, on every device. Immediate and final — no grace period to explain, nothing left
+ * disabled in a corner, and a child's work kept no longer than the moment their parent decided it should go.
+ */
+function DeleteAccountSection(): JSX.Element {
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [working, setWorking] = useState(false);
+
+  const confirm = async (): Promise<void> => {
+    if (password === '' || working) return;
+    setWorking(true);
+    try {
+      await deleteAccount({ password });
+      // Nothing of theirs stays on this device either; the account no longer exists to sync it back.
+      await useSessionStore.getState().forgetThisDevice();
+      setOpen(false);
+      navigate(PATHS.login, { replace: true });
+      toast.success(t.deleteAccount.done);
+    } catch (error) {
+      toast.error(describeError(error));
+    } finally {
+      setWorking(false);
+      setPassword('');
+    }
+  };
+
+  return (
+    <ParentSection title={t.deleteAccount.title} hint={t.deleteAccount.intro}>
+      <div className="parent-actions">
+        <Button variant="danger" size="parent" onClick={() => setOpen(true)}>
+          {t.deleteAccount.button}
+        </Button>
+      </div>
+      <ConfirmDialog
+        open={open}
+        size="parent"
+        tone="danger"
+        title={t.deleteAccount.confirmTitle}
+        message={
+          <>
+            <p>{t.deleteAccount.confirmMessage}</p>
+            <p>{t.deleteAccount.whatGoes}</p>
+            <Field label={t.deleteAccount.password} size="parent">
+              <TextInput
+                type="password"
+                value={password}
+                autoComplete="current-password"
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </Field>
+          </>
+        }
+        confirmLabel={working ? t.deleteAccount.working : t.deleteAccount.confirm}
+        onConfirm={confirm}
+        onCancel={() => { setOpen(false); setPassword(''); }}
+      />
+    </ParentSection>
+  );
+}
+
+/**
  * Parent account: PIN (and whether it is asked, §20), password, devices signed in (§20), invitations (owner), installation,
  * storage, offline assets, sign-out.
  */
@@ -458,6 +524,7 @@ export default function AccountPage(): JSX.Element {
       <StorageSection />
       <OfflineSection />
       <LogoutSection />
+      <DeleteAccountSection />
     </ParentPage>
   );
 }

@@ -48,6 +48,18 @@ extension APIClient {
         _ = try await authSend("DELETE", "/api/auth/sessions/\(safe)", Optional<String>.none)
     }
 
+    /// `POST /api/auth/account/delete` — §30: the family leaves the server for good.
+    ///
+    /// Immediate and final. The server closes every session, removes every row and every file, and remembers only
+    /// the hashes of the tokens, so the other iPads of the family are told rather than left guessing. The password
+    /// is asked again because nothing here can be undone.
+    ///
+    /// Guideline 5.1.1(v): an app that lets a family create an account has to let them delete it from the app.
+    public func deleteAccount(password: String) async throws {
+        struct Body: Encodable { let password: String }
+        _ = try await authSend("POST", "/api/auth/account/delete", Body(password: password))
+    }
+
     /// `POST /api/auth/sessions/revoke-others`: every device but this one.
     public func signOutOtherDevices() async throws {
         _ = try await authSend("POST", "/api/auth/sessions/revoke-others", Optional<String>.none)

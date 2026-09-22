@@ -32,7 +32,7 @@ describe('api wrappers', () => {
     await lock();
     await changePin({ password: 'x', newPin: '1234' });
     await logout();
-    await createChild({ firstName: 'Léa' });
+    await createChild({ nickname: 'Léa' });
     await updateChildPreferences('c 1', { reading: { fontSizePx: 30 } });
     await deleteChild('c1');
     await putSettings(DEFAULT_PARENT_SETTINGS);

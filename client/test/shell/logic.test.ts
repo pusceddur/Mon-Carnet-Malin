@@ -29,7 +29,7 @@ const signedIn: AuthStatus = {
 
 function child(patch: Partial<ChildProfile> = {}): ChildProfile {
   return {
-    id: 'c1', parentId: 'p1', firstName: 'Léa', age: 10, avatar: '🦊', readingLevel: 'intermediaire', explanationDifficulty: 'simple',
+    id: 'c1', parentId: 'p1', nickname: 'Léa', avatar: '🦊', readingLevel: 'intermediaire', explanationDifficulty: 'simple',
     reading: { ...DEFAULT_READING_PREFERENCES }, tts: { ...DEFAULT_TTS_PREFERENCES }, exercises: { ...DEFAULT_EXERCISE_PREFERENCES },
     createdAt: 1, updatedAt: 10, deletedAt: null, ...patch,
   };
@@ -225,12 +225,14 @@ describe('activity stats', () => {
 describe('child form', () => {
   it('validates the profile and builds requests', () => {
     const form = emptyChildForm();
-    expect(validateChildForm(form)).toEqual({ firstName: true });
-    const filled = { ...form, firstName: '  Léo  ', age: 16 };
-    expect(validateChildForm(filled)).toEqual({ age: true });
-    expect(validateChildForm({ ...filled, age: 9, exercises: { ...filled.exercises, enabledTypes: [] } })).toEqual({ questionTypes: true });
-    const request = formToCreateRequest({ ...filled, age: 9 });
-    expect(request.firstName).toBe('Léo');
+    expect(validateChildForm(form)).toEqual({ nickname: true });
+    const filled = { ...form, nickname: '  Léo  ' };
+    expect(validateChildForm(filled)).toEqual({});
+    // §32: a nickname is all there is, and it is the only thing that can be wrong here.
+    expect(validateChildForm({ ...filled, nickname: 'x'.repeat(41) })).toEqual({ nickname: true });
+    expect(validateChildForm({ ...filled, exercises: { ...filled.exercises, enabledTypes: [] } })).toEqual({ questionTypes: true });
+    const request = formToCreateRequest({ ...filled });
+    expect(request.nickname).toBe('Léo');
     expect(request.reading).toEqual(DEFAULT_READING_PREFERENCES);
   });
 

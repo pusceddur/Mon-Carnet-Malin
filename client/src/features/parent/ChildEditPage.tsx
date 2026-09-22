@@ -27,16 +27,11 @@ import {
 } from './childForm';
 import { formatNumber } from './format';
 import { ParentPage, ParentSection } from './ParentPage';
-import { applyReadingProfile, matchReadingProfile, READING_PROFILES } from './readingProfiles';
+import { applyReadingProfile, matchReadingProfile, QUICK_START_PROFILES, READING_PROFILES } from './readingProfiles';
 
 const t = parent.childEdit;
 const R = PREFERENCE_RANGES;
 const NEW_ID = 'nouveau';
-
-const AGE_OPTIONS = Array.from({ length: R.childAge.max - R.childAge.min + 1 }, (_, i) => {
-  const age = R.childAge.min + i;
-  return { value: String(age), label: format(t.ageOption, { age }) };
-});
 
 const levelOptions = (Object.keys(t.readingLevels) as ReadingLevel[]).map((value) => ({ value, label: t.readingLevels[value] }));
 const difficultyOptions = (Object.keys(t.explanationDifficulties) as ExplanationDifficulty[]).map((value) => ({
@@ -57,6 +52,9 @@ function ChildForm({ childId }: { childId: string | null }): JSX.Element {
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [advanced, setAdvanced] = useState(false);
+  // §31: a new reader is offered three clearly different ways to read; the rest is one tap away.
+  const [allProfiles, setAllProfiles] = useState(child !== null);
+  const shownProfiles = allProfiles ? READING_PROFILES : READING_PROFILES.filter((p) => QUICK_START_PROFILES.includes(p.id));
 
   const setReading = <K extends keyof ReadingPreferences>(key: K, value: ReadingPreferences[K]): void =>
     setValues((v) => ({ ...v, reading: { ...v.reading, [key]: value } }));
@@ -106,7 +104,7 @@ function ChildForm({ childId }: { childId: string | null }): JSX.Element {
     }
   };
 
-  const title = child ? format(t.titleEdit, { prenom: child.firstName }) : t.titleNew;
+  const title = child ? format(t.titleEdit, { prenom: child.nickname }) : t.titleNew;
   const px = (v: number): string => format(t.pxValue, { value: formatNumber(v, 0) });
   const em = (v: number): string => format(t.emValue, { value: formatNumber(v, 2) });
 
@@ -114,16 +112,14 @@ function ChildForm({ childId }: { childId: string | null }): JSX.Element {
     <ParentPage title={title} intro={t.privacyNote}>
       <ParentSection title={t.sections.identity}>
         <div className="form-grid">
-          <Field label={t.firstName} error={errors.firstName ? t.errors.firstName : null} required size="parent">
+          {/* §32: a nickname, and nothing else. No first name, no age: the app has no use for either. */}
+          <Field label={t.nickname} hint={t.nicknameHint} error={errors.nickname ? t.errors.nickname : null} required size="parent">
             <TextInput
-              value={values.firstName}
-              maxLength={R.firstNameLength.max}
+              value={values.nickname}
+              maxLength={R.nicknameLength.max}
               autoComplete="off"
-              onChange={(e) => setValues((v) => ({ ...v, firstName: e.target.value }))}
+              onChange={(e) => setValues((v) => ({ ...v, nickname: e.target.value }))}
             />
-          </Field>
-          <Field label={t.age} error={errors.age ? format(t.errors.age, { min: R.childAge.min, max: R.childAge.max }) : null} size="parent">
-            <Select value={String(values.age)} options={AGE_OPTIONS} onChange={(e) => setValues((v) => ({ ...v, age: Number(e.target.value) }))} />
           </Field>
         </div>
         <div role="radiogroup" aria-label={t.avatar} className="stack stack--tight">
@@ -147,9 +143,9 @@ function ChildForm({ childId }: { childId: string | null }): JSX.Element {
         </div>
       </ParentSection>
 
-      <ParentSection title={t.sections.profile} hint={t.profiles.hint}>
+      <ParentSection title={t.sections.profile} hint={child ? t.profiles.hint : t.profiles.quickHint}>
         <div role="radiogroup" aria-label={t.sections.profile} className="profile-grid">
-          {READING_PROFILES.map((item) => (
+          {shownProfiles.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -164,7 +160,12 @@ function ChildForm({ childId }: { childId: string | null }): JSX.Element {
             </button>
           ))}
         </div>
+        {!allProfiles && (
+          <button type="button" className="link-button" onClick={() => setAllProfiles(true)}>{t.profiles.showAll}</button>
+        )}
         {profile === null && <p className="parent-section__hint">{t.profiles.custom}</p>}
+        {/* §31: said once, where the choice is made. These settings are not decoration. */}
+        <p className="parent-section__hint">{t.profiles.specialist}</p>
         <div className="stack stack--tight">
           <span className="parent-section__hint">{t.preview}</span>
           <div className="reading-preview" data-theme={values.reading.theme}>
@@ -272,7 +273,7 @@ function ChildForm({ childId }: { childId: string | null }): JSX.Element {
           open={confirmDelete}
           size="parent"
           tone="danger"
-          title={format(t.deleteTitle, { prenom: child.firstName })}
+          title={format(t.deleteTitle, { prenom: child.nickname })}
           message={t.deleteMessage}
           confirmLabel={t.deleteConfirm}
           onConfirm={remove}

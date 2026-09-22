@@ -86,6 +86,25 @@ enum FR {
         static let sombre = "Sombre"
     }
 
+    /// §31: named for what they do. Never for who they are for.
+    enum Palettes {
+        static func name(_ palette: ReadingPalette) -> String {
+            switch palette {
+            case .standard: return "Habituelles"
+            case .separees: return "Bien séparées"
+            case .contraste: return "Contraste fort"
+            }
+        }
+
+        static func hint(_ palette: ReadingPalette) -> String {
+            switch palette {
+            case .standard: return "Les couleurs de toujours."
+            case .separees: return "Du bleu et de l’orange à la place du rouge et du vert, qui restent différents pour tout le monde."
+            case .contraste: return "Texte très foncé, traits plus épais, couleurs plus franches."
+            }
+        }
+    }
+
     enum SignIn {
         static let title = "Carnet Malin"
         static let lead = "Connecte-toi pour retrouver tes livres."
@@ -101,12 +120,51 @@ enum FR {
         static let offline = "Pas de connexion. Vérifie le Wi-Fi, puis réessaie."
         static let setupRequired = "Ce serveur n’a pas encore de compte. Un adulte doit d’abord en créer un dans le navigateur."
         static let signOut = "Se déconnecter"
-        static let signOutConfirm = "Tu veux vraiment te déconnecter ? Tes livres resteront sur cet iPad."
+        static let signOutTitle = "Se déconnecter ?"
+        static let signOutMessage = "Il faudra se reconnecter pour lire."
+        static let signOutWorking = "Déconnexion…"
+        /// §20: the books leave the device with the family unless they say otherwise.
+        static let forgetLabel = "Effacer aussi les livres, les pages et les notes de cet appareil"
+        static let forgetHint =
+            "Conseillé si l’appareil est prêté ou donné. Ce qui est synchronisé revient à la prochaine connexion ; "
+            + "les fichiers d’origine non sauvegardés sur le serveur sont perdus."
+        static func pendingWarning(_ count: Int) -> String {
+            format("Attention : {count} éléments ne sont pas encore synchronisés.", ["count": String(count)])
+        }
+        /// §28: shown once, when a different family signs in on an iPad that still held the previous one's things.
+        static let previousFamilyCleared =
+            "Les livres et les notes du compte précédent ont été effacés de cet iPad."
         static let createAccount = "Créer un compte"
-        static let firstInstall = "Première installation"
-        static let setupRequiredHere =
-            "Ce serveur n’a pas encore de compte. Un adulte peut le créer ici, avec « Première installation »."
+        /// §30: shown when the server says the account no longer exists.
+        static let accountDeleted = "Ce compte a été supprimé. Les livres et les notes ont été effacés de cet iPad."
         static let forgotPassword = "Mot de passe oublié ?"
+    }
+
+    /// §30 « Supprimer le compte », addressed to the adult with « vous ».
+    enum DeleteAccount {
+        static let title = "Supprimer le compte"
+        static let entry = "Supprimer le compte"
+        static let intro =
+            "Cette action efface définitivement votre compte et tout ce qu’il contient. "
+            + "Elle est immédiate et ne peut pas être annulée."
+        static let whatGoesTitle = "Ce qui disparaît"
+        static let whatGoes = [
+            "Tous les lecteurs et leurs réglages",
+            "Tous les livres, les pages photographiées et les documents",
+            "Les notes, les dessins, les devoirs et les exercices",
+            "L’historique de lecture et les textes corrigés",
+            "Sur cet appareil et sur tous les autres appareils connectés",
+        ]
+        static let subscriptionTitle = "Abonnement"
+        static let subscription =
+            "Si vous avez un abonnement, il continue d’être facturé tant que vous ne l’avez pas résilié "
+            + "auprès de celui qui l’encaisse. La suppression du compte ne le résilie pas."
+        static let password = "Votre mot de passe, pour confirmer"
+        static let button = "Supprimer définitivement"
+        static let working = "Suppression…"
+        static let confirmTitle = "Supprimer le compte pour de bon ?"
+        static let confirmMessage = "Tout sera effacé, sur tous les appareils. Cette action ne peut pas être annulée."
+        static let confirm = "Oui, tout supprimer"
     }
 
     /// Creating the account, addressed to the adult with « vous ».
@@ -254,6 +312,7 @@ enum FR {
         static let wordSpacing = "Espace entre les mots"
         static let columnWidth = "Largeur du texte"
         static let theme = "Couleur du fond"
+        static let palette = "Couleurs de l’app"
         static let layout = "Façon de lire"
         static let layoutPage = "Page par page"
         static let layoutContinuous = "Texte continu"
@@ -463,8 +522,10 @@ enum FR {
         static let syncPending = "{count} changements en attente"
         static let syncOffline = "Hors ligne. Les changements partiront au retour du réseau."
 
-        static let childName = "Prénom"
-        static let childAge = "Âge"
+        static let childName = "Surnom du lecteur"
+        static let childNameHint =
+            "Le petit nom qui s’affichera dans l’app. Pas besoin du vrai prénom : "
+            + "« Titou », « Le chat » ou « Moi » font très bien l’affaire."
         static let childAvatar = "Image"
         static let readingLevel = "Niveau de lecture"
         static let readingLevelBeginner = "Débutant"

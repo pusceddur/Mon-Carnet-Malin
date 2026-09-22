@@ -85,7 +85,7 @@ struct HomeView: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(child.firstName.isEmpty ? FR.Home.greetingNoName : FR.Home.greeting(child.firstName))
+                Text(child.nickname.isEmpty ? FR.Home.greetingNoName : FR.Home.greeting(child.nickname))
                     .font(AppFont.title(34))
                     .foregroundStyle(Palette.ink)
                 if let syncStatus = model.syncStatus, syncStatus.pending > 0 {

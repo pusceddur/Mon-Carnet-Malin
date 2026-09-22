@@ -18,7 +18,7 @@ function status(patch: Partial<AuthStatus> = {}): AuthStatus {
 
 function child(id: string, patch: Partial<ChildProfile> = {}): ChildProfile {
   return {
-    id, parentId: 'p1', firstName: `Enfant ${id}`, age: 9, avatar: '🐼', readingLevel: 'debutant', explanationDifficulty: 'tres_simple',
+    id, parentId: 'p1', nickname: `Enfant ${id}`, avatar: '🐼', readingLevel: 'debutant', explanationDifficulty: 'tres_simple',
     reading: { ...DEFAULT_READING_PREFERENCES }, tts: { ...DEFAULT_TTS_PREFERENCES }, exercises: { ...DEFAULT_EXERCISE_PREFERENCES },
     createdAt: 1, updatedAt: 1, deletedAt: null, ...patch,
   };

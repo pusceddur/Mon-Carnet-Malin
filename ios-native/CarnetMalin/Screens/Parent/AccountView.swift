@@ -103,6 +103,16 @@ struct AccountView: View {
             if let message {
                 Section { Text(message).foregroundStyle(Palette.accent) }
             }
+
+            // §30: last, on its own, and behind a screen that says what goes before it asks for the password.
+            Section {
+                NavigationLink {
+                    DeleteAccountView()
+                } label: {
+                    Label(FR.DeleteAccount.entry, systemImage: "trash")
+                        .foregroundStyle(Palette.warning)
+                }
+            }
         }
         .font(AppFont.ui(17))
         .scrollContentBackground(.hidden)

@@ -53,7 +53,8 @@ describe('free_question — model contract', () => {
     const [sent] = h.light.callsFor('free_question');
     expect(sent).toMatchObject({ operation: 'free_question', tier: 'light', documentText: null });
     expect(sent!.userText).toContain('<question_de_l_enfant>\nPourquoi le ‹ciel› est bleu ?\n</question_de_l_enfant>');
-    expect(sent!.userText).toContain('10 ans');
+    expect(sent!.userText).toContain('Profil du lecteur');
+    expect(sent!.userText).not.toMatch(/Profil du lecteur[^\n]*ans/); // 32: no age about the reader
     expect(JSON.stringify(sent)).not.toContain(CHILD_ID);
     expect(JSON.stringify(sent)).not.toContain(PARENT_ID);
     expect(sent!.system).toBe(systemPrompt('free_question'));

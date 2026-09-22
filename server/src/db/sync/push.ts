@@ -330,8 +330,7 @@ function sameSet(a: readonly string[], b: readonly string[]): boolean {
 
 function otherChildFieldsDiffer(existing: ChildProfile, incoming: ChildProfile): boolean {
   return existing.parentId !== incoming.parentId
-    || existing.firstName !== incoming.firstName
-    || existing.age !== incoming.age
+    || existing.nickname !== incoming.nickname
     || existing.avatar !== incoming.avatar
     || existing.readingLevel !== incoming.readingLevel
     || existing.explanationDifficulty !== incoming.explanationDifficulty

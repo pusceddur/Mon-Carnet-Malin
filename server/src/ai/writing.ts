@@ -169,7 +169,81 @@ function onlyEndingChanged(from: string, to: string): boolean {
   return false;
 }
 
-export function classifyChange(from: string, to: string): WritingChangeKind {
+/**
+ * Conjugated forms of « être » and « avoir »: the two words French builds its compound tenses with.
+ *
+ * A child who writes « je suis été » or « j'ai allé » has not misspelled anything. They picked the wrong auxiliary,
+ * and no amount of letter-level tolerance will ever let that correction through, because « suis » and « ai » share
+ * almost nothing. So this one substitution is named, and allowed on its own terms.
+ */
+const AUXILIARIES = new Set([
+  // être
+  'suis', 'es', 'est', 'sommes', 'êtes', 'sont', 'étais', 'était', 'étions', 'étiez', 'étaient',
+  'serai', 'seras', 'sera', 'serons', 'serez', 'seront', 'serais', 'serait', 'serions', 'seriez', 'seraient',
+  'fus', 'fut', 'fûmes', 'fûtes', 'furent', 'sois', 'soit', 'soyons', 'soyez', 'soient', 'être', 'étant',
+  // avoir
+  'ai', 'as', 'a', 'avons', 'avez', 'ont', 'avais', 'avait', 'avions', 'aviez', 'avaient',
+  'aurai', 'auras', 'aura', 'aurons', 'aurez', 'auront', 'aurais', 'aurait', 'aurions', 'auriez', 'auraient',
+  'eus', 'eut', 'eûmes', 'eûtes', 'eurent', 'aie', 'aies', 'ait', 'ayons', 'ayez', 'aient', 'avoir', 'ayant',
+]);
+
+/** Words that only hold a sentence together, and what an elision leaves of them (« j'ai » → « j » + « ai »). */
+const PARTICLES = new Set([
+  'je', 'j', 'tu', 'il', 'elle', 'on', 'nous', 'vous', 'ils', 'elles',
+  'ne', 'n', 'me', 'm', 'te', 't', 'se', 's', 'y', 'en', 'que', 'qu', 'c', 'ç', 'd', 'l',
+]);
+
+/** Endings of French past participles. */
+const PARTICIPLE_ENDINGS = ['é', 'ée', 'és', 'ées', 'i', 'ie', 'is', 'ies', 'it', 'u', 'ue', 'us', 'ues'];
+/** The ones that end in a consonant and would be missed by the endings above. */
+const IRREGULAR_PARTICIPLES = new Set(['ouvert', 'offert', 'souffert', 'couvert', 'découvert', 'mort', 'craint', 'peint', 'joint', 'atteint']);
+
+/** Lowercased words, elisions split apart, punctuation gone. */
+function simplifiedWords(text: string): string[] {
+  return text
+    .normalize('NFC')
+    .toLowerCase()
+    .split(/\s+/)
+    .flatMap((word) => word.split(/['’]/))
+    .map((word) => word.replace(/[^\p{L}\p{N}]/gu, ''))
+    .filter((word) => word !== '');
+}
+
+function looksLikeParticiple(word: string): boolean {
+  if (IRREGULAR_PARTICIPLES.has(word)) return true;
+  return word.length >= 2 && PARTICIPLE_ENDINGS.some((ending) => word.endsWith(ending));
+}
+
+/** Whether the word after this auxiliary, in the corrected line, is a past participle — i.e. a compound tense. */
+function inCompoundTense(auxiliary: string, correctedLine: string): boolean {
+  const words = simplifiedWords(correctedLine).filter((word) => !PARTICLES.has(word));
+  return words.some((word, index) => word === auxiliary && looksLikeParticiple(words[index + 1] ?? ''));
+}
+
+/**
+ * Whether the only real change is one auxiliary put in place of the other, inside a compound tense.
+ *
+ * The participle is what keeps the guard on everything else. It usually sits outside the group — the words that did
+ * not change are not in it — so the corrected line is read to find it: « il a tombé » → « il est tombé » goes
+ * through because « tombé » follows, while « il a le livre » → « il est le livre » is refused because « le » does
+ * not. The sentence the child built is corrected; the sentence they meant is left alone.
+ */
+export function auxiliarySwap(from: string, to: string, correctedLine: string = to): boolean {
+  const a = simplifiedWords(from).filter((word) => !PARTICLES.has(word));
+  const b = simplifiedWords(to).filter((word) => !PARTICLES.has(word));
+  if (a.length === 0 || a.length !== b.length) return false;
+
+  let swapped = false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] === b[i]) continue;
+    if (!AUXILIARIES.has(a[i]!) || !AUXILIARIES.has(b[i]!)) return false;
+    if (!inCompoundTense(b[i]!, correctedLine)) return false;
+    swapped = true;
+  }
+  return swapped;
+}
+
+export function classifyChange(from: string, to: string, correctedLine: string = to): WritingChangeKind {
   const lettersFrom = lettersOf(from);
   const lettersTo = lettersOf(to);
   if (from === '' || to === '') return lettersFrom === '' && lettersTo === '' ? 'ponctuation' : 'grammaire';
@@ -180,6 +254,7 @@ export function classifyChange(from: string, to: string): WritingChangeKind {
     if (punctuation(from) !== punctuation(to)) return 'ponctuation';
     return 'majuscule';
   }
+  if (auxiliarySwap(from, to, correctedLine)) return 'construction';
   if (tokens(from).length === 1 && tokens(to).length === 1 && onlyEndingChanged(from, to)) return 'grammaire';
   return 'orthographe';
 }
@@ -220,7 +295,7 @@ export function writingChanges(originalLines: readonly string[], correctedLines:
       for (const [from, to] of groupsOf(a, b)) {
         const change = { from: from.join(' '), to: to.join(' ') };
         if (change.from === change.to) continue;
-        changes.push({ line: index, ...change, kind: classifyChange(change.from, change.to), rule: ruleFor(change, line, notes) });
+        changes.push({ line: index, ...change, kind: classifyChange(change.from, change.to, corrected), rule: ruleFor(change, line, notes) });
       }
     }
   });
@@ -276,8 +351,12 @@ export function checkWritingCorrection(original: string, modelLines: readonly st
   lines.forEach((line, index) => {
     for (const [a, b] of differingRuns(tokens(originalLines[index]!), tokens(line))) {
       for (const [from, to] of groupsOf(a, b)) {
-        if (tooDifferent(from.join(' '), to.join(' '), WRITING_GROUP_MAX_RATIO)) {
-          problems.push({ code: 'group_changed', line: index, from: from.join(' '), to: to.join(' ') });
+        const before = from.join(' ');
+        const after = to.join(' ');
+        // One auxiliary for the other is a change of construction, not a change of words: it never passes the
+        // letter budget and it is exactly what a child gets wrong. Everything else keeps its guard.
+        if (!auxiliarySwap(before, after, line) && tooDifferent(before, after, WRITING_GROUP_MAX_RATIO)) {
+          problems.push({ code: 'group_changed', line: index, from: before, to: after });
         }
       }
     }

@@ -106,11 +106,15 @@ export const pencil = {
     correctedMany: 'J’ai corrigé {count} petites fautes ({kinds}).',
     correctNone: 'Bravo, je n’ai trouvé aucune faute !',
     correctChanged: 'Ton texte a changé pendant la correction : appuie encore sur « Corriger ».',
+    // §24: said on its own line, because it is the only change that touches la façon dont la phrase est construite.
+    correctedConstruction: 'J’ai aussi changé la construction d’une phrase pour que la grammaire soit juste.',
+    correctedConstructionMany: 'J’ai aussi changé la construction de {count} phrases pour que la grammaire soit juste.',
     undo: 'Annuler',
     kinds: {
       accent: 'accents',
       orthographe: 'orthographe',
       grammaire: 'grammaire',
+      construction: 'construction de la phrase',
       ponctuation: 'ponctuation',
       majuscule: 'majuscules',
       espace: 'espaces',

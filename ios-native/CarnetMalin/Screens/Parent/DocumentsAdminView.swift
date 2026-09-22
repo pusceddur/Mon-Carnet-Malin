@@ -53,7 +53,7 @@ struct DocumentsAdminView: View {
     }
 
     private func rowView(_ row: Row) -> some View {
-        let names = model.children.filter { row.document.childIds.contains($0.id) }.map(\.firstName)
+        let names = model.children.filter { row.document.childIds.contains($0.id) }.map(\.nickname)
         return HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(row.document.title.isEmpty ? FR.Library.untitled : row.document.title)
@@ -170,7 +170,7 @@ struct DocumentDetailView: View {
                     get: { document.childIds.contains(child.id) },
                     set: { isOn in Task { await setReader(child.id, isOn) } }
                 )) {
-                    Text("\(child.avatar) \(child.firstName)").font(AppFont.ui(17))
+                    Text("\(child.avatar) \(child.nickname)").font(AppFont.ui(17))
                 }
                 .tint(Palette.accent)
             }

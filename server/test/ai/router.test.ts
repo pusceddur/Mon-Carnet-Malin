@@ -39,7 +39,8 @@ describe('AIRouter — basic flow, cache, log', () => {
     const sent = JSON.stringify(h.light.requests);
     expect(sent).not.toContain(CHILD_ID);
     expect(sent).not.toContain(PARENT_ID);
-    expect(sent).toContain('10 ans');
+    expect(sent).toContain('Profil du lecteur');
+    expect(sent).not.toMatch(/Profil du lecteur[^\n]*ans/); // 32: no age about the reader
   });
 
   it('sets sourceWarning when the OCR of the selection was doubtful', async () => {

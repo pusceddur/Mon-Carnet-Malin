@@ -58,6 +58,13 @@ public struct PageImageStore: Sendable {
     public func removeDocument(_ documentId: String) {
         try? FileManager.default.removeItem(at: folder(documentId))
     }
+
+    /// Every page of every book goes. What a sign-out runs (§20, §28): these are photographs of a child's own
+    /// schoolbooks and homework, and they must not be here for whoever signs in next.
+    public func removeAll() {
+        try? FileManager.default.removeItem(at: root)
+        try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    }
 }
 
 /// A page image waiting to go to the server.

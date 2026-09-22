@@ -285,7 +285,7 @@ describe('auth: logout, password, CSRF header, rate limits', () => {
     const noHeader = await agent.post('/api/auth/lock').send();
     expect(noHeader.status).toBe(403);
     expect(noHeader.body.error.code).toBe('forbidden');
-    expect((await agent.post('/api/children').set('X-Requested-With', 'XMLHttpRequest').send({ firstName: 'Zoé' })).status).toBe(403);
+    expect((await agent.post('/api/children').set('X-Requested-With', 'XMLHttpRequest').send({ nickname: 'Zoé' })).status).toBe(403);
     expect((await agent.delete('/api/documents/abc').send()).status).toBe(403);
     expect((await agent.get('/api/children')).status).toBe(200);
     expect((await status(agent)).parentUnlockedUntil).not.toBeNull();

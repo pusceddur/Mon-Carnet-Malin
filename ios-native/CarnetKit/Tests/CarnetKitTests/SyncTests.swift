@@ -41,7 +41,7 @@ private func child(id: String, name: String, updatedAt: Millis = 1) -> StoredEnt
         table: .children,
         key: .id(id),
         updatedAt: updatedAt,
-        json: json(["id": id, "firstName": name, "updatedAt": updatedAt])
+        json: json(["id": id, "nickname": name, "updatedAt": updatedAt])
     )
 }
 
@@ -134,7 +134,7 @@ final class SyncEngineTests: XCTestCase {
         transport.enqueue(SyncResponse(
             cursor: "7", hasMore: false, serverTime: 1,
             changes: [
-                .children: [json(["id": "c9", "firstName": "Tom", "updatedAt": 5])],
+                .children: [json(["id": "c9", "nickname": "Tom", "updatedAt": 5])],
                 .pages: [json(["documentId": "d1", "pageIndex": 2, "updatedAt": 6, "blocks": []])],
             ],
             rejected: []

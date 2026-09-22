@@ -39,7 +39,7 @@ function status(): AuthStatus {
 
 function makeChild(): ChildProfile {
   return {
-    id: 'c1', parentId: 'p1', firstName: 'Léa', age: 9, avatar: '🦊', readingLevel: 'intermediaire', explanationDifficulty: 'simple',
+    id: 'c1', parentId: 'p1', nickname: 'Léa', avatar: '🦊', readingLevel: 'intermediaire', explanationDifficulty: 'simple',
     reading: { ...DEFAULT_READING_PREFERENCES, font: 'opendyslexic', fontSizePx: 28 },
     tts: { ...DEFAULT_TTS_PREFERENCES }, exercises: { ...DEFAULT_EXERCISE_PREFERENCES },
     createdAt: 1, updatedAt: 1, deletedAt: null,

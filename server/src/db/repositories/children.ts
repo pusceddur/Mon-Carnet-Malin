@@ -6,7 +6,6 @@ import {
 import type { z } from 'zod';
 import { type Db, type Row, parseJson, toNum, toNumOrNull, toStr } from './common';
 
-export const DEFAULT_CHILD_AGE = 10;
 export const DEFAULT_CHILD_AVATAR = '🦊';
 export const DEFAULT_READING_LEVEL: ReadingLevel = 'intermediaire';
 export const DEFAULT_EXPLANATION_DIFFICULTY: ExplanationDifficulty = 'simple';
@@ -43,8 +42,7 @@ export function childFromRow(row: Row): ChildProfile {
   return {
     id: toStr(row.id),
     parentId: toStr(row.parent_id),
-    firstName: toStr(row.first_name),
-    age: toNum(row.age),
+    nickname: toStr(row.nickname),
     avatar: toStr(row.avatar),
     readingLevel: level.success ? level.data : DEFAULT_READING_LEVEL,
     explanationDifficulty: difficulty.success ? difficulty.data : DEFAULT_EXPLANATION_DIFFICULTY,
@@ -85,8 +83,7 @@ export function buildNewChild(parentId: string, req: CreateChildRequest, now: nu
   return {
     id: newId(),
     parentId,
-    firstName: req.firstName,
-    age: req.age ?? DEFAULT_CHILD_AGE,
+    nickname: req.nickname,
     avatar: req.avatar ?? DEFAULT_CHILD_AVATAR,
     readingLevel: req.readingLevel ?? DEFAULT_READING_LEVEL,
     explanationDifficulty: req.explanationDifficulty ?? DEFAULT_EXPLANATION_DIFFICULTY,
@@ -105,8 +102,7 @@ export async function saveChild(db: Db, child: ChildProfile, serverSeq: number):
     .insert({
       id: child.id,
       parent_id: child.parentId,
-      first_name: child.firstName,
-      age: child.age,
+      nickname: child.nickname,
       avatar: child.avatar,
       reading_level: child.readingLevel,
       explanation_difficulty: child.explanationDifficulty,

@@ -38,6 +38,9 @@ export const ERROR_MESSAGES_FR = {
   pin_locked: 'Trop d’essais avec le code PIN. Réessaie dans quelques minutes.',
   pin_not_set: 'Aucun code PIN n’est défini pour ce compte.',
   setup_not_allowed: 'La première configuration a déjà été faite ou n’est pas activée.',
+  // §30 « Supprimer le compte »
+  account_deleted: 'Ce compte a été supprimé.',
+  owner_account: 'Ce compte administre le serveur : il ne peut pas être supprimé tant que d’autres familles l’utilisent.',
   invalid_setup_token: 'Le code d’installation est incorrect.',
   email_taken: 'Cette adresse e-mail est déjà utilisée.',
   invalid_invitation: 'Le code d’invitation n’est pas valide ou les inscriptions sont fermées.',

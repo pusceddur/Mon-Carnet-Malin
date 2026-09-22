@@ -37,7 +37,12 @@ export interface CorrectWritingRequest extends AIRequestBase {
   annotationId: Id | null;          // the text box, for the history
   pageIndex: number | null;
 }
-export type WritingChangeKind = 'accent' | 'orthographe' | 'grammaire' | 'ponctuation' | 'majuscule' | 'espace';
+/**
+ * `construction`: the words that build the sentence changed, not only the way a word is written — « je suis été »
+ * becomes « j'ai été ». It is kept apart from `grammaire` (an ending that agrees) because the child is told about it
+ * in so many words, and because it is the one kind an adult should always read for themselves.
+ */
+export type WritingChangeKind = 'accent' | 'orthographe' | 'grammaire' | 'construction' | 'ponctuation' | 'majuscule' | 'espace';
 /** One correction, found by comparing the two texts (not trusted from the model); `rule`: short explanation for the adult. */
 export interface WritingChange { line: number /* 0-based */; from: string; to: string; kind: WritingChangeKind; rule: string | null }
 export interface CorrectWritingData { correctedText: string; changes: WritingChange[] }
@@ -53,7 +58,14 @@ export interface HandwritingData { text: string }
 export interface FreeQuestionData { answer: string; example: string | null; suggestions: string[] /* 0..3 short follow-up questions */ }
 
 // Learner profile sent to providers: never the child's name or id.
-export interface AILearner { age: number; readingLevel: ReadingLevel; explanationDifficulty: ExplanationDifficulty }
+/**
+ * What the provider is told about the reader: how they read, and how much explaining they want.
+ *
+ * §32: no age either, since 2026-09-22. It used to travel in every prompt (« Profil de l'enfant : 10 ans »), which
+ * meant the age of a child was sent outside the family's own server on every request — for a sentence length the
+ * app already decides from `explanationDifficulty`. The app no longer holds an age at all.
+ */
+export interface AILearner { readingLevel: ReadingLevel; explanationDifficulty: ExplanationDifficulty }
 
 export type AIBlockedReason = 'safety_input' | 'safety_output' | 'validation' | 'refusal' | 'adult_redirect';
 export type AIUnavailableReason =

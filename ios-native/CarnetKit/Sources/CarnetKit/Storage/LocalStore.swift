@@ -100,6 +100,15 @@ public protocol LocalStore: AnyObject, Sendable {
     // Values of the app itself
     func value(forKey key: String) throws -> String?
     func setValue(_ value: String?, forKey key: String) throws
+
+    // Leaving the device
+    /// Removes every row, everything waiting to be sent, and every value except the ones named.
+    ///
+    /// This is what signing out runs (§20, §28). Not one book, note or page of a family may still be on the iPad
+    /// when the next family signs in on it. Only the few values that belong to the iPad rather than to anybody —
+    /// the address of the family's server, the voice chosen here, the identifier the server knows this device by —
+    /// are named by the caller and survive.
+    func removeEverything(keepingValues keys: Set<String>) throws
 }
 
 /// Keys of the values the sync engine keeps between launches.

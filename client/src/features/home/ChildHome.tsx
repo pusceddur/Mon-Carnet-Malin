@@ -40,7 +40,7 @@ export default function ChildHome(): JSX.Element {
       <header className="child-home__header">
         <h1 className="child-home__greeting">
           <span aria-hidden="true">👋 </span>
-          {child ? format(home.greeting, { prenom: child.firstName }) : home.greetingNoName}
+          {child ? format(home.greeting, { prenom: child.nickname }) : home.greetingNoName}
         </h1>
         <div className="child-home__header-actions">
           <OfflineBadge />

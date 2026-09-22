@@ -268,7 +268,7 @@ export default function ImportPage(): JSX.Element {
                 <Toggle
                   key={child.id}
                   size="parent"
-                  label={`${child.avatar} ${child.firstName}`}
+                  label={`${child.avatar} ${child.nickname}`}
                   checked={selected.has(child.id)}
                   onChange={(on) => toggleChild(child.id, on)}
                 />

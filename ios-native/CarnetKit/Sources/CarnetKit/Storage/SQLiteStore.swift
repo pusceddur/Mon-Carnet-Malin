@@ -250,6 +250,38 @@ public final class SQLiteStore: LocalStore, @unchecked Sendable {
             }
         }
     }
+
+    // MARK: - Leaving the device
+
+    public func removeEverything(keepingValues keys: Set<String>) throws {
+        try locked {
+            // One transaction: a wipe interrupted halfway — the app killed, the iPad out of battery — would leave
+            // half of a family's rows on a device that is about to be handed to another one.
+            try exec("BEGIN IMMEDIATE;")
+            do {
+                try exec("DELETE FROM entities;")
+                try exec("DELETE FROM outbox;")
+                if keys.isEmpty {
+                    try exec("DELETE FROM app_values;")
+                } else {
+                    // The keys are the app's own constants, never anything a family typed; they are still bound
+                    // rather than written into the statement.
+                    let placeholders = Array(repeating: "?", count: keys.count).joined(separator: ", ")
+                    try statement("DELETE FROM app_values WHERE key NOT IN (\(placeholders));") { prepared in
+                        for (offset, key) in keys.enumerated() { bind(prepared, Int32(offset + 1), key) }
+                        guard sqlite3_step(prepared) == SQLITE_DONE else { throw fail() }
+                    }
+                }
+                try exec("COMMIT;")
+            } catch {
+                try? exec("ROLLBACK;")
+                throw error
+            }
+            // The file keeps the space the books took; handing it back means the next family's pages are not
+            // written over the previous one's, which matters more here than the megabytes.
+            try? exec("VACUUM;")
+        }
+    }
 }
 
 public extension SQLiteStore {

@@ -97,7 +97,7 @@ describe('/api/ai routes (mock provider, real app)', () => {
 });
 
 describe('AI store over the real database', () => {
-  it('sends only age, reading level and difficulty: never the first name', async () => {
+  it('sends only the reading level and the difficulty: never the nickname, the id or an age', async () => {
     const { ctx: c, childId, parentId } = await setup({ AI_PROVIDER: 'local' });
     const provider = new MockProvider();
     const router = new AIRouter({
@@ -113,6 +113,9 @@ describe('AI store over the real database', () => {
     expect(serialized.length).toBeGreaterThan(100);
     expect(serialized).not.toContain('Zoé');
     expect(serialized).not.toContain(childId);
-    expect(serialized).toContain('10 ans');
+    expect(serialized).toContain('Profil du lecteur');
+    // 32: the learner line says how they read, never how old they are. Stops at the escaped newline
+    // or the closing quote, because the system prompt further on legitimately says « 8 à 12 ans ».
+    expect(serialized).not.toMatch(/Profil du lecteur[^\\"]*ans/);
   });
 });

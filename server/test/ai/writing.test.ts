@@ -131,3 +131,46 @@ describe('§24 what changed', () => {
     expect(soundKey('content')).not.toBe(soundKey('heureux'));
   });
 });
+
+describe('§24 the wrong auxiliary in a compound tense', () => {
+  const allowed: [string, string][] = [
+    ['je suis été à la piscine', "j'ai été à la piscine"],
+    ["j'ai allé au parc", 'je suis allé au parc'],
+    ['il a tombé de son vélo', 'il est tombé de son vélo'],
+    ['elle a venue hier', 'elle est venue hier'],
+  ];
+
+  it('lets the correction through, where the letters alone never would', () => {
+    for (const [child, corrected] of allowed) {
+      const check = checkWritingCorrection(child, [corrected]);
+      expect(check.problems, `${child} → ${corrected}`).toEqual([]);
+    }
+  });
+
+  it('calls it a change of construction, not a spelling mistake', () => {
+    expect(classifyChange('je suis', "j'ai", "j'ai été à la piscine")).toBe('construction');
+    expect(classifyChange("j'ai", 'je suis', 'je suis allé au parc')).toBe('construction');
+    // No participle after it: nothing says this is a compound tense, so the guard stays on.
+    expect(classifyChange('a', 'est', 'il est le livre')).not.toBe('construction');
+  });
+
+  it('tells the adult what changed, with the line it happened on', () => {
+    const changes = writingChanges(['je suis été à la piscine'], ["j'ai été à la piscine"]);
+    const rebuilt = changes.filter((change) => change.kind === 'construction');
+    expect(rebuilt).toHaveLength(1);
+    expect(rebuilt[0]).toMatchObject({ line: 0, from: 'je suis', to: "j'ai" });
+  });
+
+  it('still refuses everything else', () => {
+    // Another word, another verb, another tense: the guard of §24.1 is untouched.
+    for (const [child, rewritten] of [
+      ['il a le livre', 'il est le livre'],
+      ['je vais au parc', "j'ai été au parc"],
+      ['un chat dort', 'le chat dort'],
+      ['il mange une pomme', 'il dévore une pomme'],
+    ] as [string, string][]) {
+      const check = checkWritingCorrection(child, [rewritten]);
+      expect(check.problems.length, `${child} → ${rewritten}`).toBeGreaterThan(0);
+    }
+  });
+});

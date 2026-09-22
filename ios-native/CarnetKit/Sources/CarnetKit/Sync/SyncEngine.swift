@@ -249,6 +249,16 @@ public actor SyncEngine {
         return status
     }
 
+    /// Forgets what the last sync was about, after the device was emptied (§28).
+    ///
+    /// The counts, the time of the last sync and the last error all describe a family that is no longer on this
+    /// iPad; left as they were, the adult area would show the next family « 12 éléments en attente » from a queue
+    /// that no longer exists.
+    public func forgetSyncState() {
+        failures = 0
+        publish { $0 = SyncStatus.initial }
+    }
+
     /// How long to wait before trying again, after the failures so far.
     public func retryDelayMs() -> Int {
         SyncSettings.backoffMs(afterFailures: failures)

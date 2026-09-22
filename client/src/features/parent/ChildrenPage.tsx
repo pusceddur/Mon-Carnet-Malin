@@ -32,12 +32,12 @@ export default function ChildrenPage(): JSX.Element {
                 {child.avatar}
               </span>
               <span className="parent-list__main">
-                <span className="parent-list__title">{child.firstName}</span>
+                <span className="parent-list__title">{child.nickname}</span>
                 <span className="parent-list__meta">
-                  {format(t.ageYears, { age: child.age })} · {levels[child.readingLevel]}
+                  {levels[child.readingLevel]}
                 </span>
               </span>
-              <Button variant="secondary" size="parent" onClick={() => navigate(encodeURIComponent(child.id))} aria-label={format(t.editChild, { prenom: child.firstName })}>
+              <Button variant="secondary" size="parent" onClick={() => navigate(encodeURIComponent(child.id))} aria-label={format(t.editChild, { prenom: child.nickname })}>
                 {t.edit}
               </Button>
             </li>

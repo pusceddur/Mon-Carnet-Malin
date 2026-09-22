@@ -101,11 +101,19 @@ struct SignInView: View {
                         .font(AppFont.ui(16))
                         .foregroundStyle(Palette.accent)
                 }
-                // A new server, or a family invited to one: the account can be made here, without a computer.
+                // A family invited to a server that is already running makes its account here, on the iPad.
+                //
+                // The very first account of a new server does not: it is made in a browser, at « /installation », by
+                // whoever set the server up and holds its installation code. The web login page stopped offering
+                // that step on 2026-09-17 and this screen does the same — whoever is installing a server is sitting
+                // at a computer, and a family meeting this iPad is better told what is missing than handed a form
+                // asking for a code they have never seen.
                 if model.status?.setupRequired == true {
-                    Button(FR.SignIn.firstInstall) { creating = .setup }
-                        .font(AppFont.ui(16, weight: .medium))
-                        .foregroundStyle(Palette.accent)
+                    Text(FR.SignIn.setupRequired)
+                        .font(AppFont.ui(16))
+                        .foregroundStyle(Palette.muted)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 420)
                 } else if model.status?.registrationOpen == true {
                     Button(FR.SignIn.createAccount) { creating = .register }
                         .font(AppFont.ui(16, weight: .medium))
@@ -204,7 +212,7 @@ struct SignInView: View {
         case .offline, .timedOut:
             return FR.SignIn.offline
         case let .api(status, code, message):
-            if code == "setup_required" { return FR.SignIn.setupRequiredHere }
+            if code == "setup_required" { return FR.SignIn.setupRequired }
             if status == 429 || code == "locked" { return FR.SignIn.locked }
             if status == 401 || status == 400 { return FR.SignIn.wrongDetails }
             return message.isEmpty ? FR.Common.genericError : message

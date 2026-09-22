@@ -13,7 +13,7 @@ import { createMemoryFreeQuestionsRepository } from '../../src/db/repositories/f
 import { createMemorySafetyAlertsRepository } from '../../src/db/repositories/safetyAlerts';
 import { silentLogger } from '../../src/logger';
 
-export const LEARNER: AILearner = { age: 10, readingLevel: 'intermediaire', explanationDifficulty: 'simple' };
+export const LEARNER: AILearner = { readingLevel: 'intermediaire', explanationDifficulty: 'simple' };
 export const PARENT_ID = 'parent-1';
 export const CHILD_ID = 'child-1';
 /** A second family, with a child of the same profile (the AI cache must never be shared between families). */

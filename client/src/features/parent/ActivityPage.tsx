@@ -66,7 +66,7 @@ export default function ActivityPage(): JSX.Element {
     new Map<Id, string>(),
   );
 
-  const childName = (id: Id | null): string | null => (id === null ? null : (children.find((c) => c.id === id)?.firstName ?? null));
+  const childName = (id: Id | null): string | null => (id === null ? null : (children.find((c) => c.id === id)?.nickname ?? null));
   const stats = summary ? computeActivityStats(summary) : null;
 
   const onMarkSeen = async (id: Id): Promise<void> => {
@@ -83,7 +83,7 @@ export default function ActivityPage(): JSX.Element {
     }
   };
 
-  const childOptions = [{ value: ALL, label: t.allChildren }, ...children.map((c) => ({ value: c.id, label: c.firstName }))];
+  const childOptions = [{ value: ALL, label: t.allChildren }, ...children.map((c) => ({ value: c.id, label: c.nickname }))];
 
   return (
     <ParentPage

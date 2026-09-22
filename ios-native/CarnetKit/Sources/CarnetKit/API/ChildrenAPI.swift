@@ -2,8 +2,8 @@ import Foundation
 
 /// A new reader, as the parent fills it in.
 public struct NewChild: Encodable, Equatable, Sendable {
-    public var firstName: String
-    public var age: Int
+    /// §32 the only thing the app knows about the reader.
+    public var nickname: String
     public var avatar: String
     public var readingLevel: ReadingLevel
     public var explanationDifficulty: ExplanationDifficulty
@@ -12,12 +12,11 @@ public struct NewChild: Encodable, Equatable, Sendable {
     public var exercises: ExercisePreferences
 
     public init(
-        firstName: String = "", age: Int = 10, avatar: String = "🦊", readingLevel: ReadingLevel = .intermediaire,
+        nickname: String = "", avatar: String = "🦊", readingLevel: ReadingLevel = .intermediaire,
         explanationDifficulty: ExplanationDifficulty = .simple, reading: ReadingPreferences = .standard,
         tts: TTSPreferences = .standard, exercises: ExercisePreferences = .standard
     ) {
-        self.firstName = firstName
-        self.age = age
+        self.nickname = nickname
         self.avatar = avatar
         self.readingLevel = readingLevel
         self.explanationDifficulty = explanationDifficulty
@@ -30,23 +29,22 @@ public struct NewChild: Encodable, Equatable, Sendable {
     /// wrong on the form rather than by a refusal.
     public var problems: Set<Field> {
         var found: Set<Field> = []
-        let name = firstName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if name.isEmpty || name.count > 40 { found.insert(.firstName) }
-        if !(5...15).contains(age) { found.insert(.age) }
+        let name = nickname.trimmingCharacters(in: .whitespacesAndNewlines)
+        if name.isEmpty || name.count > 40 { found.insert(.nickname) }
         if avatar.trimmingCharacters(in: .whitespaces).isEmpty || avatar.count > 32 { found.insert(.avatar) }
         if exercises.enabledTypes.isEmpty { found.insert(.questionTypes) }
         return found
     }
 
     public enum Field: Hashable, Sendable {
-        case firstName, age, avatar, questionTypes
+        case nickname, avatar, questionTypes
     }
 }
 
 /// The readers of the family, through their own routes rather than the sync.
 ///
 /// On purpose: the sync accepts only a child's reading and voice settings — the ones the child may change
-/// themselves. Everything else about a reader (name, age, levels, which exercises) is the parent's, and goes through
+/// themselves. Everything else about a reader (nickname, levels, which exercises) is the parent's, and goes through
 /// routes that need the adult area open. Sent through the sync instead, those changes are ignored and reported as
 /// refused, and the parent's edit simply never happens.
 extension APIClient {
@@ -74,7 +72,7 @@ extension APIClient {
     /// `POST /api/children`. Needs the adult area open.
     public func createChild(_ child: NewChild) async throws -> ChildProfile {
         var clean = child
-        clean.firstName = child.firstName.trimmingCharacters(in: .whitespacesAndNewlines)
+        clean.nickname = child.nickname.trimmingCharacters(in: .whitespacesAndNewlines)
         return try decodeChild(try await sendJSON("POST", "/api/children", clean))
     }
 

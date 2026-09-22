@@ -8,8 +8,8 @@ import {
 export const AVATARS = ['🦊', '🐼', '🐯', '🦁', '🐸', '🐙', '🦄', '🐢', '🐧', '🐨', '🐶', '🐱', '🦉', '🐝', '🚀', '⭐'] as const;
 
 export interface ChildFormValues {
-  firstName: string;
-  age: number;
+  /** §32 the only thing the app knows about the reader. */
+  nickname: string;
   avatar: string;
   readingLevel: ReadingLevel;
   explanationDifficulty: ExplanationDifficulty;
@@ -18,13 +18,12 @@ export interface ChildFormValues {
   exercises: ExercisePreferences;
 }
 
-export type ChildFormField = 'firstName' | 'age' | 'avatar' | 'questionTypes';
+export type ChildFormField = 'nickname' | 'avatar' | 'questionTypes';
 export type ChildFormErrors = Partial<Record<ChildFormField, true>>;
 
 export function emptyChildForm(): ChildFormValues {
   return {
-    firstName: '',
-    age: 10,
+    nickname: '',
     avatar: AVATARS[0],
     readingLevel: 'intermediaire',
     explanationDifficulty: 'simple',
@@ -36,8 +35,7 @@ export function emptyChildForm(): ChildFormValues {
 
 export function childToForm(child: ChildProfile): ChildFormValues {
   return {
-    firstName: child.firstName,
-    age: child.age,
+    nickname: child.nickname,
     avatar: child.avatar,
     readingLevel: child.readingLevel,
     explanationDifficulty: child.explanationDifficulty,
@@ -49,10 +47,9 @@ export function childToForm(child: ChildProfile): ChildFormValues {
 
 export function validateChildForm(v: ChildFormValues): ChildFormErrors {
   const errors: ChildFormErrors = {};
-  const name = v.firstName.trim();
+  const name = v.nickname.trim();
   const r = PREFERENCE_RANGES;
-  if (name.length < r.firstNameLength.min || name.length > r.firstNameLength.max) errors.firstName = true;
-  if (!Number.isInteger(v.age) || v.age < r.childAge.min || v.age > r.childAge.max) errors.age = true;
+  if (name.length < r.nicknameLength.min || name.length > r.nicknameLength.max) errors.nickname = true;
   if (v.avatar.trim() === '' || v.avatar.length > 32) errors.avatar = true;
   if (v.exercises.enabledTypes.length === 0) errors.questionTypes = true;
   return errors;
@@ -68,8 +65,7 @@ export function toggleQuestionType(types: readonly QuestionType[], type: Questio
 
 export function formToCreateRequest(v: ChildFormValues): CreateChildRequest {
   return {
-    firstName: v.firstName.trim(),
-    age: v.age,
+    nickname: v.nickname.trim(),
     avatar: v.avatar,
     readingLevel: v.readingLevel,
     explanationDifficulty: v.explanationDifficulty,

@@ -165,7 +165,7 @@ export function stableStringify(value: unknown): string {
   return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(',')}}`;
 }
 
-type Learner = Pick<ChildProfile, 'age' | 'readingLevel' | 'explanationDifficulty'>;
+type Learner = Pick<ChildProfile, 'readingLevel' | 'explanationDifficulty'>;
 
 async function findLearner(childId: string): Promise<Learner | null> {
   const fromStore = useSessionStore.getState().children.find((c) => c.id === childId);

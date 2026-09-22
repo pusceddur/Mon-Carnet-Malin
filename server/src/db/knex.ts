@@ -11,6 +11,8 @@ import * as m007 from './migrations/007_homework';
 import * as m008 from './migrations/008_account_security';
 import * as m009 from './migrations/009_worker_usage';
 import * as m010 from './migrations/010_writing_corrections';
+import * as m011 from './migrations/011_account_deletion';
+import * as m012 from './migrations/012_reader_nickname';
 
 // Migrations are imported statically (no filesystem loader) so they work inside the esbuild bundle.
 const MIGRATIONS: ReadonlyArray<readonly [string, Knex.Migration]> = [
@@ -24,6 +26,8 @@ const MIGRATIONS: ReadonlyArray<readonly [string, Knex.Migration]> = [
   ['008_account_security', { up: m008.up, down: m008.down }],
   ['009_worker_usage', { up: m009.up, down: m009.down }],
   ['010_writing_corrections', { up: m010.up, down: m010.down }],
+  ['011_account_deletion', { up: m011.up, down: m011.down }],
+  ['012_reader_nickname', { up: m012.up, down: m012.down }],
 ];
 
 /** Names of the bundled migrations, in order. */

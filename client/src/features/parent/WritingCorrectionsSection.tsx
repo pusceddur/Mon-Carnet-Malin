@@ -91,7 +91,7 @@ export function WritingCorrectionsSection({ preferredChildId, refreshToken }: Wr
     return () => controller.abort();
   }, [childId, load, refreshToken, retry]);
 
-  const childOptions = children.map((c) => ({ value: c.id, label: c.firstName }));
+  const childOptions = children.map((c) => ({ value: c.id, label: c.nickname }));
 
   return (
     <ParentSection title={t.title} hint={t.intro}>

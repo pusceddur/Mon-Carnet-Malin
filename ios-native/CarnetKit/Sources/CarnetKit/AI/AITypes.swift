@@ -726,6 +726,9 @@ public enum WritingChangeKind: String, Codable, Sendable {
     case accent
     case spelling = "orthographe"
     case grammar = "grammaire"
+    /// §24: the words that build the sentence changed — « je suis été » became « j'ai été ». Told apart from
+    /// `grammar` because the child hears about it in so many words, and an adult should always read it themselves.
+    case construction
     case punctuation = "ponctuation"
     case capital = "majuscule"
     case space = "espace"

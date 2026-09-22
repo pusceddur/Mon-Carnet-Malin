@@ -34,7 +34,7 @@ function settingsWith(patch: Partial<ParentSettings['ai']>): Pick<ParentSettings
 
 describe('shared foundations', () => {
   it('exposes constants', () => {
-    expect(PROMPT_VERSION).toBe('2026-09-16.1');
+    expect(PROMPT_VERSION).toBe('2026-09-22.1');
     expect(LIMITS.chunkMaxChars).toBe(6000);
     expect(LIMITS.questionOnTextMaxChars).toBe(200);
     expect(KID_MESSAGES.notInText).toBe('Je ne trouve pas cette information dans le texte.');
@@ -74,7 +74,7 @@ describe('shared foundations', () => {
     });
     expect(ReadingPreferencesSchema.parse(DEFAULT_READING_PREFERENCES)).toEqual(DEFAULT_READING_PREFERENCES);
     const child: ChildProfile = {
-      id: newId(), parentId: newId(), firstName: 'Léo', age: 10, avatar: '🦊', readingLevel: 'intermediaire',
+      id: newId(), parentId: newId(), nickname: 'Léo', avatar: '🦊', readingLevel: 'intermediaire',
       explanationDifficulty: 'simple', reading: DEFAULT_READING_PREFERENCES, tts: DEFAULT_TTS_PREFERENCES,
       exercises: DEFAULT_EXERCISE_PREFERENCES, createdAt: 1, updatedAt: 1, deletedAt: null,
     };

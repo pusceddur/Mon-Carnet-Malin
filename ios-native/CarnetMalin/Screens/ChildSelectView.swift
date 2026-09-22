@@ -77,7 +77,7 @@ struct ChildSelectView: View {
             VStack(spacing: 14) {
                 Text(child.avatar.isEmpty ? "🙂" : child.avatar)
                     .font(.system(size: 72))
-                Text(child.firstName)
+                Text(child.nickname)
                     .font(AppFont.ui(26, weight: .bold))
                     .foregroundStyle(Palette.ink)
                     .lineLimit(1)
@@ -92,6 +92,6 @@ struct ChildSelectView: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(FR.ChildSelect.choose(child.firstName))
+        .accessibilityLabel(FR.ChildSelect.choose(child.nickname))
     }
 }

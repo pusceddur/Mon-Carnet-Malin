@@ -223,7 +223,7 @@ describe('requestAI', () => {
 
 describe('cache key', () => {
   beforeEach(() => {
-    useSessionStore.setState({ children: [makeChild(), makeChild({ id: 'child-2', firstName: 'Zoé' }), makeChild({ id: 'child-3', age: 8 })] });
+    useSessionStore.setState({ children: [makeChild(), makeChild({ id: 'child-2', nickname: 'Zoé' }), makeChild({ id: 'child-3', readingLevel: 'debutant' })] });
   });
 
   it('stableStringify sorts keys recursively and normalizes strings', () => {
@@ -233,6 +233,7 @@ describe('cache key', () => {
   it('ignores the child id but depends on the learner profile and the request', async () => {
     const k1 = await localAICacheKey('explain_word', wordBody);
     expect(await localAICacheKey('explain_word', { ...wordBody, childId: 'child-2' })).toBe(k1);
+    // §32: the profile is the reading level and the difficulty now — an age is no longer part of it.
     expect(await localAICacheKey('explain_word', { ...wordBody, childId: 'child-3' })).not.toBe(k1);
     expect(await localAICacheKey('explain_word', { ...wordBody, word: 'zzmagma' })).not.toBe(k1);
     expect(await localAICacheKey('explain_text', { ...wordBody, text: 'photosynthèse' })).not.toBe(k1);

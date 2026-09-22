@@ -175,6 +175,15 @@ export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequestSchema>;
 export const PinRequiredRequestSchema = z.object({ required: z.boolean(), password: z.string().min(1).max(200) }).strict();
 export type PinRequiredRequest = z.infer<typeof PinRequiredRequestSchema>;
 
+/**
+ * POST /api/auth/account/delete — §30: deleting the account for good, from the app or the browser.
+ *
+ * The password again, like every other change that cannot be undone. Nothing else is asked: a confirmation word to
+ * type would only be one more thing to get wrong for a parent who has already decided.
+ */
+export const AccountDeleteRequestSchema = z.object({ password: z.string().min(1).max(200) }).strict();
+export type AccountDeleteRequest = z.infer<typeof AccountDeleteRequestSchema>;
+
 /** PUT /api/auth/device: name of this device in « Appareils connectés », sent by the app. */
 export const DeviceNameRequestSchema = z.object({ name: z.string().trim().min(1).max(60) }).strict();
 export type DeviceNameRequest = z.infer<typeof DeviceNameRequestSchema>;
@@ -206,8 +215,7 @@ export const DeviceSessionsResponseSchema = z.object({ sessions: z.array(DeviceS
 
 /** POST /api/children: partial profile, server applies defaults. */
 export const CreateChildRequestSchema = z.object({
-  firstName: ChildProfileSchema.shape.firstName,
-  age: ChildProfileSchema.shape.age.optional(),
+  nickname: ChildProfileSchema.shape.nickname,
   avatar: ChildProfileSchema.shape.avatar.optional(),
   readingLevel: ReadingLevelSchema.optional(),
   explanationDifficulty: ExplanationDifficultySchema.optional(),

@@ -25,12 +25,12 @@ const HISTORY: WritingCorrectionHistory = {
     },
     { id: 'w2', childId: 'c1', documentId: null, createdAt: Date.UTC(2026, 8, 18, 12), originalText: 'Bonjour.', correctedText: 'Bonjour.', changes: [] },
   ],
-  counts: { accent: 3, orthographe: 0, grammaire: 1, ponctuation: 0, majuscule: 0, espace: 1 },
+  counts: { accent: 3, orthographe: 0, grammaire: 1, construction: 0, ponctuation: 0, majuscule: 0, espace: 1 },
   frequent: [{ from: 'ecrire', to: 'écrire', kind: 'accent', count: 3 }],
 };
 
-function child(id: string, firstName: string): ChildProfile {
-  return { id, firstName } as ChildProfile;
+function child(id: string, nickname: string): ChildProfile {
+  return { id, nickname } as ChildProfile;
 }
 
 beforeEach(() => {

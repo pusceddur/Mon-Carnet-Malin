@@ -316,6 +316,33 @@ Funziona perché le due versioni contengono le stesse parole nello stesso ordine
 - **Profili modificati via sync.** Vedi sopra: il server li scartava.
 - **Pagine scansionate mai spedite.** L'upload dell'immagine è ciò che avvia la lettura di casa; nessuno lo faceva.
 
+### Fatto — fetta 22: l'iPad si svuota quando la famiglia se ne va
+
+Era il bug **P1** aperto in `docs/TODO.md` §1k: il web cancella i dati locali al logout (§20, per impostazione predefinita), l'app no. Su un iPad prestato, venduto o semplicemente usato da due account, la famiglia successiva trovava nel database locale i libri, le note, i compiti e le impostazioni della precedente — contro la regola §28 « nessuna condivisione tra famiglie ».
+
+- **Una sola funzione** (`App/LocalWipe.swift`), perché i posti che ne hanno bisogno sono tre e tre copie divergono: la disconnessione, un account diverso che entra sullo stesso iPad, e domani la cancellazione dell'account. Cancella il database (righe e coda d'invio), le foto delle pagine, le risposte dell'aiuto, i file arrivati con « Ouvrir dans… » e non ancora aggiunti, i PDF dei compiti esportati, e il token nel portachiavi.
+- **Resta solo ciò che è dell'iPad, non di nessuno**: l'indirizzo del server (per non riscriverlo), la voce scelta, il dito che disegna o scorre, e l'identificativo con cui il server elenca questo apparecchio in « Appareils connectés ».
+- **Nel magazzino** (`LocalStore.removeEverything(keepingValues:)`, nei due magazzini con gli stessi test): su SQLite in una sola transazione — una pulizia interrotta a metà lascerebbe metà delle righe su un apparecchio che sta per cambiare mani — seguita da `VACUUM`, così le pagine della famiglia successiva non si scrivono sopra quelle della precedente.
+- **Interruttore nella conferma** (`Screens/Parent/SignOutSheet.swift`), acceso per impostazione predefinita e con le stesse parole del web: « Effacer aussi les livres, les pages et les notes de cet appareil ». Prima della cancellazione ciò che è in attesa viene sincronizzato, e se qualcosa non è passato il numero viene detto.
+- **Cambio di famiglia senza disconnessione** (`AppModel.forgetPreviousFamily`): l'app uccisa a metà logout, una sessione chiusa dal server, un iPad passato di mano. Il controllo è su ogni accesso — il genitore di prima contro quello che arriva — non solo nel logout.
+- Anche lo stato del sync viene dimenticato (`SyncEngine.forgetSyncState`): « 12 éléments en attente » di una coda che non esiste più.
+- I PDF dei compiti esportati finivano sciolti nella cartella temporanea, con il nome del compito sulla copertina: ora stanno in `exports/`, che si può svuotare.
+
+Nella stessa fetta, l'allineamento al web di **« Première installation »**: il pulsante non c'è più nella schermata di connessione. Se il server non ha ancora nessun account, l'app lo dice e rimanda al browser — chi installa un server è davanti a un computer, e il codice d'installazione è suo, non della famiglia. `AccountForm.Mode.setup` resta in `CarnetKit` con i suoi test, perché la rotta sul server esiste ancora.
+
+### Fatto — fetta 23: cancellazione account, colori, pre-réglages, soprannome
+
+Cinque cose decise il 2026-09-22, tutte fatte in parallelo nel web e nell'app, come chiede il progetto.
+
+- **« Supprimer le compte »** (§30, `Screens/Parent/DeleteAccountView.swift`): era il blocco certo della revisione Apple, perché l'app permette di creare un account. Immediata e definitiva. Lo schermo dice cosa sparisce prima di chiedere la password, e avverte che un eventuale abbonamento continua a essere fatturato. Riusa `LocalWipe.family` della fetta 22. Un `410 account_deleted` dal server fa la stessa cosa da solo: un iPad spento durante la cancellazione si svuota da sé quando torna in linea.
+- **« Corriger » corregge anche la costruzione della frase** (§24.2b): « je suis été » diventa « j'ai été ». Era la funzione che il contratto prometteva e che il controllo anti-invenzione scartava, perché fra « je suis » e « j'ai » non c'è nessuna lettera in comune. Ora un ausiliare scambiato con l'altro passa, ma solo dentro un tempo composto: il participio deve esserci. Il lettore lo sente dire a parole, l'adulto lo vede etichettato « Construction de la phrase ».
+- **Palette di colori** (§31.1, `ReaderTheme.of(theme, palette)`): tre insiemi di colori commutabili dal pannello Aa, indipendenti dal colore della carta. « Bien séparées » mette blu e arancione dove c'erano rosso e verde, perché le marcature §26 si appoggiano al colore più di qualsiasi altra cosa nell'app.
+- **Tre pre-réglages** (§31.2, `ReadingProfile.quickStart`): un lettore nuovo vede tre modi di leggere ben diversi, non cinque schede e dodici cursori. Gli altri stanno dietro un link, e sotto la scelta c'è sempre la frase sull'orthophoniste.
+- **Un lettore è un soprannome** (§32): `firstName` e `age` sono diventati `nickname`. L'età finiva in ogni prompt inviato al fornitore IA, per una lunghezza di frase che l'app ricava già dalla difficoltà delle spiegazioni. Ora l'app non la conserva affatto. La tastiera non propone più un nome vero (`textContentType` da `.givenName` a `.nickname`).
+- **`PrivacyInfo.xcprivacy`**: senza questo file il caricamento su App Store Connect risponde `ITMS-91053`. Dichiara le due API a motivazione obbligatoria che l'app usa davvero: data di modifica dei file, per la cache dell'aiuto, e spazio libero, per « Tester la lecture ».
+
+Il `ReadingPreferences` di `CarnetKit` ha ora un decodificatore scritto a mano: quello sintetizzato da Swift rifiuta una riga a cui manca una chiave, anche quando la proprietà ha un valore di partenza, e un profilo salvato prima di §31 non ha la palette. Ogni campo ricade sul valore standard invece di far fallire l'apertura dell'app.
+
 ## Costruirla sul Mac
 
 ```sh
@@ -339,7 +366,6 @@ cd ios-native && xcodegen generate
 
 ### Cosa manca ancora, e va fatto sul Mac
 
-0. **Cancellazione dell'account** — vedi fetta 21: serve una rotta sul server, o l'iscrizione esce dall'app.
 1. **I file dei font.** Lexend, Andika, Atkinson Hyperlegible e OpenDyslexic non sono nella repo (licenze e peso). Vanno messi in `CarnetMalin/Fonts/` e dichiarati in `UIAppFonts` dentro `Support/Info.plist`. **Finché non ci sono, l'app usa il font di sistema** — non si rompe niente, ma metà del senso di « Police » va perso.
 2. **L'icona.** `Assets.xcassets/AppIcon.appiconset` è vuoto: serve un PNG 1024×1024.
 3. **`swift test`, poi gli errori di compilazione.** Niente di questo codice è mai stato compilato: è stato scritto su Windows, dove non c'è un toolchain Swift. Ci saranno errori. Vanno raccolti e corretti.

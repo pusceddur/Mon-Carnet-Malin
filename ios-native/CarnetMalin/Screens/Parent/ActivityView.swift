@@ -55,7 +55,7 @@ struct ActivityView: View {
             Picker(FR.Activity.child, selection: $childId) {
                 Text(FR.Activity.allChildren).tag(String?.none)
                 ForEach(model.children) { child in
-                    Text("\(child.avatar) \(child.firstName)").tag(Optional(child.id))
+                    Text("\(child.avatar) \(child.nickname)").tag(Optional(child.id))
                 }
             }
             .pickerStyle(.menu)
@@ -326,7 +326,7 @@ struct ActivityView: View {
 
     private func childName(_ id: String?) -> String? {
         guard let id else { return nil }
-        return model.children.first { $0.id == id }.map { "\($0.avatar) \($0.firstName)" }
+        return model.children.first { $0.id == id }.map { "\($0.avatar) \($0.nickname)" }
     }
 
     private func date(_ millis: Millis) -> String {

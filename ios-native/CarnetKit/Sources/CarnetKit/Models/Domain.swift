@@ -41,6 +41,15 @@ public enum ReadingTheme: String, Codable, CaseIterable, Sendable {
     case creme, clair, sombre
 }
 
+/// §31 the set of colours the app draws with, on top of the paper colour.
+///
+/// `separees` replaces every pair that asks you to tell red from green with blue and orange, which stay different
+/// for everyone; about one boy in twelve cannot see the first pair apart, and §26 leans on colour more than anything
+/// else in the app. `contraste` darkens the text and thickens the lines instead. Named for what they do.
+public enum ReadingPalette: String, Codable, CaseIterable, Sendable {
+    case standard, separees, contraste
+}
+
 public enum LayoutMode: String, Codable, CaseIterable, Sendable {
     case page, continu
 }
@@ -83,6 +92,8 @@ public struct ReadingPreferences: Codable, Equatable, Sendable {
     /// 18...48, in em
     public var columnWidthEm: Double
     public var theme: ReadingTheme
+    /// §31, default `.standard`.
+    public var palette: ReadingPalette
     public var layoutMode: LayoutMode
     public var sentenceHighlight: Bool
     /// Reading ruler.
@@ -91,13 +102,14 @@ public struct ReadingPreferences: Codable, Equatable, Sendable {
 
     public static let standard = ReadingPreferences(
         font: .lexend, fontSizePx: 24, lineHeight: 1.8, letterSpacingEm: 0.04, wordSpacingEm: 0.16,
-        columnWidthEm: 30, theme: .creme, layoutMode: .page, sentenceHighlight: true, readingGuide: false, aids: .none
+        columnWidthEm: 30, theme: .creme, palette: .standard, layoutMode: .page, sentenceHighlight: true,
+        readingGuide: false, aids: .none
     )
 
     public init(
         font: ReadingFont, fontSizePx: Double, lineHeight: Double, letterSpacingEm: Double, wordSpacingEm: Double,
-        columnWidthEm: Double, theme: ReadingTheme, layoutMode: LayoutMode, sentenceHighlight: Bool,
-        readingGuide: Bool, aids: ReadingAids
+        columnWidthEm: Double, theme: ReadingTheme, palette: ReadingPalette = .standard, layoutMode: LayoutMode,
+        sentenceHighlight: Bool, readingGuide: Bool, aids: ReadingAids
     ) {
         self.font = font
         self.fontSizePx = fontSizePx
@@ -106,10 +118,33 @@ public struct ReadingPreferences: Codable, Equatable, Sendable {
         self.wordSpacingEm = wordSpacingEm
         self.columnWidthEm = columnWidthEm
         self.theme = theme
+        self.palette = palette
         self.layoutMode = layoutMode
         self.sentenceHighlight = sentenceHighlight
         self.readingGuide = readingGuide
         self.aids = aids
+    }
+
+    /// Reads a profile written by an older version, or by a server that does not know a setting yet.
+    ///
+    /// Swift's own decoder refuses a row with a key missing, even when the property has a default. A child's reading
+    /// settings are the last thing that should stop the app from opening, so every field falls back to the standard
+    /// one instead — and a profile saved before §31 simply reads as « couleurs habituelles ».
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let d = ReadingPreferences.standard
+        font = try container.decodeIfPresent(ReadingFont.self, forKey: .font) ?? d.font
+        fontSizePx = try container.decodeIfPresent(Double.self, forKey: .fontSizePx) ?? d.fontSizePx
+        lineHeight = try container.decodeIfPresent(Double.self, forKey: .lineHeight) ?? d.lineHeight
+        letterSpacingEm = try container.decodeIfPresent(Double.self, forKey: .letterSpacingEm) ?? d.letterSpacingEm
+        wordSpacingEm = try container.decodeIfPresent(Double.self, forKey: .wordSpacingEm) ?? d.wordSpacingEm
+        columnWidthEm = try container.decodeIfPresent(Double.self, forKey: .columnWidthEm) ?? d.columnWidthEm
+        theme = try container.decodeIfPresent(ReadingTheme.self, forKey: .theme) ?? d.theme
+        palette = try container.decodeIfPresent(ReadingPalette.self, forKey: .palette) ?? d.palette
+        layoutMode = try container.decodeIfPresent(LayoutMode.self, forKey: .layoutMode) ?? d.layoutMode
+        sentenceHighlight = try container.decodeIfPresent(Bool.self, forKey: .sentenceHighlight) ?? d.sentenceHighlight
+        readingGuide = try container.decodeIfPresent(Bool.self, forKey: .readingGuide) ?? d.readingGuide
+        aids = try container.decodeIfPresent(ReadingAids.self, forKey: .aids) ?? d.aids
     }
 }
 
@@ -152,10 +187,11 @@ public struct ExercisePreferences: Codable, Equatable, Sendable {
 public struct ChildProfile: Codable, Equatable, Sendable, Identifiable {
     public let id: String
     public let parentId: String
-    /// First name or nickname, 1...40 characters.
-    public var firstName: String
-    /// 5...15
-    public var age: Int
+    /// §32 What the reader is called in the app: a nickname, chosen freely, 1...40 characters.
+    ///
+    /// Not a first name, and no date of birth beside it. A reading app does not need to know who a child is to help
+    /// them read, and what it does not hold cannot leak, be asked for, or be sent anywhere.
+    public var nickname: String
     /// Emoji.
     public var avatar: String
     public var readingLevel: ReadingLevel
@@ -171,14 +207,13 @@ public struct ChildProfile: Codable, Equatable, Sendable, Identifiable {
     public var isDeleted: Bool { deletedAt != nil }
 
     public init(
-        id: String, parentId: String, firstName: String, age: Int, avatar: String, readingLevel: ReadingLevel,
+        id: String, parentId: String, nickname: String, avatar: String, readingLevel: ReadingLevel,
         explanationDifficulty: ExplanationDifficulty, reading: ReadingPreferences, tts: TTSPreferences,
         exercises: ExercisePreferences, createdAt: Millis, updatedAt: Millis, deletedAt: Millis? = nil
     ) {
         self.id = id
         self.parentId = parentId
-        self.firstName = firstName
-        self.age = age
+        self.nickname = nickname
         self.avatar = avatar
         self.readingLevel = readingLevel
         self.explanationDifficulty = explanationDifficulty

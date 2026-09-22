@@ -704,7 +704,7 @@ export class AIRouter {
     const local = plan.local();
     if (!local) return null;
     await this.deps.cache.put({
-      cacheKey: key, operation: ctx.op, provider: 'local', model: 'deterministic', promptVersion: PROMPT_VERSION,
+      cacheKey: key, parentId: ctx.parentId, operation: ctx.op, provider: 'local', model: 'deterministic', promptVersion: PROMPT_VERSION,
       inputHash: plan.cacheIdentity.inputHash, documentHash: ctx.documentHash, contentHash: plan.cacheIdentity.contentHash,
       output: { status: 'ok', data: local.data }, validationStatus: 'ok', createdAt: this.deps.now(), expiresAt: this.deps.now() + (this.deps.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS),
     });
@@ -973,7 +973,7 @@ export class AIRouter {
     const now = this.deps.now();
     try {
       await this.deps.cache.put({
-        cacheKey, operation: ctx.op, provider: usage.provider, model: usage.model, promptVersion: PROMPT_VERSION,
+        cacheKey, parentId: ctx.parentId, operation: ctx.op, provider: usage.provider, model: usage.model, promptVersion: PROMPT_VERSION,
         inputHash: plan.cacheIdentity.inputHash, documentHash: ctx.documentHash, contentHash: plan.cacheIdentity.contentHash,
         output, validationStatus: status, createdAt: now, expiresAt: now + (this.deps.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS),
       });
