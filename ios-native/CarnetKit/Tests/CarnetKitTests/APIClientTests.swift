@@ -1,34 +1,60 @@
 import XCTest
 @testable import CarnetKit
 
-/// Answers a canned response instead of going to the network, and keeps the request so the test can look at it.
-final class StubProtocol: URLProtocol {
-    struct Stub: @unchecked Sendable {
-        var status: Int = 200
-        var body: Data = Data()
+/// Holds what the stub should answer and what it was asked. A lock instead of `nonisolated(unsafe)` so the tests build
+/// with any Swift from 5.9 on, including the toolchain on a machine that is not a Mac.
+final class StubState: @unchecked Sendable {
+    static let shared = StubState()
+
+    private let lock = NSLock()
+    private var status = 200
+    private var body = Data()
+    private var request: URLRequest?
+
+    func answer(_ json: String, status: Int = 200) {
+        lock.lock()
+        defer { lock.unlock() }
+        self.status = status
+        self.body = Data(json.utf8)
+        self.request = nil
     }
 
-    nonisolated(unsafe) static var stub = Stub()
-    nonisolated(unsafe) static var lastRequest: URLRequest?
+    func take() -> (status: Int, body: Data) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (status, body)
+    }
 
+    func record(_ request: URLRequest) {
+        lock.lock()
+        defer { lock.unlock() }
+        self.request = request
+    }
+
+    var lastRequest: URLRequest? {
+        lock.lock()
+        defer { lock.unlock() }
+        return request
+    }
+}
+
+/// Answers a canned response instead of going to the network, and keeps the request so the test can look at it.
+final class StubProtocol: URLProtocol {
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
-        StubProtocol.lastRequest = request
+        StubState.shared.record(request)
+        let answer = StubState.shared.take()
         let response = HTTPURLResponse(
-            url: request.url!, statusCode: StubProtocol.stub.status, httpVersion: "HTTP/1.1", headerFields: nil
+            url: request.url!, statusCode: answer.status, httpVersion: "HTTP/1.1", headerFields: nil
         )!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: StubProtocol.stub.body)
+        client?.urlProtocol(self, didLoad: answer.body)
         client?.urlProtocolDidFinishLoading(self)
     }
 
     override func stopLoading() {}
-
-    static func answer(_ json: String, status: Int = 200) {
-        stub = Stub(status: status, body: Data(json.utf8))
-    }
 }
 
 /// The exact shape the server sends, so a rename on either side fails here instead of on the device.
@@ -75,11 +101,11 @@ final class APIClientTests: XCTestCase {
             tokens: tokens,
             session: URLSession(configuration: configuration)
         )
-        StubProtocol.lastRequest = nil
+        StubState.shared.answer("{}")
     }
 
     func testLogInKeepsTheTokenAndSendsTheNativeHeaders() async throws {
-        StubProtocol.answer(Payloads.authStatus(token: "tok-123"))
+        StubState.shared.answer(Payloads.authStatus(token: "tok-123"))
 
         let status = try await client.logIn(email: "parent@example.fr", password: "secret-passphrase")
 
@@ -87,7 +113,7 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(status.parent?.displayName, "Maman")
         XCTAssertEqual(tokens.read(), "tok-123")
 
-        let request = try XCTUnwrap(StubProtocol.lastRequest)
+        let request = try XCTUnwrap(StubState.shared.lastRequest)
         XCTAssertEqual(request.url?.absoluteString, "https://example.test/api/auth/login")
         XCTAssertEqual(request.httpMethod, "POST")
         XCTAssertEqual(request.value(forHTTPHeaderField: "X-Aide-Client"), "native")
@@ -96,7 +122,7 @@ final class APIClientTests: XCTestCase {
 
     func testTheTokenIsSentOnEveryLaterRequest() async throws {
         tokens.write("tok-123")
-        StubProtocol.answer(Payloads.children)
+        StubState.shared.answer(Payloads.children)
 
         let children = try await client.children()
 
@@ -108,13 +134,13 @@ final class APIClientTests: XCTestCase {
         XCTAssertFalse(children[0].isDeleted)
         XCTAssertEqual(children[0].exercises.enabledTypes.count, 5)
 
-        let request = try XCTUnwrap(StubProtocol.lastRequest)
+        let request = try XCTUnwrap(StubState.shared.lastRequest)
         XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer tok-123")
     }
 
     func testARefusedSessionThrowsTheServerCodeAndForgetsTheToken() async throws {
         tokens.write("stale")
-        StubProtocol.answer(#"{"error":{"code":"not_authenticated","message":"Tu dois te connecter."}}"#, status: 401)
+        StubState.shared.answer(#"{"error":{"code":"not_authenticated","message":"Tu dois te connecter."}}"#, status: 401)
 
         do {
             _ = try await client.children()
@@ -128,7 +154,7 @@ final class APIClientTests: XCTestCase {
 
     func testAStatusThatSaysSignedOutDropsTheToken() async throws {
         tokens.write("tok-123")
-        StubProtocol.answer(Payloads.signedOut)
+        StubState.shared.answer(Payloads.signedOut)
 
         let status = try await client.status()
 
@@ -139,7 +165,7 @@ final class APIClientTests: XCTestCase {
 
     func testSigningOutForgetsTheTokenEvenWhenTheServerRefuses() async throws {
         tokens.write("tok-123")
-        StubProtocol.answer(#"{"error":{"code":"parent_locked","message":"Les réglages sont verrouillés."}}"#, status: 403)
+        StubState.shared.answer(#"{"error":{"code":"parent_locked","message":"Les réglages sont verrouillés."}}"#, status: 403)
 
         do {
             try await client.logOut()

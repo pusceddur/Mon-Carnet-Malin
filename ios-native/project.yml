@@ -1,0 +1,53 @@
+# A fallback for building the project.
+#
+# `CarnetMalin.xcodeproj` is checked in and should open in Xcode 16 or later as it is. If it does not — an older
+# Xcode, or a file that travelled badly — this regenerates an equivalent one:
+#
+#     brew install xcodegen && cd ios-native && xcodegen generate
+#
+# Nothing in the app depends on XcodeGen; this file exists only so that a broken project file is an inconvenience
+# rather than a dead end.
+
+name: CarnetMalin
+options:
+  bundleIdPrefix: org.carnetmalin
+  deploymentTarget:
+    iOS: "17.0"
+  developmentLanguage: fr
+  createIntermediateGroups: true
+
+packages:
+  CarnetKit:
+    path: CarnetKit
+
+targets:
+  CarnetMalin:
+    type: application
+    platform: iOS
+    sources:
+      - path: CarnetMalin
+    dependencies:
+      - package: CarnetKit
+        product: CarnetKit
+    settings:
+      base:
+        PRODUCT_NAME: Carnet Malin
+        PRODUCT_BUNDLE_IDENTIFIER: org.carnetmalin.app
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        SWIFT_VERSION: "5.0"
+        ENABLE_PREVIEWS: YES
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Support/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_KEY_CFBundleDisplayName: Carnet Malin
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
+        INFOPLIST_KEY_NSCameraUsageDescription: Pour photographier les pages d'un livre ou d'un devoir et en lire le texte sur l'iPad.
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight

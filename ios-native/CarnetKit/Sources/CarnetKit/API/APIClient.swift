@@ -104,6 +104,29 @@ public actor APIClient {
         return status
     }
 
+    /// Creates the family's account — the first one of a new server, or one joining with an invitation code — and
+    /// opens its session, like `logIn`.
+    @discardableResult
+    public func createAccount(_ form: AccountForm) async throws -> AuthStatus {
+        let path: String
+        switch form.mode {
+        case .setup: path = "/api/auth/setup"
+        case .register: path = "/api/auth/register"
+        }
+        let status: AuthStatus = try await send(.post, path, body: form.body)
+        if let token = status.sessionToken, !token.isEmpty { tokens.write(token) }
+        return status
+    }
+
+    /// « Mot de passe oublié »: the server e-mails a link, and always answers the same, so that nobody learns from it
+    /// whether an address has an account. The link opens the web page of the family's server.
+    public func requestPasswordReset(email: String) async throws {
+        let _: OkResponse = try await send(
+            .post, "/api/auth/password-reset",
+            body: ["email": email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()]
+        )
+    }
+
     /// Opens the adult area for a while with the code of the settings.
     @discardableResult
     public func unlockParentArea(pin: String) async throws -> AuthStatus {
@@ -144,8 +167,20 @@ public actor APIClient {
     }
 
     private func perform(_ method: Method, _ path: String, body: [String: String]?) async throws -> Data {
+        let encoded = try body.map { try encoder.encode($0) }
+        return try await performRaw(
+            method: method.rawValue, path: path, body: encoded,
+            contentType: encoded == nil ? nil : "application/json", timeout: nil
+        )
+    }
+
+    /// Sends bytes the caller built itself, for the one route whose body is too large and too pass-through to be
+    /// modelled: the sync, which carries rows this version of the app may not understand.
+    func performRaw(
+        method: String = "POST", path: String, body: Data?, contentType: String?, timeout: TimeInterval?
+    ) async throws -> Data {
         var request = URLRequest(url: try url(for: path))
-        request.httpMethod = method.rawValue
+        request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         // The server asks for this on anything that changes state; sending it always is simpler and harmless.
         request.setValue("aide", forHTTPHeaderField: "X-Requested-With")
@@ -154,9 +189,10 @@ public actor APIClient {
         if let token = tokens.read() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+        if let timeout { request.timeoutInterval = timeout }
         if let body {
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try encoder.encode(body)
+            if let contentType { request.setValue(contentType, forHTTPHeaderField: "Content-Type") }
+            request.httpBody = body
         }
 
         let data: Data

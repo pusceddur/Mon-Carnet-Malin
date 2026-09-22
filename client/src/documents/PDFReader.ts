@@ -112,6 +112,28 @@ export function textItemsToLines(items: readonly PdfTextItemLike[], viewportTran
   return lines;
 }
 
+/**
+ * Text items of a page, read from pdf.js's text stream chunk by chunk.
+ * `page.getTextContent()` iterates that ReadableStream with `for await`, which Safari on iPad does not support
+ * (« TypeError: undefined is not a function (near '...e of t...') »), even in the legacy build: the reader is used instead.
+ */
+export async function readTextItems(stream: ReadableStream<{ items: readonly unknown[] }>): Promise<TextItem[]> {
+  const reader = stream.getReader();
+  const items: TextItem[] = [];
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      for (const item of value.items) {
+        if (typeof item === 'object' && item !== null && 'str' in item) items.push(item as TextItem);
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return items;
+}
+
 export interface PdfHandle {
   readonly numPages: number;
   /** Text lines of a page (0-based index). */
@@ -184,8 +206,7 @@ export async function openPdf(source: Blob | ArrayBuffer | Uint8Array): Promise<
       const page = await doc.getPage(pageIndex + 1);
       try {
         const viewport = page.getViewport({ scale: 1 });
-        const content = await page.getTextContent();
-        const items = content.items.filter((item): item is TextItem => 'str' in item);
+        const items = await readTextItems(page.streamTextContent());
         return textItemsToLines(items, viewport.transform);
       } finally {
         page.cleanup();

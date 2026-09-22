@@ -72,8 +72,14 @@ ipad/ios/
 # App Store build: Xcode project and the copy of the web app, both generated
 ios-app/ios/
 ios-app/www/
-# Native app: Swift build products and the Xcode project generated on the Mac
+# Native app: build products and per-user Xcode state.
+# The project file itself IS tracked, so the app builds from a fresh clone with nothing but Xcode.
+# Note: selecting a signing team in Xcode writes DEVELOPMENT_TEAM into the .pbxproj — keep it out of a commit.
 ios-native/**/.build/
 ios-native/**/.swiftpm/
-ios-native/**/*.xcodeproj/
-ios-native/**/*.xcworkspace/
+ios-native/**/xcuserdata/
+ios-native/**/*.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+ios-native/**/*.xcworkspace/xcshareddata/swiftpm/
+
+# Local launch videos (/brag): never published
+brag-output*/

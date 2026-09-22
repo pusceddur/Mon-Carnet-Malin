@@ -134,13 +134,7 @@ public struct TTSPreferences: Codable, Equatable, Sendable {
     }
 }
 
-public enum QuestionType: String, Codable, CaseIterable, Sendable {
-    case qcm
-    case vraiFaux = "vrai_faux"
-    case reponseLibre = "reponse_libre"
-    case association
-    case ordre
-}
+// `QuestionType` lives with the exercises, in `Exercises/ExerciseTypes.swift`.
 
 public struct ExercisePreferences: Codable, Equatable, Sendable {
     /// 3, 5 or 10.
@@ -172,7 +166,7 @@ public struct ChildProfile: Codable, Equatable, Sendable, Identifiable {
     public let createdAt: Millis
     public var updatedAt: Millis
     /// Set when the profile was removed; the row stays until the server purges it.
-    public var deletedAt: Millis?
+    @NullCodable public var deletedAt: Millis?
 
     public var isDeleted: Bool { deletedAt != nil }
 

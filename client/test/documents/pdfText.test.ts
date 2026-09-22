@@ -10,7 +10,7 @@ import {
   titleFromFileName,
 } from '../../src/documents/DocumentParser';
 import { deriveDocumentStatus, toQueueJob } from '../../src/documents/DocumentCache';
-import { textItemsToLines, type PdfTextItemLike } from '../../src/documents/PDFReader';
+import { readTextItems, textItemsToLines, type PdfTextItemLike } from '../../src/documents/PDFReader';
 
 // A4 page at scale 1: viewport.transform = [1, 0, 0, -1, 0, 842].
 const VIEWPORT = [1, 0, 0, -1, 0, 842];
@@ -116,5 +116,41 @@ describe('DocumentParser helpers', () => {
     } as never);
     expect(withQuad.quad).toBeNull();
     expect(withQuad.rotateDegrees).toBe(0);
+  });
+});
+
+describe('readTextItems', () => {
+  /** A text stream like pdf.js's, without async iteration (Safari on iPad): only getReader() works. */
+  function safariLikeStream(chunks: { items: unknown[] }[]): ReadableStream<{ items: unknown[] }> {
+    const stream = new ReadableStream<{ items: unknown[] }>({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(chunk);
+        controller.close();
+      },
+    });
+    Object.defineProperty(stream, Symbol.asyncIterator, { value: undefined });
+    Object.defineProperty(stream, 'values', { value: undefined });
+    return stream;
+  }
+
+  it('reads every chunk without async iteration and keeps only text items', async () => {
+    const stream = safariLikeStream([
+      { items: [{ str: 'Bonjour', transform: [12, 0, 0, 12, 72, 700], width: 40, height: 12 }, { type: 'beginMarkedContent' }] },
+      { items: [{ str: 'le monde', transform: [12, 0, 0, 12, 116, 700], width: 48, height: 12, hasEOL: true }] },
+    ]);
+    const items = await readTextItems(stream);
+    expect(items.map((i) => i.str)).toEqual(['Bonjour', 'le monde']);
+    // The stream is released, so pdf.js can clean the page up.
+    expect(stream.locked).toBe(false);
+  });
+
+  it('releases the stream when reading fails', async () => {
+    const stream = new ReadableStream<{ items: unknown[] }>({
+      pull(controller) {
+        controller.error(new Error('worker_gone'));
+      },
+    });
+    await expect(readTextItems(stream)).rejects.toThrow('worker_gone');
+    expect(stream.locked).toBe(false);
   });
 });
