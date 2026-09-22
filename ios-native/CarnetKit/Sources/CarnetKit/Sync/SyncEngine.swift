@@ -197,7 +197,7 @@ public actor SyncEngine {
     /// Rows the server refused last time, for the parent to see.
     public func lastRejections() -> [SyncRejection] {
         guard let text = try? store.value(forKey: StoreKeys.lastRejections),
-              let data = text?.data(using: .utf8),
+              let data = text.data(using: .utf8),
               let rejections = try? JSONDecoder().decode([SyncRejection].self, from: data) else { return [] }
         return rejections
     }

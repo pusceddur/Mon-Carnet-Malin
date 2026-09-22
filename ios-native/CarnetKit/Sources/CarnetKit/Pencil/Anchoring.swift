@@ -141,7 +141,7 @@ public enum Anchoring {
                 blockIndex: anchor.blockIndex,
                 charOffset: anchor.charOffset,
                 blockTextHash: hash,
-                contextText: text.map { buildContextText($0, anchor.charOffset) } ?? "",
+                contextText: text.map { buildContextText($0, charOffset: anchor.charOffset) } ?? "",
                 endAnchor: end.map { TextEndAnchor(blockIndex: $0.blockIndex, charOffset: $0.charOffset) }
             ),
             points: points.enumerated().map { index, point in

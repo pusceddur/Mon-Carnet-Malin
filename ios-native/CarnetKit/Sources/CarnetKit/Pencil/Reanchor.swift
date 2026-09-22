@@ -249,7 +249,7 @@ public enum Reanchor {
             let source = Source(
                 blockIndex: end.blockIndex,
                 start: end.charOffset,
-                needleText: Anchoring.buildContextText(oldBlock.text, end.charOffset),
+                needleText: Anchoring.buildContextText(oldBlock.text, charOffset: end.charOffset),
                 blockTextHash: Anchoring.blockTextHash(oldBlock.text)
             )
             switch find(source, in: newPage) {
@@ -314,7 +314,7 @@ public enum Reanchor {
                 blockIndex: blockIndex,
                 charOffset: start,
                 blockTextHash: hash,
-                contextText: Anchoring.buildContextText(block.text, start),
+                contextText: Anchoring.buildContextText(block.text, charOffset: start),
                 endAnchor: movedEnd
             )
             return .ink(ink)

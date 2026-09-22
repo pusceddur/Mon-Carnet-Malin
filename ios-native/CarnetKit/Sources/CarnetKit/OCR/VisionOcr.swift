@@ -1,7 +1,7 @@
 #if canImport(Vision)
 import CoreGraphics
 import Foundation
-import Vision
+@preconcurrency import Vision
 
 /// Reading a page image with the device's own engine.
 ///

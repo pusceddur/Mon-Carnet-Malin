@@ -277,14 +277,14 @@ final class AnchoringTests: XCTestCase {
 
     func testTheContextKeptIsTheAnchorWordAndTheFewAfterIt() {
         // One word would not say which « la » the child meant; many would be more likely to have changed.
-        let context = Anchoring.buildContextText(text, 3)
+        let context = Anchoring.buildContextText(text, charOffset: 3)
         XCTAssertTrue(context.hasPrefix("renard"))
         XCTAssertLessThanOrEqual(Tokenizer.countWords(context), Anchoring.contextWords)
         XCTAssertTrue(text.contains(context))
     }
 
     func testTheContextNearTheEndOfABlockIsWhatIsLeft() {
-        let context = Anchoring.buildContextText(text, text.utf16.count - 6)
+        let context = Anchoring.buildContextText(text, charOffset: text.utf16.count - 6)
         XCTAssertFalse(context.isEmpty)
         XCTAssertTrue(text.contains(context))
     }

@@ -47,7 +47,7 @@ public final class InMemoryStore: LocalStore, @unchecked Sendable {
     }
 
     public func delete(_ table: SyncTable, _ key: EntityKey) throws {
-        locked { rows.removeValue(forKey: TableKey(table: table, key: key)) }
+        locked { _ = rows.removeValue(forKey: TableKey(table: table, key: key)) }
     }
 
     // MARK: - Outbox
