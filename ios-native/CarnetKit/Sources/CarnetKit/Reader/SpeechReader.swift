@@ -63,10 +63,12 @@ public final class SpeechReader: NSObject, @unchecked Sendable {
     public static func frenchVoices() -> [AVSpeechSynthesisVoice] {
         AVSpeechSynthesisVoice.speechVoices()
             .filter { $0.language.hasPrefix("fr") }
-            .sorted { first, second in
+            // `by:` spelled out: recent SDKs also offer `sorted(using:)`, and a bare trailing closure can be
+            // read as a `SortComparator`.
+            .sorted(by: { first, second in
                 if first.quality.rank != second.quality.rank { return first.quality.rank > second.quality.rank }
                 return first.name < second.name
-            }
+            })
     }
 
     /// The best French voice available, which is what a profile uses until someone chooses another.
@@ -294,7 +296,8 @@ extension SpeechReader: AVSpeechSynthesizerDelegate {
     }
 }
 
-private extension AVSpeechSynthesisVoice.Quality {
+// `AVSpeechSynthesisVoiceQuality` is a type of its own in Swift, not nested inside the voice class.
+private extension AVSpeechSynthesisVoiceQuality {
     /// Premium above enhanced above the default one.
     var rank: Int {
         switch self {
