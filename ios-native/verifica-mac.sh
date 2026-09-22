@@ -79,7 +79,19 @@ if [ "$ERRORI" -gt 0 ]; then
   grep "error:" "$LOG" | head -20
 fi
 
-printf '\nRegistro completo: %s\n' "$LOG"
-printf 'Da riportare indietro tutto il file, non solo questa schermata.\n'
+# Il registro completo e quasi tutto righe di comando del compilatore. Questo tiene solo
+# quello che serve: errori e avvisi, senza i codici colore.
+BREVE="${LOG%.log}-errori.txt"
+# $'...' perche il sed di macOS non conosce la scrittura esadecimale: la shell mette il carattere vero.
+sed $'s/\x1b\\[[0-9;]*m//g' "$LOG" \
+  | grep -E "error:|warning:|BUILD FAILED|Test Case .*failed|XCTAssert" \
+  | grep -v "Failed frontend command" \
+  | grep -v "SwiftCompile normal" \
+  | sed "s|/Users/[^ ]*/Mon-Carnet-Malin/||g" \
+  | sort -u > "$BREVE"
+
+printf '\nRegistro completo : %s\n' "$LOG"
+printf 'Solo gli errori   : %s\n' "$BREVE"
+printf 'Il secondo basta: e molto piu corto.\n'
 
 [ "$ESITO_BUILD" -eq 0 ] && [ "$ESITO_TEST" -eq 0 ] && [ "$ESITO_APP" -eq 0 ]
