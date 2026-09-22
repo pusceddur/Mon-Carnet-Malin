@@ -180,7 +180,7 @@ struct AddHomeworkView: View {
         .fullScreenCover(isPresented: $showingScanner) {
             DocumentScannerView { images in
                 showingScanner = false
-                Task { await add { try await $0.importImages(images, $1, progress: $2) } }
+                Task { await add { await $0.importImages(images, $1, progress: $2) } }
             } onCancel: {
                 showingScanner = false
             }

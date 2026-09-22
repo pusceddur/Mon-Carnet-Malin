@@ -2,10 +2,6 @@ import CarnetKit
 import SwiftUI
 import UIKit
 
-extension AccountForm.Mode: Identifiable {
-    public var id: String { self == .setup ? "setup" : "register" }
-}
-
 /// Creating the family's account on the iPad, with the invitation code given by whoever runs the server. Addressed
 /// to the adult.
 ///

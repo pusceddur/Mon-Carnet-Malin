@@ -57,7 +57,6 @@ struct ReaderBlockView: UIViewRepresentable {
         spokenSentence: Range<Int>?,
         spokenWord: NSRange?
     ) -> NSAttributedString {
-        let palette = ReaderPalette(theme: typography.theme)
         let text = NSMutableAttributedString(string: block.text)
         let whole = NSRange(location: 0, length: text.length)
 

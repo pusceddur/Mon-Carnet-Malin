@@ -78,7 +78,7 @@ struct ImportView: View {
         .fullScreenCover(isPresented: $showingScanner) {
             DocumentScannerView { images in
                 showingScanner = false
-                Task { await run { try await $0.importImages(images, $1, progress: $2) } }
+                Task { await run { await $0.importImages(images, $1, progress: $2) } }
             } onCancel: {
                 showingScanner = false
             }

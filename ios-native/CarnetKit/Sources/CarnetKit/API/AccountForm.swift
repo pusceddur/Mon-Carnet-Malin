@@ -6,11 +6,15 @@ import Foundation
 /// Checked here before anything is sent, with the server's own limits, so a parent sees what to fix next to the field
 /// instead of a refusal after the round trip.
 public struct AccountForm: Equatable, Sendable {
-    public enum Mode: Sendable {
+    /// `Identifiable` here rather than in the app: a conformance declared on one side of a module boundary
+    /// stops working the day the other side declares it too.
+    public enum Mode: String, Sendable, Identifiable {
         /// First account of a new server: `POST /api/auth/setup`, with the code defined on the server.
         case setup
         /// `POST /api/auth/register`, with the code given by whoever runs the server.
         case register
+
+        public var id: String { rawValue }
     }
 
     public enum Field: String, CaseIterable, Sendable {
