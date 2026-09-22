@@ -49,5 +49,14 @@
 	<!-- iOS hands over a copy in Documents/Inbox; the app imports it and deletes the copy. -->
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<false/>
+	<!-- A family's server may live on their own network, with a name like « carnet.local » and no certificate a
+	     phone would trust; a developer's runs on their own machine while they work. This says « local addresses
+	     only », which is the narrow exception Apple asks for and reviews without a justification. Everything
+	     leaving the house still has to be https. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>
