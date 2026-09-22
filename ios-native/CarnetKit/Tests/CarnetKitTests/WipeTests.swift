@@ -85,16 +85,17 @@ private final class RecordingTransport: SyncTransport, @unchecked Sendable {
     private let lock = NSLock()
     private var seen: [String?] = []
 
-    var cursors: [String?] {
+    /// The lock is taken here and never in an async function, where it is not allowed.
+    private func withLock<T>(_ body: () -> T) -> T {
         lock.lock()
         defer { lock.unlock() }
-        return seen
+        return body()
     }
 
+    var cursors: [String?] { withLock { seen } }
+
     func exchange(cursor: String?, deviceId: String, changes: [SyncTable: [Data]]) async throws -> SyncResponse {
-        lock.lock()
-        seen.append(cursor)
-        lock.unlock()
+        withLock { seen.append(cursor) }
         return SyncResponse(cursor: "cursor-1", hasMore: false, serverTime: 1, changes: [:], rejected: [])
     }
 }

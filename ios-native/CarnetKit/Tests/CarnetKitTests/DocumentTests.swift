@@ -43,7 +43,7 @@ final class HashingTests: XCTestCase {
             reading: .standard, tts: .standard, exercises: .standard,
             createdAt: 0, updatedAt: 0
         )
-        XCTAssertEqual(Hashing.profileSignature(child), "10|intermediaire|simple")
+        XCTAssertEqual(Hashing.profileSignature(child), "intermediaire|simple")
     }
 }
 

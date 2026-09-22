@@ -68,7 +68,9 @@ public struct OcrResult: Equatable, Sendable {
 /// Ported from `client/src/ocr/ocrLines.ts`.
 public enum OcrCleanup {
     public static func clampConfidence(_ value: Double) -> Double {
-        guard value.isFinite else { return 0 }
+        // Not a number at all means « no idea », which is zero. An infinity is a number, only an absurd one:
+        // it clamps to the end it points at, like any other value out of range.
+        guard !value.isNaN else { return 0 }
         return min(100, max(0, value))
     }
 

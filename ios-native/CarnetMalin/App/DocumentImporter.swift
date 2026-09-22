@@ -33,11 +33,13 @@ struct DocumentImporter {
     }
 
     /// Called as pages are read: how many are done, out of how many.
+    /// Told how far the import has got. Escaping wherever it is taken, because `build` hands it on to the closure
+    /// that reads the pages: a closure that captures a non-escaping parameter cannot itself be passed along.
     typealias Progress = @MainActor (Int, Int) -> Void
 
     // MARK: - Entry points
 
-    func importImages(_ images: [CGImage], _ request: Request, progress: Progress) async -> DocumentMeta? {
+    func importImages(_ images: [CGImage], _ request: Request, progress: @escaping Progress) async -> DocumentMeta? {
         guard !images.isEmpty else { return nil }
         return await build(kind: .images, request, pageCount: images.count, progress: progress) { documentId, report in
             var pages: [PageContent] = []
@@ -49,7 +51,7 @@ struct DocumentImporter {
         }
     }
 
-    func importFile(_ url: URL, _ request: Request, progress: Progress) async throws -> DocumentMeta? {
+    func importFile(_ url: URL, _ request: Request, progress: @escaping Progress) async throws -> DocumentMeta? {
         let name = url.lastPathComponent
         var request = request
         if request.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -75,7 +77,7 @@ struct DocumentImporter {
         }
     }
 
-    private func importEpub(_ url: URL, _ request: Request, progress: Progress) async throws -> DocumentMeta? {
+    private func importEpub(_ url: URL, _ request: Request, progress: @escaping Progress) async throws -> DocumentMeta? {
         let book: EpubBook
         do {
             book = try EpubReader.read(contentsOf: url)
@@ -96,7 +98,7 @@ struct DocumentImporter {
         }
     }
 
-    private func importPdf(_ url: URL, _ request: Request, progress: Progress) async throws -> DocumentMeta? {
+    private func importPdf(_ url: URL, _ request: Request, progress: @escaping Progress) async throws -> DocumentMeta? {
         #if canImport(PDFKit) && canImport(UIKit)
         let pdf: PDFReader.Document
         do {
@@ -186,7 +188,7 @@ struct DocumentImporter {
         kind: DocumentKind,
         _ request: Request,
         pageCount: Int,
-        progress: Progress,
+        progress: @escaping Progress,
         readPages: (String, (Int) -> Void) async -> [PageContent]
     ) async -> DocumentMeta? {
         let documentId = UUID().uuidString

@@ -20,15 +20,24 @@ private final class FakeTransport: SyncTransport, @unchecked Sendable {
         answers.append(response)
     }
 
-    func exchange(cursor: String?, deviceId: String, changes: [SyncTable: [Data]]) async throws -> SyncResponse {
+    /// The lock is taken here and never in an async function, where it is not allowed.
+    private func withLock<T>(_ body: () -> T) -> T {
         lock.lock()
         defer { lock.unlock() }
-        calls.append(Call(cursor: cursor, deviceId: deviceId, changes: changes))
-        if let failWith { throw failWith }
-        guard !answers.isEmpty else {
-            return SyncResponse(cursor: cursor ?? "0", hasMore: false, serverTime: 0, changes: [:], rejected: [])
+        return body()
+    }
+
+    func exchange(cursor: String?, deviceId: String, changes: [SyncTable: [Data]]) async throws -> SyncResponse {
+        // Same order as before: the call is written down, and only then does the double fail or answer.
+        let outcome: Result<SyncResponse, Error> = withLock {
+            calls.append(Call(cursor: cursor, deviceId: deviceId, changes: changes))
+            if let failWith { return .failure(failWith) }
+            if answers.isEmpty {
+                return .success(SyncResponse(cursor: cursor ?? "0", hasMore: false, serverTime: 0, changes: [:], rejected: []))
+            }
+            return .success(answers.removeFirst())
         }
-        return answers.removeFirst()
+        return try outcome.get()
     }
 }
 

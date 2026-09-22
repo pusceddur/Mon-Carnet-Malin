@@ -500,7 +500,7 @@ final class ReanchorTests: XCTestCase {
     func testTheNearestOfSeveralIdenticalPassagesWins() {
         // « la nuit » appears twice; the one the child marked is the one near where they marked it.
         let repeated = "La nuit tombe. Le renard traverse la clairière pendant la nuit tranquille."
-        let page = FakeLayout.content([repeated])
+        _ = FakeLayout.content([repeated])
         let units = Array(repeated.utf16)
         let secondOccurrence = 55
         let mark = highlight(start: secondOccurrence, end: secondOccurrence + 7, in: repeated)

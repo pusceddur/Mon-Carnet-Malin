@@ -113,9 +113,14 @@ public enum DocumentParser {
     /// of « scan_2024_03_11_final(2) » helps nobody find last week's lesson.
     public static func title(fromFileName name: String) -> String {
         var title = name
-        // Only a real extension, not the end of a name like « Chapitre 3.1 ».
+        // Only a real extension, not the end of a name like « Chapitre 3.1 ». A file type is short, made of
+        // letters and digits, and has at least one letter in it: « pdf », « epub », « mp3 » — never « 1 ».
         let ext = (name as NSString).pathExtension
-        if !ext.isEmpty, ext.count <= 5 {
+        let looksLikeAFileType = !ext.isEmpty
+            && ext.count <= 5
+            && ext.allSatisfy { $0.isLetter || $0.isNumber }
+            && ext.contains(where: { $0.isLetter })
+        if looksLikeAFileType {
             title = (name as NSString).deletingPathExtension
         }
         return title
