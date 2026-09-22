@@ -25,7 +25,7 @@ Sono mesi di lavoro. E la web app continuerà comunque a esistere per browser e 
 
 ## Come procediamo
 
-Il codice Swift è stato scritto su Windows, dove **non può essere compilato**. Nessuna riga è mai passata da un compilatore: ci saranno errori, e il primo passo sul Mac è raccoglierli.
+Il codice Swift è stato scritto su Windows, dove non può essere compilato. Il 2026-09-22 è passato per la prima volta da un compilatore su un Mac: cinque giri e tutto verde, come racconta « Compilata » qui sotto. Chi lavora ancora da Windows tenga presente che scrive alla cieca.
 
 La fondazione è un **Swift Package** (`CarnetKit`): si verifica con `swift test` senza aprire Xcode. Sopra ci sta `CarnetMalin`, l'app, con il suo progetto Xcode già nella repo.
 
@@ -343,6 +343,20 @@ Cinque cose decise il 2026-09-22, tutte fatte in parallelo nel web e nell'app, c
 
 Il `ReadingPreferences` di `CarnetKit` ha ora un decodificatore scritto a mano: quello sintetizzato da Swift rifiuta una riga a cui manca una chiave, anche quando la proprietà ha un valore di partenza, e un profilo salvato prima di §31 non ha la palette. Ogni campo ricade sul valore standard invece di far fallire l'apertura dell'app.
 
+### Compilata — 2026-09-22, macOS 26.6, Xcode 27, Swift 6.4
+
+Il codice è passato da un compilatore per la prima volta. Cinque giri, e 31 600 righe scritte alla cieca sono diventate verdi: libreria, test e app, zero errori e zero avvisi nostri.
+
+Cosa è uscito, in ordine:
+
+1. `AVSpeechSynthesisVoice.Quality` non esiste: in Swift quel tipo si chiama `AVSpeechSynthesisVoiceQuality` e non sta dentro la classe della voce. L'ordinamento delle voci cadeva di conseguenza.
+2. Cinque chiamate a `buildContextText` senza l'etichetta `charOffset:`. Un `try?` su una chiamata che restituisce già un opzionale non raddoppia l'involucro, quindi un `?` era di troppo. `Vision` è più vecchia delle regole di concorrenza di Swift e il suo import ora lo dichiara.
+3. Il nuovo SDK ha un `TextRange` suo, che nei test conviveva con il nostro. `sourceHash` era costante ma l'importatore lo riscrive apposta. Nel selettore della voce, `$0` dentro un `Task` annidato apparteneva al `Task`.
+4. **Due bug veri, trovati dai test**: `« Chapitre 3.1 »` diventava `« Chapitre 3 »` perché `.1` passava per un'estensione di file, e una confidenza OCR infinita crollava a zero invece di fermarsi a cento. Più la funzione di avanzamento dell'import, che va dichiarata `@escaping` perché viene passata a un'altra chiusura.
+5. Avvisi: codice morto nel costruttore del testo, la conformità `Identifiable` dichiarata dal lato sbagliato del confine fra i moduli, e due `try` su una funzione che non lancia.
+
+Nessun errore di architettura, nessuna riscrittura. Tutto meccanico, tranne i due bug del punto 4, che erano lì dal giorno in cui quel codice è stato scritto e che nessuno poteva vedere senza eseguirlo.
+
 ## Costruirla sul Mac
 
 ```sh
@@ -368,7 +382,6 @@ cd ios-native && xcodegen generate
 
 1. **I file dei font.** Lexend, Andika, Atkinson Hyperlegible e OpenDyslexic non sono nella repo (licenze e peso). Vanno messi in `CarnetMalin/Fonts/` e dichiarati in `UIAppFonts` dentro `Support/Info.plist`. **Finché non ci sono, l'app usa il font di sistema** — non si rompe niente, ma metà del senso di « Police » va perso.
 2. **L'icona.** `Assets.xcassets/AppIcon.appiconset` è vuoto: serve un PNG 1024×1024.
-3. **`swift test`, poi gli errori di compilazione.** Niente di questo codice è mai stato compilato: è stato scritto su Windows, dove non c'è un toolchain Swift. Ci saranno errori. Vanno raccolti e corretti.
 4. Il resto della checklist App Store è in `ios-app/TODO.md`.
 
 ## Nota sull'autenticazione
