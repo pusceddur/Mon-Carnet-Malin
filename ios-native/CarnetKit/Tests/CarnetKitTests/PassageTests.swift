@@ -4,7 +4,7 @@ import XCTest
 /// Cutting a page into paragraphs, sentences and sendable pieces, and building blocks back out of layout lines.
 /// Cases follow `shared/test/text/lines-blocks.test.ts` and the passage helpers.
 final class PassageTests: XCTestCase {
-    private func texts(_ text: String, _ ranges: [TextRange]) -> [String] {
+    private func texts(_ text: String, _ ranges: [CarnetKit.TextRange]) -> [String] {
         let units = Array(text.utf16)
         return ranges.map { String(decoding: units[$0.start..<$0.end], as: UTF16.self) }
     }
@@ -23,7 +23,7 @@ final class PassageTests: XCTestCase {
     }
 
     func testATextWithoutBlankLinesIsOneParagraph() {
-        XCTAssertEqual(Passages.paragraphs(in: "Un seul."), [TextRange(start: 0, end: 8)])
+        XCTAssertEqual(Passages.paragraphs(in: "Un seul."), [CarnetKit.TextRange(start: 0, end: 8)])
         XCTAssertEqual(Passages.paragraphs(in: "   "), [])
         XCTAssertEqual(Passages.paragraphs(in: ""), [])
     }

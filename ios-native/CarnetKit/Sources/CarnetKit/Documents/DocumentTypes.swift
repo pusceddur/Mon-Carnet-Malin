@@ -15,7 +15,9 @@ public struct DocumentMeta: Codable, Equatable, Sendable, Identifiable {
     /// §19.3 « J'ai terminé », set and cleared by the child on a homework document.
     @NullCodable public var homeworkDoneAt: Millis?
     /// sha256 of the original files, in order: what tells the app this book is already here.
-    public let sourceHash: String
+    ///
+    /// Written once the pages have been read: until then it is only the id of a book nobody has seen yet.
+    public var sourceHash: String
     public var pageCount: Int
     public var status: DocumentStatus
     public let createdAt: Millis

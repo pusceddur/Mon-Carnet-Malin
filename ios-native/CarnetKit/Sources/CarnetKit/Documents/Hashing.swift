@@ -31,10 +31,10 @@ public enum Hashing {
         sha256Hex(hashes.joined())
     }
 
-    /// « 10|intermediaire|simple »: what a cached answer was written for.
+    /// « intermediaire|simple »: what a cached answer was written for.
     ///
-    /// The cache key carries it because the same page explained to an eight-year-old and to a twelve-year-old are two
-    /// different answers, and handing one child the other's would be worse than a slow answer.
+    /// The cache key carries it because the same page explained to a beginner and to a confident reader are two
+    /// different answers, and handing one reader the other's would be worse than a slow answer.
     public static func profileSignature(_ child: ChildProfile) -> String {
         "\(child.readingLevel.rawValue)|\(child.explanationDifficulty.rawValue)"
     }

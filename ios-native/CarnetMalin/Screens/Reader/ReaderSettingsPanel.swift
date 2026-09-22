@@ -231,7 +231,10 @@ struct ReaderSettingsPanel: View {
             } else {
                 Picker(FR.Reader.voice, selection: Binding(
                     get: { reader.currentVoiceIdentifier ?? "" },
-                    set: { Task { await reader.chooseVoice($0.isEmpty ? nil : $0) } }
+                    // Named, because a bare `$0` inside the nested Task would belong to the Task.
+                    set: { identifier in
+                        Task { await reader.chooseVoice(identifier.isEmpty ? nil : identifier) }
+                    }
                 )) {
                     Text(FR.TTS.voiceAutomatic).tag("")
                     ForEach(voices, id: \.identifier) { voice in
