@@ -102,14 +102,16 @@ struct ReaderView: View {
         .sheet(isPresented: $showingSettings) {
             ReaderSettingsPanel(reader: reader)
         }
-        .sheet(item: $help) { request in
+        // Closing the sheet stops the voice: an answer being read aloud must not go on by itself once the screen
+        // that asked for it is gone.
+        .sheet(item: $help, onDismiss: { reader.stopSpeaking() }) { request in
             HelpSheet(
                 kind: request.kind, context: request.context, child: child, pages: reader.pages,
                 speak: { reader.speakOnce($0) },
                 goToSource: { ref in Task { await showSource(ref) } }
             )
         }
-        .sheet(isPresented: $showingSummary) {
+        .sheet(isPresented: $showingSummary, onDismiss: { reader.stopSpeaking() }) {
             if let document = reader.document {
                 SummaryView(
                     child: child, document: document, pages: reader.pages, currentPage: reader.pageIndex,

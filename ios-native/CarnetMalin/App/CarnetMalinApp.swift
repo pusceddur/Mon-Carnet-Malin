@@ -121,7 +121,7 @@ struct ChildRootView: View {
                     case .notes:
                         NotesView(child: child) { path.append($0) }
                     case .freeQuestion:
-                        FreeQuestionView(child: child) { speaker.speakOnce($0) }
+                        FreeQuestionView(child: child, speak: { speaker.speakOnce($0) }, stopSpeaking: { speaker.stop() })
                     case .homeworkList:
                         HomeworkListView(child: child) { path.append($0) }
                     case let .homework(documentId):

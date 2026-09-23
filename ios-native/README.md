@@ -308,6 +308,14 @@ Funziona perché le due versioni contengono le stesse parole nello stesso ordine
 
 **Da sapere prima dell'App Store: cancellazione dell'account.** Un'app che permette di *creare* un account deve permettere di *cancellarlo* dall'app stessa (linea guida 5.1.1(v)). Il server oggi non ha una rotta per cancellare un account: va aggiunta sul server prima di pubblicare, oppure si toglie l'iscrizione dall'app (`SignInView`, due pulsanti).
 
+### Fatto — fetta 24: primo avvio su iPad (2026-09-23)
+
+Tre cose viste alla prima prova sul simulatore.
+
+- **L'app non aveva icona** e la schermata di avvio era bianca, tanto da sembrare bloccata. L'icona 1024 è generata dallo stesso `icon.svg` del web, senza canale alpha come chiede App Store Connect; la schermata di avvio ora ha la carta crème (e il suo scuro), con il quaderno al centro — così il tempo di caricamento sembra parte dell'app e non uno schermo morto.
+- **La voce continuava dopo la chiusura del foglio.** « Écouter » su un riassunto o su una risposta parlava anche dopo che il foglio era sparito: ora chiudere il foglio ferma la voce (`onDismiss`), e lo stesso vale uscendo da « Pose ta question ».
+- **« Une question sur le texte » rispondeva « l'aide n'est pas disponible ».** Non è un bug dell'app: sul server le due richieste risultano `unavailable / provider_error`, e i lavori del worker falliscono con `auth` — l'accesso all'IA sul mini PC è scaduto. Riassunti e quiz continuano a funzionare perché ricadono sulla versione locale deterministica; la domanda sul testo non ha una versione locale, quindi si ferma. Da rifare il login sul mini PC.
+
 ### Bug trovati e corretti in queste fette
 
 - **`null` omessi.** Il server valida con `.nullable()` (chiave obbligatoria, valore nullo); il `Codable` sintetizzato di Swift *omette* le chiavi `nil`. Ogni riga scritta dall'iPad con un campo vuoto — `deletedAt`, `confidence`, `verdict`… — sarebbe stata rifiutata dal sync come `invalid`, in silenzio. Ora `@NullCodable` su 15 campi e sulle richieste AI, con test che lo verificano per ogni tipo di riga.
@@ -381,7 +389,7 @@ cd ios-native && xcodegen generate
 ### Cosa manca ancora, e va fatto sul Mac
 
 1. **I file dei font.** Lexend, Andika, Atkinson Hyperlegible e OpenDyslexic non sono nella repo (licenze e peso). Vanno messi in `CarnetMalin/Fonts/` e dichiarati in `UIAppFonts` dentro `Support/Info.plist`. **Finché non ci sono, l'app usa il font di sistema** — non si rompe niente, ma metà del senso di « Police » va perso.
-2. **L'icona.** `Assets.xcassets/AppIcon.appiconset` è vuoto: serve un PNG 1024×1024.
+2. ~~L'icona~~ — fatta il 2026-09-23 (generata da `client/public/icons/icon.svg`, senza canale alpha).
 4. Il resto della checklist App Store è in `ios-app/TODO.md`.
 
 ## Nota sull'autenticazione

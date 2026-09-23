@@ -10,6 +10,8 @@ import SwiftUI
 struct FreeQuestionView: View {
     let child: ChildProfile
     let speak: (String) -> Void
+    /// Stops the voice when the child leaves this screen.
+    let stopSpeaking: () -> Void
 
     @EnvironmentObject private var model: AppModel
     @Environment(\.dismiss) private var dismiss
@@ -57,7 +59,10 @@ struct FreeQuestionView: View {
         }
         .background(Palette.paper)
         .navigationBarBackButtonHidden()
-        .onDisappear { task?.cancel() }
+        .onDisappear {
+            task?.cancel()
+            stopSpeaking()
+        }
     }
 
     // MARK: - Asking
