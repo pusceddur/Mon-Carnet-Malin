@@ -60,8 +60,10 @@ final class AppModel: ObservableObject {
         guard case .starting = screen else { return }
         do {
             let store = try Self.openStore()
-            let address = (try? store.value(forKey: AppKeys.serverURL)) ?? nil
-            guard let address, let url = URL(string: address) else {
+            // The address this build carries wins over whatever an older build stored: the family does not choose
+            // the server, and a build pointed elsewhere must not keep talking to the previous one.
+            let stored = ((try? store.value(forKey: AppKeys.serverURL)) ?? nil).flatMap(ServerAddress.parse)
+            guard let url = ServerAddress.builtIn ?? stored else {
                 screen = .signIn
                 self.pendingStore = store
                 return

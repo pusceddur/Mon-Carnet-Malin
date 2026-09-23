@@ -19,6 +19,8 @@ struct SignInView: View {
 
     private enum Field { case address, email, password }
 
+    /// The address step exists only for a build without a server of its own (a developer's).
+    private var asksForServer: Bool { !ServerAddress.isFixed }
     private var hasServer: Bool { model.services != nil }
 
     var body: some View {
@@ -33,7 +35,7 @@ struct SignInView: View {
                 }
                 .padding(.top, 48)
 
-                if hasServer { accountForm } else { serverForm }
+                if hasServer || !asksForServer { accountForm } else { serverForm }
 
                 if let message {
                     Text(message)
@@ -53,6 +55,8 @@ struct SignInView: View {
         .task {
             // The address the family used last, so it only has to be typed once on this iPad.
             if let services = model.services { address = services.serverURL.absoluteString }
+            // A build with its own server connects on its own: nobody is asked for an address.
+            if model.services == nil, let url = ServerAddress.builtIn { await model.connect(serverURL: url) }
         }
     }
 
@@ -120,15 +124,17 @@ struct SignInView: View {
                         .foregroundStyle(Palette.accent)
                 }
 
-                Button(FR.SignIn.serverTitle) {
-                    // Back a step: the address was wrong, or the family moved their server.
-                    model.banner = nil
-                    message = nil
-                    Task { await forgetServer() }
+                if asksForServer {
+                    Button(FR.SignIn.serverTitle) {
+                        // Back a step: the address was wrong, or the family moved their server.
+                        model.banner = nil
+                        message = nil
+                        Task { await forgetServer() }
+                    }
+                    .font(AppFont.ui(16))
+                    .foregroundStyle(Palette.muted)
+                    .padding(.top, 4)
                 }
-                .font(AppFont.ui(16))
-                .foregroundStyle(Palette.muted)
-                .padding(.top, 4)
             }
         }
         .frame(maxWidth: 480)
@@ -163,11 +169,9 @@ struct SignInView: View {
     }
 
     private func useServer() {
-        let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
-        // A family told « https:// » by whoever set the server up will type it without; adding it is not a guess,
-        // it is the only scheme this app will use.
-        let withScheme = trimmed.contains("://") ? trimmed : "https://\(trimmed)"
-        guard let url = URL(string: withScheme), url.host != nil, url.scheme == "https" || url.scheme == "http" else {
+        // Same rule as the address built into the app: « https:// » added when it is missing, plain http only for
+        // a server on the same network.
+        guard let url = ServerAddress.parse(address) else {
             message = FR.SignIn.serverInvalid
             return
         }

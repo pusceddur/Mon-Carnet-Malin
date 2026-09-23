@@ -1,0 +1,18 @@
+// The family's server, built into the app: the parent never types an address.
+//
+// Copy this file to Support/Server.xcconfig (never versioned: a private address does not belong in a public
+// repository) and put the real one in. In xcconfig files « // » starts a comment, so the slashes of the scheme
+// are split with $() — that is the usual trick, not a typo.
+//
+//   CARNET_SERVER_HOST = carnet.example.org
+//   CARNET_SERVER_URL = https:/$()/$(CARNET_SERVER_HOST)
+//
+// While developing against a server on your own machine, point it at that machine instead; the app accepts plain
+// http for local addresses only:
+//
+//   CARNET_SERVER_URL = http:/$()/localhost:3001
+//
+// Leave the file out entirely and the app asks for the address on first launch, as it used to.
+
+CARNET_SERVER_HOST = carnet.example.org
+CARNET_SERVER_URL = https:/$()/$(CARNET_SERVER_HOST)

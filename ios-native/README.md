@@ -316,6 +316,14 @@ Tre cose viste alla prima prova sul simulatore.
 - **La voce continuava dopo la chiusura del foglio.** « Écouter » su un riassunto o su una risposta parlava anche dopo che il foglio era sparito: ora chiudere il foglio ferma la voce (`onDismiss`), e lo stesso vale uscendo da « Pose ta question ».
 - **« Une question sur le texte » rispondeva « l'aide n'est pas disponible ».** Non è un bug dell'app: sul server le due richieste risultano `unavailable / provider_error`, e i lavori del worker falliscono con `auth` — l'accesso all'IA sul mini PC è scaduto. Riassunti e quiz continuano a funzionare perché ricadono sulla versione locale deterministica; la domanda sul testo non ha una versione locale, quindi si ferma. Da rifare il login sul mini PC.
 
+### Fatto — fetta 25: niente più « Adresse du serveur » (2026-09-23)
+
+Il primo schermo chiedeva al genitore un indirizzo che non può conoscere. Il server è uno solo e lo decide chi compila l'app, non il cliente.
+
+- L'indirizzo arriva da `CARNET_SERVER_URL` in `Support/Server.xcconfig`, **non versionato** (l'indirizzo di un server privato non sta in un repository pubblico); `Support/Server.xcconfig.example` spiega come scriverlo, comprese le barre dello schema da spezzare con `$()` perché in un xcconfig `//` apre un commento. Da lì entra nell'`Info.plist` come `CarnetServerURL` e l'app lo legge all'avvio (`App/ServerAddress.swift`).
+- L'indirizzo incorporato **vince su quello salvato** da una versione precedente: una build puntata altrove non deve continuare a parlare con il server di prima.
+- Senza quel file il valore è vuoto e l'app torna a chiedere l'indirizzo, che è anche il modo di puntare una build al server sul proprio portatile (`http:/$()/localhost:3001`, l'http in chiaro è permesso solo per indirizzi locali).
+
 ### Bug trovati e corretti in queste fette
 
 - **`null` omessi.** Il server valida con `.nullable()` (chiave obbligatoria, valore nullo); il `Codable` sintetizzato di Swift *omette* le chiavi `nil`. Ogni riga scritta dall'iPad con un campo vuoto — `deletedAt`, `confidence`, `verdict`… — sarebbe stata rifiutata dal sync come `invalid`, in silenzio. Ora `@NullCodable` su 15 campi e sulle richieste AI, con test che lo verificano per ogni tipo di riga.

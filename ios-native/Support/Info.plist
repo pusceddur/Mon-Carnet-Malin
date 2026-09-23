@@ -46,6 +46,11 @@
 			</array>
 		</dict>
 	</array>
+	<!-- The family's server. Filled from CARNET_SERVER_URL (Support/Server.xcconfig, never versioned): the
+	     address of a private server does not belong in a public repository. Empty in a fresh clone, and the app
+	     then asks for the address as it used to, which is also how a developer points it at their own machine. -->
+	<key>CarnetServerURL</key>
+	<string>$(CARNET_SERVER_URL)</string>
 	<!-- iOS hands over a copy in Documents/Inbox; the app imports it and deletes the copy. -->
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<false/>

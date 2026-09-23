@@ -29,6 +29,9 @@ targets:
     dependencies:
       - package: CarnetKit
         product: CarnetKit
+    configFiles:
+      Debug: Support/Server.xcconfig
+      Release: Support/Server.xcconfig
     settings:
       base:
         PRODUCT_NAME: Carnet Malin

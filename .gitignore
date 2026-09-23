@@ -81,5 +81,8 @@ ios-native/**/xcuserdata/
 ios-native/**/*.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
 ios-native/**/*.xcworkspace/xcshareddata/swiftpm/
 
+# The family's server address: never in the public repository (the example file is)
+ios-native/Support/Server.xcconfig
+
 # Local launch videos (/brag): never published
 brag-output*/
