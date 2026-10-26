@@ -32,6 +32,22 @@ targets:
     configFiles:
       Debug: Support/Server.xcconfig
       Release: Support/Server.xcconfig
+    postBuildScripts:
+      - name: Check the server address
+        basedOnDependencyAnalysis: false
+        script: |
+          # An archive is what goes to App Store Connect: it must carry the real server, over https.
+          # Ordinary builds are left alone, so a developer can still run against a server on their own machine.
+          [ "$ACTION" = "install" ] || exit 0
+          case "$CARNET_SERVER_URL" in
+            "" | *example.org*)
+              echo "error: CARNET_SERVER_URL is empty or still the example. Set the production server in Support/Server.xcconfig before archiving."
+              exit 1 ;;
+            https://*) ;;
+            *)
+              echo "error: CARNET_SERVER_URL must be https for an archive (got $CARNET_SERVER_URL)."
+              exit 1 ;;
+          esac
     settings:
       base:
         PRODUCT_NAME: Carnet Malin

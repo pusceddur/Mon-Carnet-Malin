@@ -324,6 +324,7 @@ struct ParentHomeView: View {
                     }
                 }
             }
+            PrivacyPolicyLink(serverURL: model.services?.serverURL)
             BigButton(title: FR.SignIn.signOut, icon: "rectangle.portrait.and.arrow.right", kind: .secondary) {
                 showingSignOut = true
             }

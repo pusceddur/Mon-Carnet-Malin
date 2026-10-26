@@ -60,6 +60,13 @@
   justify-content: center;
 }
 
+.auth-privacy {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
 /* ---------- child selection ---------- */
 
 .child-select {

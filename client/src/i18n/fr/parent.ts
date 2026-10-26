@@ -29,6 +29,7 @@ export const parent = {
     offline: 'Pas de connexion Internet. La connexion au compte en a besoin.',
     registerLink: 'Créer un compte',
     forgotLink: 'Mot de passe oublié ?',
+    privacyLink: 'Politique de confidentialité',
   },
   /** §20 « Mot de passe oublié »: e-mail link + code of the Réglages. */
   passwordReset: {
@@ -71,6 +72,8 @@ export const parent = {
     closed: 'Les inscriptions ne sont pas ouvertes. Demandez un code d’invitation.',
     backToLogin: 'Retour à la connexion',
     haveAccount: 'J’ai déjà un compte',
+    privacyNotice: 'En créant le compte, vous acceptez que vos données et celles de vos enfants soient traitées comme le décrit la',
+    privacyLink: 'politique de confidentialité',
   },
   validation: {
     required: 'Ce champ est obligatoire.',

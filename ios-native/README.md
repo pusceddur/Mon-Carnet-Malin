@@ -396,9 +396,9 @@ cd ios-native && xcodegen generate
 
 ### Cosa manca ancora, e va fatto sul Mac
 
-1. **I file dei font.** Lexend, Andika, Atkinson Hyperlegible e OpenDyslexic non sono nella repo (licenze e peso). Vanno messi in `CarnetMalin/Fonts/` e dichiarati in `UIAppFonts` dentro `Support/Info.plist`. **Finché non ci sono, l'app usa il font di sistema** — non si rompe niente, ma metà del senso di « Police » va perso.
+1. ~~I file dei font~~ — fatti il 2026-10-24: Lexend, Andika, Atkinson Hyperlegible e OpenDyslexic, regular e bold, in `CarnetMalin/Fonts/` con la loro licenza SIL OFL (che ne permette la ridistribuzione) e dichiarati in `UIAppFonts`. Lexend si chiama per nome PostScript, `Lexend-Regular`.
 2. ~~L'icona~~ — fatta il 2026-09-23 (generata da `client/public/icons/icon.svg`, senza canale alpha).
-4. Il resto della checklist App Store è in `ios-app/TODO.md`.
+3. **Cosa scrivere in App Store Connect** — categoria, etichette App Privacy, note per la revisione, acquisto in-app quando l'app diventerà a pagamento: tutto in [APP_STORE.md](APP_STORE.md). La politica sulla privacy è una pagina del server, `/confidentialite`, linkata dall'accesso, dalla creazione dell'account e dall'area genitori.
 
 ## Nota sull'autenticazione
 

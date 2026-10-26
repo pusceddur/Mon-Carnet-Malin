@@ -51,6 +51,20 @@
 	     then asks for the address as it used to, which is also how a developer points it at their own machine. -->
 	<key>CarnetServerURL</key>
 	<string>$(CARNET_SERVER_URL)</string>
+	<!-- The reading fonts, in CarnetMalin/Fonts with their SIL Open Font Licence. The folder is synchronised, so its
+	     files land at the root of the bundle and are listed here by file name alone. Bold comes from its own file
+	     rather than being drawn thicker by the system. -->
+	<key>UIAppFonts</key>
+	<array>
+		<string>Lexend-Regular.ttf</string>
+		<string>Lexend-Bold.ttf</string>
+		<string>Andika-Regular.ttf</string>
+		<string>Andika-Bold.ttf</string>
+		<string>AtkinsonHyperlegible-Regular.ttf</string>
+		<string>AtkinsonHyperlegible-Bold.ttf</string>
+		<string>OpenDyslexic-Regular.otf</string>
+		<string>OpenDyslexic-Bold.otf</string>
+	</array>
 	<!-- iOS hands over a copy in Documents/Inbox; the app imports it and deletes the copy. -->
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<false/>

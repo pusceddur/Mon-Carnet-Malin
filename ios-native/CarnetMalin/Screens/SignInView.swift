@@ -44,6 +44,8 @@ struct SignInView: View {
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 420)
                 }
+
+                PrivacyPolicyLink(serverURL: model.services?.serverURL ?? ServerAddress.builtIn, size: 15)
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal, Metrics.gutter)

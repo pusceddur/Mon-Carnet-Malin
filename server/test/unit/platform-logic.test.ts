@@ -89,6 +89,29 @@ describe('config', () => {
     });
     expect(tuned.worker).toEqual({ tokenSha256: 'ab'.repeat(32), selfReferenceTerms: ['Robotix', 'Robotix Pro'], deadlines: { light: 60_000, complex: 300_000 } });
 
+    // AI 1 + AI 2: an OpenAI-compatible server first, the home computer behind it.
+    const pair = loadConfig({
+      ...base, WORKER_TOKEN_SHA256: sha, OPENAI_BASE_URL: 'http://localhost:1234/v1/', OPENAI_MODEL: 'qwen3-8b', AI_FALLBACK: 'worker',
+    });
+    expect(pair.ai).toMatchObject({ providerLight: 'openai', providerComplex: 'openai', fallbackLight: 'worker', fallbackComplex: 'worker' });
+    expect(pair.openai).toEqual({
+      baseUrl: 'http://localhost:1234/v1', apiKey: null, models: { light: 'qwen3-8b', complex: 'qwen3-8b' }, jsonMode: 'json_schema', images: true,
+      timeoutMs: null, prices: null, selfReferenceTerms: [],
+    });
+    expect(loadConfig(base).openai).toBeNull();
+    expect(loadConfig(base).ai).toMatchObject({ fallbackLight: null, fallbackComplex: null });
+    // Never the first provider again, never the deterministic one.
+    expect(loadConfig({ ...base, AI_PROVIDER: 'worker', AI_FALLBACK: 'worker' }).ai.fallbackLight).toBeNull();
+    expect(loadConfig({ ...base, AI_PROVIDER: 'worker', AI_FALLBACK: 'local' }).ai.fallbackLight).toBeNull();
+    const perTier = loadConfig({
+      ...base, OPENAI_BASE_URL: 'https://api.example.org/v1', OPENAI_MODEL_LIGHT: 'small', OPENAI_MODEL_COMPLEX: 'big', OPENAI_PRICE_INPUT: '0.15',
+      OPENAI_PRICE_OUTPUT: '0.6', OPENAI_JSON_MODE: 'json_object', OPENAI_IMAGES: 'false', AI_FALLBACK_COMPLEX: 'worker',
+    });
+    expect(perTier.openai).toMatchObject({ models: { light: 'small', complex: 'big' }, prices: { inputEurPerMTok: 0.15, outputEurPerMTok: 0.6 }, jsonMode: 'json_object', images: false });
+    expect(perTier.ai).toMatchObject({ fallbackLight: null, fallbackComplex: 'worker' });
+    expect(() => loadConfig({ ...base, OPENAI_BASE_URL: 'localhost:1234' })).toThrow(/OPENAI_BASE_URL/);
+    expect(() => loadConfig({ ...base, OPENAI_JSON_MODE: 'yaml' })).toThrow(/OPENAI_JSON_MODE/);
+
     expect(() => loadConfig({ ...base, WORKER_TOKEN_SHA256: 'abc' })).toThrow(/WORKER_TOKEN_SHA256/);
     expect(() => loadConfig({ ...base, AI_PROVIDER: 'robot' })).toThrow(/AI_PROVIDER/);
     expect(() => loadConfig({ ...base, WORKER_DEADLINE_LIGHT_MS: '100' })).toThrow(/WORKER_DEADLINE_LIGHT_MS/);

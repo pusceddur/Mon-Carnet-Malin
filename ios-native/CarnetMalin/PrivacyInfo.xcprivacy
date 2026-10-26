@@ -5,8 +5,9 @@
 	<!-- Ce que l'app fait des données, déclaré à Apple. Sans ce fichier, l'envoi sur App Store Connect
 	     répond ITMS-91053 « Missing API declaration » pour les API ci-dessous.
 
-	     L'app ne suit personne et ne parle à aucun service tiers : elle ne parle qu'au serveur de la
-	     famille, dont l'adresse est saisie par l'adulte. -->
+	     L'app ne suit personne et ne parle à aucun service tiers : elle ne parle qu'au serveur de
+	     Carnet Malin, dont l'adresse est fixée à la compilation (Support/Server.xcconfig). Le détail,
+	     et ce que le serveur envoie lui-même au service d'IA, est sur /confidentialite. -->
 
 	<key>NSPrivacyTracking</key>
 	<false/>
@@ -49,6 +50,48 @@
 			     tout ce que la famille met dans l'app, synchronisé entre ses appareils. -->
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<!-- L'identifiant du compte que le serveur attribue, derrière la clé de connexion de l'appareil.
+			     Ce n'est pas un identifiant d'appareil ni de publicité. -->
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeUserID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<!-- Les photos des pages d'un livre ou d'un devoir, et l'image d'une réponse écrite à la main
+			     quand la reconnaissance de l'écriture est activée. -->
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePhotosorVideos</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<!-- La progression et les séances de lecture, pour reprendre où l'enfant s'est arrêté et pour
+			     l'activité montrée à l'adulte. Aucune mesure d'audience. -->
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeProductInteraction</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
 			<true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>

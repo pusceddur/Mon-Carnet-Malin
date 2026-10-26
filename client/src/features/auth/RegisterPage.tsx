@@ -10,7 +10,7 @@ import { PATHS } from '../../state/guards';
 import { useSessionStore } from '../../state/session';
 import { useDocumentTitle } from '../../state/useDocumentTitle';
 import { AccountFields } from './AccountFields';
-import { toRegisterRequest, validateRegisterForm, type FormErrors, type RegisterFormValues } from './authForms';
+import { PRIVACY_PATH, toRegisterRequest, validateRegisterForm, type FormErrors, type RegisterFormValues } from './authForms';
 import './auth.css';
 
 const t = parent.register;
@@ -121,6 +121,9 @@ export default function RegisterPage(): JSX.Element {
           </Field>
           <AccountFields values={values} errors={errors} onChange={change} />
           {formError && <p className="form-error" role="alert">{formError}</p>}
+          <p className="auth-privacy">
+            {t.privacyNotice} <a href={PRIVACY_PATH}>{t.privacyLink}</a>.
+          </p>
           <Button type="submit" size="parent" block loading={busy}>
             {t.submit}
           </Button>

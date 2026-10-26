@@ -9,7 +9,7 @@ import { describeError } from '../../state/errors';
 import { PATHS } from '../../state/guards';
 import { useSessionStore } from '../../state/session';
 import { useDocumentTitle } from '../../state/useDocumentTitle';
-import { toLoginRequest, validateLoginForm, type FormErrors, type LoginFormValues } from './authForms';
+import { PRIVACY_PATH, toLoginRequest, validateLoginForm, type FormErrors, type LoginFormValues } from './authForms';
 import './auth.css';
 
 const t = parent.login;
@@ -108,6 +108,10 @@ export default function LoginPage(): JSX.Element {
             )}
           </div>
         )}
+        {/* A server page, not a client route: the same address the App Store and the iPad app link to. */}
+        <p className="auth-privacy">
+          <a href={PRIVACY_PATH}>{t.privacyLink}</a>
+        </p>
       </div>
     </main>
   );

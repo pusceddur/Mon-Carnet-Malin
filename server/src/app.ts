@@ -8,6 +8,7 @@ import { requireXRequestedWith } from './auth/middleware';
 import { createAuthRouter } from './auth/routes';
 import { appCors } from './cors';
 import { errorHandler, notFound } from './errors';
+import { privacyPolicyHtml } from './legal/privacyPolicy.fr';
 import { clientDistDir } from './paths';
 import { createActivityRouter } from './routes/activity';
 import { createAdminRouter } from './routes/admin';
@@ -109,6 +110,12 @@ export function createApp(deps: AppDeps): Express {
   app.use('/api/diagnostics', createDiagnosticsRouter(deps));
   app.use('/api/worker', createWorkerRouter(deps));
   app.use('/api', notFound);
+
+  // Public, before the SPA fallback (which would answer it with the client shell): the App Store links here.
+  app.get('/confidentialite', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.type('html').send(privacyPolicyHtml(config.legal));
+  });
 
   // Static client (PWA) + SPA fallback.
   const distDir = clientDistDir(config);

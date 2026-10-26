@@ -7,8 +7,9 @@ export type NodeEnv = 'development' | 'production' | 'test';
 /**
  * 'plugin' = external provider module loaded at runtime from AI_PLUGIN_PATH (kept outside the repository).
  * 'worker' = jobs queued in the database and executed by the external worker (§17).
+ * 'openai' = any server speaking the OpenAI Chat Completions API (LM Studio, Ollama, vLLM, OpenAI…), see OPENAI_*.
  */
-export type AIProviderName = 'plugin' | 'local' | 'mock' | 'worker';
+export type AIProviderName = 'plugin' | 'local' | 'mock' | 'worker' | 'openai';
 
 export interface AppConfig {
   nodeEnv: NodeEnv;
@@ -25,7 +26,15 @@ export interface AppConfig {
     providerComplex: AIProviderName;
     /** Absolute or cwd-relative path of the external provider module, or null. */
     pluginPath: string | null;
+    /**
+     * The second AI, tried when the first one cannot answer (AI_FALLBACK, AI_FALLBACK_LIGHT/COMPLEX). Null = none.
+     * Never 'local' (the deterministic answers are already the last resort) nor the first provider again.
+     */
+    fallbackLight: AIProviderName | null;
+    fallbackComplex: AIProviderName | null;
   };
+  /** OpenAI-compatible server (AI_PROVIDER=openai or AI_FALLBACK=openai). Null when OPENAI_BASE_URL is not set. */
+  openai: OpenAIConfig | null;
   /** External worker (§17). */
   worker: {
     /** Lowercase hex sha256 of the worker bearer token (WORKER_TOKEN_SHA256); null = the worker routes answer 404. */
@@ -59,6 +68,44 @@ export interface AppConfig {
    * unavailable and nobody is signed out for lack of confirmation.
    */
   mail: MailConfig | null;
+  /**
+   * Who answers for the data, shown on the privacy policy (/confidentialite). Null fields are printed as « à
+   * compléter » so a missing value is visible on the page instead of silently absent.
+   */
+  legal: LegalConfig;
+}
+
+export interface LegalConfig {
+  /** LEGAL_OPERATOR: name or company of whoever runs this server (the data controller). */
+  operator: string | null;
+  /** LEGAL_CONTACT: e-mail address for privacy requests. */
+  contact: string | null;
+  /** LEGAL_HOSTING: host and country of the server, e.g. « OVHcloud, France ». */
+  hosting: string | null;
+  /** LEGAL_AI_PROVIDERS: the AI services requests may reach, `;` separated, e.g. « OpenAI (États-Unis); Anthropic (États-Unis) ». */
+  aiProviders: readonly string[];
+}
+
+export interface OpenAIConfig {
+  /** OPENAI_BASE_URL, up to and including /v1, no trailing slash: http://localhost:1234/v1 for LM Studio. */
+  baseUrl: string;
+  /** OPENAI_API_KEY: none for a local server. */
+  apiKey: string | null;
+  /** OPENAI_MODEL, or OPENAI_MODEL_LIGHT / OPENAI_MODEL_COMPLEX per tier. A tier without a model is not served. */
+  models: { light: string | null; complex: string | null };
+  /**
+   * OPENAI_JSON_MODE: how the answer is held to its JSON Schema. 'json_schema' (default: LM Studio, OpenAI, vLLM,
+   * recent Ollama), 'json_object' (JSON only, the schema in the prompt), 'prompt' (servers that know neither).
+   */
+  jsonMode: 'json_schema' | 'json_object' | 'prompt';
+  /** OPENAI_IMAGES: the model reads images (handwriting). Default true; false sends those requests to the fallback. */
+  images: boolean;
+  /** OPENAI_TIMEOUT_MS: longest wait for one answer, so that a fallback still has time. Default: AI_DEADLINES of the tier. */
+  timeoutMs: number | null;
+  /** OPENAI_PRICE_INPUT / OPENAI_PRICE_OUTPUT, € per million tokens: counted in the monthly budget. Null = free. */
+  prices: { inputEurPerMTok: number; outputEurPerMTok: number } | null;
+  /** OPENAI_SELF_REFERENCE_TERMS, comma separated, plus the model names. */
+  selfReferenceTerms: readonly string[];
 }
 
 export interface MailConfig {
@@ -74,7 +121,8 @@ export interface MailConfig {
   publicUrl: string;
 }
 
-const ProviderSchema = z.enum(['plugin', 'local', 'mock', 'worker']);
+const ProviderSchema = z.enum(['plugin', 'local', 'mock', 'worker', 'openai']);
+const PriceSchema = z.string().regex(/^\d{1,4}(\.\d{1,6})?$/).transform(Number);
 const DurationMsSchema = z.string().regex(/^\d{4,7}$/).transform(Number).pipe(z.number().int().min(5_000).max(3_600_000));
 const BoolSchema = z
   .enum(['true', 'false', '1', '0', 'yes', 'no'])
@@ -94,6 +142,20 @@ const EnvSchema = z.object({
   AI_PROVIDER_LIGHT: ProviderSchema.optional(),
   AI_PROVIDER_COMPLEX: ProviderSchema.optional(),
   AI_PLUGIN_PATH: z.string().min(1).optional(),
+  AI_FALLBACK: ProviderSchema.optional(),
+  AI_FALLBACK_LIGHT: ProviderSchema.optional(),
+  AI_FALLBACK_COMPLEX: ProviderSchema.optional(),
+  OPENAI_BASE_URL: z.string().regex(/^https?:\/\/[^\s/]+(\/[^\s]*)?$/).optional(),
+  OPENAI_API_KEY: z.string().min(1).max(500).optional(),
+  OPENAI_MODEL: z.string().min(1).max(200).optional(),
+  OPENAI_MODEL_LIGHT: z.string().min(1).max(200).optional(),
+  OPENAI_MODEL_COMPLEX: z.string().min(1).max(200).optional(),
+  OPENAI_JSON_MODE: z.enum(['json_schema', 'json_object', 'prompt']).optional(),
+  OPENAI_IMAGES: BoolSchema.optional(),
+  OPENAI_TIMEOUT_MS: DurationMsSchema.optional(),
+  OPENAI_PRICE_INPUT: PriceSchema.optional(),
+  OPENAI_PRICE_OUTPUT: PriceSchema.optional(),
+  OPENAI_SELF_REFERENCE_TERMS: z.string().max(2000).optional(),
   CLIENT_DIST_DIR: z.string().min(1).optional(),
   DATA_DIR: z.string().min(1).optional(),
   TESSDATA_BEST_DIR: z.string().min(1).optional(),
@@ -112,6 +174,10 @@ const EnvSchema = z.object({
   SMTP_PASSWORD: z.string().min(1).max(500).optional(),
   MAIL_FROM: z.string().min(3).max(255).optional(),
   PUBLIC_URL: z.string().regex(/^https?:\/\/[^\s/]+(\/[^\s]*)?$/).optional(),
+  LEGAL_OPERATOR: z.string().max(200).optional(),
+  LEGAL_CONTACT: z.string().max(200).optional(),
+  LEGAL_HOSTING: z.string().max(200).optional(),
+  LEGAL_AI_PROVIDERS: z.string().max(1000).optional(),
 });
 
 /** Loads `.env` from the working directory if present (does not override existing variables). */
@@ -162,6 +228,27 @@ function parseMail(e: z.infer<typeof EnvSchema>): MailConfig | null {
   };
 }
 
+function parseOpenAI(e: z.infer<typeof EnvSchema>): OpenAIConfig | null {
+  if (!e.OPENAI_BASE_URL) return null;
+  return {
+    baseUrl: e.OPENAI_BASE_URL.replace(/\/+$/, ''),
+    apiKey: e.OPENAI_API_KEY ?? null,
+    models: { light: e.OPENAI_MODEL_LIGHT ?? e.OPENAI_MODEL ?? null, complex: e.OPENAI_MODEL_COMPLEX ?? e.OPENAI_MODEL ?? null },
+    jsonMode: e.OPENAI_JSON_MODE ?? 'json_schema',
+    images: e.OPENAI_IMAGES ?? true,
+    timeoutMs: e.OPENAI_TIMEOUT_MS ?? null,
+    prices: e.OPENAI_PRICE_INPUT !== undefined && e.OPENAI_PRICE_OUTPUT !== undefined
+      ? { inputEurPerMTok: e.OPENAI_PRICE_INPUT, outputEurPerMTok: e.OPENAI_PRICE_OUTPUT }
+      : null,
+    selfReferenceTerms: parseTerms(e.OPENAI_SELF_REFERENCE_TERMS),
+  };
+}
+
+/** The second AI of a tier: never the deterministic one, never the first provider again. */
+function fallbackOf(first: AIProviderName, wanted: AIProviderName | undefined): AIProviderName | null {
+  return wanted === undefined || wanted === 'local' || wanted === first ? null : wanted;
+}
+
 function parsePort(raw: string | undefined): number | string {
   if (raw === undefined) return 3001;
   return /^\d+$/.test(raw) ? Number(raw) : raw;
@@ -193,8 +280,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
 
   const pluginPath = e.AI_PLUGIN_PATH ?? null;
   const workerTokenSha256 = e.WORKER_TOKEN_SHA256?.toLowerCase() ?? null;
-  // §17.4: without AI_PROVIDER, a plugin wins, then a configured worker, then the local provider.
-  const defaultProvider: AIProviderName = e.AI_PROVIDER ?? (pluginPath ? 'plugin' : workerTokenSha256 ? 'worker' : 'local');
+  // §17.4: without AI_PROVIDER, a plugin wins, then an OpenAI-compatible server, then a configured worker, then the
+  // local provider.
+  const defaultProvider: AIProviderName = e.AI_PROVIDER
+    ?? (pluginPath ? 'plugin' : e.OPENAI_BASE_URL ? 'openai' : workerTokenSha256 ? 'worker' : 'local');
+  const providerLight = e.AI_PROVIDER_LIGHT ?? defaultProvider;
+  const providerComplex = e.AI_PROVIDER_COMPLEX ?? defaultProvider;
 
   return {
     nodeEnv: e.NODE_ENV,
@@ -206,10 +297,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     setupToken: e.SETUP_TOKEN ?? null,
     sessionSecret: e.SESSION_SECRET ?? null,
     ai: {
-      providerLight: e.AI_PROVIDER_LIGHT ?? defaultProvider,
-      providerComplex: e.AI_PROVIDER_COMPLEX ?? defaultProvider,
+      providerLight,
+      providerComplex,
       pluginPath,
+      fallbackLight: fallbackOf(providerLight, e.AI_FALLBACK_LIGHT ?? e.AI_FALLBACK),
+      fallbackComplex: fallbackOf(providerComplex, e.AI_FALLBACK_COMPLEX ?? e.AI_FALLBACK),
     },
+    openai: parseOpenAI(e),
     worker: {
       tokenSha256: workerTokenSha256,
       selfReferenceTerms: parseTerms(e.WORKER_SELF_REFERENCE_TERMS),
@@ -227,5 +321,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     uploadQuotaBytes: Number(e.UPLOAD_QUOTA_MB ?? DEFAULT_UPLOAD_QUOTA_MB) * 1024 * 1024,
     passwordHashRounds: isTest ? 4 : 12,
     mail: parseMail(e),
+    legal: {
+      operator: e.LEGAL_OPERATOR ?? null,
+      contact: e.LEGAL_CONTACT ?? null,
+      hosting: e.LEGAL_HOSTING ?? null,
+      aiProviders: (e.LEGAL_AI_PROVIDERS ?? '').split(';').map((p) => p.trim()).filter((p) => p.length > 0),
+    },
   };
 }

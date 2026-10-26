@@ -57,6 +57,7 @@
 				A100000000000000000131 /* Sources */,
 				A1000000000000000000D1 /* Frameworks */,
 				A100000000000000000141 /* Resources */,
+				A1000000000000000001F1 /* Check the server address */,
 			);
 			buildRules = (
 			);
@@ -118,6 +119,28 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A1000000000000000001F1 /* Check the server address */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check the server address";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# An archive is what goes to App Store Connect: it must carry the real server, over https.\n# Ordinary builds are left alone, so a developer can still run against a server on their own machine.\n[ \"$ACTION\" = \"install\" ] || exit 0\ncase \"$CARNET_SERVER_URL\" in\n  \"\" | *example.org*)\n    echo \"error: CARNET_SERVER_URL is empty or still the example. Set the production server in Support/Server.xcconfig before archiving.\"\n    exit 1 ;;\n  https://*) ;;\n  *)\n    echo \"error: CARNET_SERVER_URL must be https for an archive (got $CARNET_SERVER_URL).\"\n    exit 1 ;;\nesac\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A100000000000000000131 /* Sources */ = {

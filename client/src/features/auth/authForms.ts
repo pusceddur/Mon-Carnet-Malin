@@ -2,6 +2,9 @@ import { LIMITS, PIN_DEFAULT_DIGITS, type LoginRequest, type RegisterRequest, ty
 import { format } from '../../i18n/fr';
 import { parent } from '../../i18n/fr/parent';
 
+/** The privacy policy, served by the server (not a client route): the address the App Store and the iPad app use too. */
+export const PRIVACY_PATH = '/confidentialite';
+
 const v = parent.validation;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
 const PIN_RE = new RegExp(`^\\d{${LIMITS.pinMinDigits},${LIMITS.pinMaxDigits}}$`, 'u');

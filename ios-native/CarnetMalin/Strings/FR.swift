@@ -105,6 +105,14 @@ enum FR {
         }
     }
 
+    /// The privacy policy, a page on the family's server so the web app, this app and the App Store point at one text.
+    enum Privacy {
+        static let link = "Politique de confidentialité"
+        static let beforeAccount =
+            "En créant le compte, vous acceptez que vos données et celles de vos enfants soient traitées comme le décrit "
+            + "la politique de confidentialité."
+    }
+
     enum SignIn {
         static let title = "Carnet Malin"
         static let lead = "Connecte-toi pour retrouver tes livres."

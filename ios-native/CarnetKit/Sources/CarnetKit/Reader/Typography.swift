@@ -151,7 +151,7 @@ public struct ReaderTypography: Equatable, Sendable {
     /// `systeme` means the system font, which is what a child used to it may prefer.
     public static func fontName(for font: ReadingFont) -> String? {
         switch font {
-        case .lexend: return "Lexend"
+        case .lexend: return "Lexend-Regular"
         case .andika: return "Andika"
         case .atkinson: return "AtkinsonHyperlegible-Regular"
         case .opendyslexic: return "OpenDyslexic-Regular"

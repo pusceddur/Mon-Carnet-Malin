@@ -68,6 +68,11 @@ struct AccountCreationView: View {
                 }
 
                 Section {
+                    // Read before the account exists, not after: what is kept, where, and what goes to the AI.
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(FR.Privacy.beforeAccount).font(AppFont.ui(14)).foregroundStyle(Palette.muted)
+                        PrivacyPolicyLink(serverURL: model.services?.serverURL, size: 15)
+                    }
                     BigButton(
                         title: isWorking ? FR.Account.working : FR.Account.submit, icon: "person.badge.plus",
                         isEnabled: !isWorking

@@ -10,7 +10,7 @@ import type {
   ModelSummary, ModelWriting,
 } from './schemas';
 
-export type ProviderId = 'plugin' | 'local' | 'mock' | 'worker';
+export type ProviderId = 'plugin' | 'local' | 'mock' | 'worker' | 'openai';
 
 export interface ProviderCallContext {
   operation: AIOperation;

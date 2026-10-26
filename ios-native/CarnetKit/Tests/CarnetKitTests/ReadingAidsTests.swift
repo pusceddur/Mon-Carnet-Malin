@@ -132,7 +132,7 @@ final class TypographyTests: XCTestCase {
 
     func testTheSystemFontIsAskedForByName() {
         XCTAssertNil(ReaderTypography.fontName(for: .systeme))
-        XCTAssertEqual(ReaderTypography.fontName(for: .lexend), "Lexend")
+        XCTAssertEqual(ReaderTypography.fontName(for: .lexend), "Lexend-Regular")
     }
 
     func testPaperIsNeverPureWhiteAndDarkInkIsNeverPureWhite() {

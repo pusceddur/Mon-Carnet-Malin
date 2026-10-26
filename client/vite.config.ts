@@ -88,7 +88,8 @@ export default defineConfig({
         globIgnores: ['ocr/**', 'pdfjs/**', 'data/**'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        // /confidentialite is a server page: the service worker must not answer it with the app shell.
+        navigateFallbackDenylist: [/^\/api\//, /^\/confidentialite$/],
         cleanupOutdatedCaches: true,
         // Heavy OCR / PDF / word-list assets: fetched on first use or by « Préparer le mode hors ligne », then served from cache.
         // Match callbacks are serialized into the service worker: keep them self-contained (no outer variables).
